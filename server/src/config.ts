@@ -8,7 +8,16 @@ import { z } from "zod";
  */
 const schema = z.object({
   PORT: z.coerce.number().int().positive().default(8787),
-  CORS_ORIGIN: z.string().min(1).default("http://localhost:5173"),
+  /**
+   * Lista separada por vírgula — precisa aceitar mais de uma origem em
+   * produção: domínio próprio (com e sem "www.") + o `.vercel.app` antigo
+   * continuando válido durante a transição.
+   */
+  CORS_ORIGIN: z
+    .string()
+    .min(1)
+    .default("http://localhost:5173")
+    .transform((value) => value.split(",").map((origin) => origin.trim()).filter(Boolean)),
 
   SFTP_HOST: z.string().min(1, "SFTP_HOST é obrigatório"),
   SFTP_PORT: z.coerce.number().int().positive().default(22),

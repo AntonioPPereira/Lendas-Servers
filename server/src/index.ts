@@ -28,7 +28,7 @@ const app = createApp(
 
 app.listen(config.port, () => {
   console.log(`[lendas-server] ouvindo em http://localhost:${config.port}`);
-  console.log(`[lendas-server] CORS liberado para ${config.corsOrigin}`);
+  console.log(`[lendas-server] CORS liberado para ${config.corsOrigin.join(", ")}`);
   console.log(`[lendas-server] SFTP alvo: ${config.sftp.host}:${config.sftp.port} base=${config.sftp.base}`);
   console.log(`[lendas-server] HLstatsX alvo: ${config.hlstats.baseUrl} (game=${config.hlstats.game})`);
   console.log("[lendas-server] lendas_steamfilter: lendo os logs via a mesma conexão SFTP das demos");

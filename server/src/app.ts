@@ -32,7 +32,8 @@ export interface AppServices {
 }
 
 export interface AppOptions {
-  corsOrigin?: string;
+  /** Uma origem, várias (a lib `cors` aceita array nativamente), ou `true` (qualquer origem — testes). */
+  corsOrigin?: string | string[];
   /** Token que `POST /api/live/events` exige. Vazio (padrão) = rota sempre responde "não configurado". */
   liveApiToken?: string;
   /** Servidor sem snapshot novo há mais que isso é considerado morto e removido do estado ao vivo. */
