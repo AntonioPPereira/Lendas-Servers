@@ -56,6 +56,11 @@ export function createApp(services: AppServices, options: AppOptions = {}) {
   const liveState = new LiveMatchState(options.liveStaleMs ?? 30_000);
   const liveBroadcaster = new LiveBroadcaster();
 
+  // Atrás de exatamente um proxy reverso em produção (Render, e qualquer PaaS
+  // parecido) — sem isso o express-rate-limit não confia no X-Forwarded-For
+  // e pode acabar tratando todo mundo atrás do proxy como um cliente só.
+  app.set("trust proxy", 1);
+
   app.disable("x-powered-by");
   app.use(cors({ origin: options.corsOrigin ?? true }));
   app.use(express.json({ limit: "256kb" }));
