@@ -1,3 +1,4 @@
+import { Agent } from "undici";
 import { TtlCache } from "../lib/cache.js";
 import { HLStatsParseError, HLStatsUnavailableError } from "../errors.js";
 import {
@@ -16,11 +17,26 @@ export interface HLStatsConfig {
   timeoutMs: number;
 }
 
-type FetchLike = (url: string, init?: { signal?: AbortSignal; headers?: Record<string, string> }) => Promise<{
+// RequestInit (o mesmo tipo do fetch global, via undici-types empacotado com
+// @types/node) em vez de um objeto próprio: declarar "dispatcher" à mão aqui
+// colide com o tipo de Agent do pacote `undici` — mesma coisa em tempo de
+// execução, classes formalmente diferentes pro TypeScript.
+type FetchLike = (url: string, init?: RequestInit) => Promise<{
   ok: boolean;
   status: number;
   text(): Promise<string>;
 }>;
+
+/**
+ * mixlendas-rank.clanservers.com.br passou a apresentar um certificado
+ * autoassinado (confirmado 2026-08-26, depois que o Cloudflare parou de
+ * intermediar essa conexão pra liberar o IP do Render) — o fetch padrão do
+ * Node rejeita isso como proteção contra man-in-the-middle. Aceito só aqui,
+ * de propósito: é leitura de uma página pública de estatísticas, sem
+ * credencial nem dado sensível trafegando — nenhuma outra chamada deste
+ * backend (Steam Web API, SFTP) usa este agente.
+ */
+const insecureAgent = new Agent({ connect: { rejectUnauthorized: false } });
 
 /**
  * O Node/undici não manda um User-Agent de navegador por padrão — o que
@@ -130,6 +146,12 @@ export class HLStatsService {
       response = await this.fetchImpl(url, {
         signal: AbortSignal.timeout(this.cfg.timeoutMs),
         headers: BROWSER_HEADERS,
+        // As declarações de tipo do pacote `undici` e as empacotadas com
+        // @types/node (undici-types) descrevem Dispatcher de um jeito
+        // formalmente incompatível entre si, mesmo sendo o mesmo código em
+        // tempo de execução — sem o `as`, o TypeScript trava numa
+        // incompatibilidade nas sobrecargas de Dispatcher.compose().
+        dispatcher: insecureAgent as unknown as NonNullable<RequestInit["dispatcher"]>,
       });
     } catch (cause) {
       throw new HLStatsUnavailableError(cause);
