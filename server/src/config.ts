@@ -50,7 +50,10 @@ const schema = z.object({
    * plugin e o backend — vazio (padrão) desativa a rota de ingestão, que
    * responde 503 em vez de aceitar eventos sem autenticação nenhuma.
    */
-  LIVE_API_TOKEN: z.string().default(""),
+  // .trim(): um espaço ou quebra de linha invisível colado no dashboard do
+  // Render (comum ao copiar de chat/editor) faria a comparação de tamanho
+  // falhar mesmo com o valor "certo" — confirmado em produção 2026-08-26.
+  LIVE_API_TOKEN: z.string().default("").transform((value) => value.trim()),
   /** Um servidor sem snapshot novo por esse tempo é considerado morto e removido do estado. */
   LIVE_STALE_MS: z.coerce.number().int().positive().default(30_000),
   /**

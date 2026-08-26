@@ -32,7 +32,7 @@ export function createLiveAuth(expectedToken: string): RequestHandler {
 
     const header = req.get("authorization") ?? "";
     const [scheme, token] = header.split(" ");
-    if (scheme !== "Bearer" || !token || !safeEqual(token, expectedToken)) {
+    if (scheme !== "Bearer" || !token || !safeEqual(token.trim(), expectedToken)) {
       res.status(401).json({ error: "unauthorized", message: "Token inválido." });
       return;
     }
