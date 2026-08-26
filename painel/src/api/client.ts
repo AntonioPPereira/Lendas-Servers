@@ -60,6 +60,15 @@ export interface RankingQuery {
   pageSize?: number;
 }
 
+/**
+ * `/api/ranking` devolve, além da página, desde quando os `rankDelta`/
+ * `skillDelta` de cada jogador estão sendo contados — `null` enquanto o
+ * backend ainda não congelou nenhuma linha de base.
+ */
+export interface RankingPage extends Page<RankedPlayer> {
+  comparedTo: string | null;
+}
+
 /** `/api/players` soma agregados sobre a lista inteira, além da página pedida. */
 export interface PlayersPage extends Page<RankedPlayer> {
   totalKills: number;
@@ -146,12 +155,12 @@ export const api = {
     return request<ActivityEvent[]>("/activity");
   },
 
-  async ranking(params: RankingQuery = {}): Promise<Page<RankedPlayer>> {
+  async ranking(params: RankingQuery = {}): Promise<RankingPage> {
     requireApi("ranking");
     const { query = "", page = 1, pageSize = 25 } = params;
     const search = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (query) search.set("q", query);
-    return request<Page<RankedPlayer>>("/ranking?" + search.toString());
+    return request<RankingPage>("/ranking?" + search.toString());
   },
 
   /** Mesma fonte do ranking, com agregados pros cards de resumo da tela de Jogadores. */

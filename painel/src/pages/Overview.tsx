@@ -85,7 +85,7 @@ export default function Overview() {
         <div data-enter className="relative min-w-0">
           <span
             aria-hidden="true"
-            className="brand-aura pointer-events-none absolute -inset-3 rounded-md blur-2xl"
+            className="brand-aura pointer-events-none absolute -inset-8 rounded-lg blur-3xl"
           />
           <Link
             to="/ranking"
@@ -97,6 +97,7 @@ export default function Overview() {
               draggable={false}
               className="size-full select-none object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]"
             />
+            <span aria-hidden="true" className="brand-sweep pointer-events-none absolute inset-0 rounded-md" />
           </Link>
         </div>
       </div>

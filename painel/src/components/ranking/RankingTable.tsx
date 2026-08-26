@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Link } from "react-router-dom";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type { RankedPlayer } from "@/data/types";
 import { cn } from "@/lib/cn";
 import { formatDecimal, formatNumber, formatPercent, formatPlaytime } from "@/lib/format";
@@ -24,6 +25,33 @@ export function RankingHeader() {
   );
 }
 
+/**
+ * Variação desde a linha de base do ranking (de hora em hora, no backend).
+ * Não renderiza nada quando é zero ou `null`: "sem mudança" e "ainda não dá
+ * pra comparar" não merecem ocupar espaço nem virar um "0" que o jogador
+ * leria como informação.
+ */
+function Delta({ value, className }: { value: number | null | undefined; className?: string }) {
+  if (value == null || value === 0) return null;
+  const up = value > 0;
+  const Icon = up ? ChevronUp : ChevronDown;
+  return (
+    <span
+      className={cn(
+        "t-num inline-flex items-center gap-px text-[9.5px] tabular-nums leading-none",
+        up ? "text-live" : "text-danger",
+        className,
+      )}
+      title={
+        (up ? "Subiu " : "Caiu ") + formatNumber(Math.abs(value)) + " desde a última atualização"
+      }
+    >
+      <Icon className="size-2.5 shrink-0" aria-hidden="true" />
+      {formatNumber(Math.abs(value))}
+    </span>
+  );
+}
+
 export const RankingRow = memo(function RankingRow({ player }: { player: RankedPlayer }) {
   const ratio = player.kd ?? 0;
   const accuracy = player.accuracy ?? 0;
@@ -34,13 +62,16 @@ export const RankingRow = memo(function RankingRow({ player }: { player: RankedP
       data-flip-id={player.id}
       className={cn("row-interactive grid items-center gap-2 px-3 py-2.5", COLUMNS)}
     >
-      <span
-        className={cn(
-          "t-num text-[12px] tabular-nums",
-          player.rank <= 3 ? "text-brass" : "text-ink-4",
-        )}
-      >
-        {String(player.rank).padStart(2, "0")}
+      <span>
+        <span
+          className={cn(
+            "t-num block text-[12px] tabular-nums",
+            player.rank <= 3 ? "text-brass" : "text-ink-4",
+          )}
+        >
+          {String(player.rank).padStart(2, "0")}
+        </span>
+        <Delta value={player.rankDelta} className="mt-0.5" />
       </span>
 
       <span className="flex min-w-0 items-center gap-2.5">
@@ -79,8 +110,11 @@ export const RankingRow = memo(function RankingRow({ player }: { player: RankedP
         {formatPlaytime(player.connectionTimeMinutes ?? 0)}
       </span>
 
-      <span className="t-num text-right text-[12.5px] tabular-nums text-ink">
-        {formatNumber(player.skill)}
+      <span className="text-right">
+        <span className="t-num block text-[12.5px] tabular-nums text-ink">
+          {formatNumber(player.skill)}
+        </span>
+        <Delta value={player.skillDelta} className="mt-0.5" />
       </span>
     </Link>
   );

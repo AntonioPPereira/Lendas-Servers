@@ -120,6 +120,14 @@ export interface RankedPlayer {
    * `PlayerAvatar` cai pro emblema gerado.
    */
   avatarUrl?: string;
+  /**
+   * Variação desde a última linha de base do ranking (por padrão de hora em
+   * hora — ver `RankingBaseline` no backend). Positivo em `rankDelta` = subiu
+   * posições. `null` = o jogador ainda não estava no retrato anterior, então
+   * não há variação real pra mostrar.
+   */
+  rankDelta?: number | null;
+  skillDelta?: number | null;
 }
 
 export interface LivePlayer {

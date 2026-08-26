@@ -76,7 +76,33 @@ export default function Demos() {
           texto ficava ilegível em cima de qualquer foto de mapa mais clara. */}
       <div data-enter>
         <Panel hud className="overflow-hidden">
-          <PanelHeader label="Arquivo por período" accent="brass" hint="Escolha um mês pra abrir" />
+          <PanelHeader
+            label="Arquivo por período"
+            accent="brass"
+            hint={periods.status === "loading" ? "Abrindo o arquivo" : "Escolha um mês pra abrir"}
+          />
+
+          {/* A lista de meses sai de um SFTP no servidor de jogo, o que leva
+              alguns segundos na primeira vez. Sem estes três estados o painel
+              ficava simplesmente vazio nesse intervalo, e quem abria a página
+              não tinha como saber se estava carregando ou se não havia nada. */}
+          {periods.status === "error" ? (
+            <ErrorState
+              title="Não foi possível listar os períodos"
+              hint="O servidor de arquivos (SFTP) não respondeu."
+              onRetry={periods.reload}
+              className="py-10"
+            />
+          ) : periods.status === "loading" && periodOptions.length === 0 ? (
+            <LoadingState label="Lendo as pastas de demo no servidor" className="py-10" />
+          ) : periodOptions.length === 0 ? (
+            <EmptyState
+              title="Nenhum período gravado ainda"
+              hint="Assim que a primeira demo for salva, o mês aparece aqui."
+              icon={<FolderOpen />}
+              className="py-10"
+            />
+          ) : (
           <div className="flex flex-wrap gap-3 p-4">
             {periodOptions.map(({ value, label }) => {
               const active = value === period;
@@ -109,6 +135,7 @@ export default function Demos() {
               );
             })}
           </div>
+          )}
         </Panel>
       </div>
 

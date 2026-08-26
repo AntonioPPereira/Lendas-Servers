@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/**
+ * Registrado como ângulo de verdade pra que o próprio CSS consiga interpolar
+ * a varredura de luz da borda do cartaz (`.brand-sweep`). Custom property
+ * não declarada é tratada como texto e simplesmente não anima — sem isso,
+ * girar uma borda exigiria uma tween de JS só pra ela.
+ */
+@property --brand-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
 /* ============================================================
    LENDAS — design tokens
    Palette derived from spent materials, not from a UI kit: blued
@@ -627,45 +639,96 @@
   }
 
   /**
-   * Aura do cartaz da rede. A arte é dominada por dourado e fogo, então o
-   * halo puxa o mesmo âmbar em vez de um brilho neutro — parece luz saindo
-   * da própria imagem, não uma sombra colorida atrás dela. Só `opacity`
-   * anima; o desfoque é rasterizado uma vez e apenas re-composto.
+   * Aura do cartaz da rede, em três camadas: halo largo atrás, brilho na
+   * borda e uma luz correndo pelo perímetro. A arte é dominada por dourado
+   * e fogo, então tudo puxa o mesmo âmbar — parece luz saindo da própria
+   * imagem, não uma sombra colorida atrás dela.
+   *
+   * Este é o ÚNICO lugar do painel que usa `--color-brass-ember` fora do
+   * placar ao vivo, e de propósito: é o cartaz da premiação, o outro
+   * momento em que a rede quer gritar "olha isso aqui agora".
    */
   .brand-aura {
-    background: radial-gradient(
-      58% 58% at 50% 50%,
-      rgb(240 168 64 / 0.52),
-      rgb(194 146 78 / 0.24) 55%,
-      transparent 78%
-    );
-    animation: brand-aura-breathe 5.5s ease-in-out infinite;
+    background:
+      radial-gradient(
+        46% 46% at 50% 50%,
+        rgb(255 196 104 / 0.92),
+        rgb(240 168 64 / 0.45) 46%,
+        transparent 72%
+      ),
+      radial-gradient(72% 72% at 50% 50%, rgb(222 116 36 / 0.5), transparent 78%);
+    animation: brand-aura-breathe 4.2s ease-in-out infinite;
   }
 
+  /* Só transform e opacity: o desfoque é rasterizado uma vez e daí em diante
+     apenas re-composto, sem repintar o gradiente por frame. */
   @keyframes brand-aura-breathe {
     0%,
     100% {
-      opacity: 0.5;
+      opacity: 0.62;
+      transform: scale(0.97);
     }
     50% {
-      opacity: 0.88;
+      opacity: 1;
+      transform: scale(1.04);
     }
   }
 
   .brand-banner {
-    border-color: color-mix(in srgb, var(--color-brass) 34%, transparent);
+    border-color: color-mix(in srgb, var(--color-brass-hi) 62%, transparent);
+    box-shadow:
+      0 0 0 1px rgb(240 168 64 / 0.3),
+      0 0 22px -2px rgb(240 168 64 / 0.5),
+      0 0 64px -6px rgb(222 116 36 / 0.42);
     transition: border-color 420ms var(--ease-out-hud), box-shadow 420ms var(--ease-out-hud);
   }
 
-  .group:hover .brand-banner,
   .brand-banner:hover {
-    border-color: color-mix(in srgb, var(--color-brass-hi) 55%, transparent);
+    border-color: rgb(255 214 140 / 0.9);
+    box-shadow:
+      0 0 0 1px rgb(255 196 104 / 0.5),
+      0 0 30px 0 rgb(240 168 64 / 0.68),
+      0 0 88px 0 rgb(222 116 36 / 0.55);
+  }
+
+  /**
+   * Luz correndo pela borda. `@property` registra o ângulo como tipo real,
+   * o que deixa o próprio CSS interpolar o cônico — sem isso uma custom
+   * property não anima, e precisaria de JS só pra girar uma borda.
+   */
+  .brand-sweep {
+    padding: 2px;
+    background: conic-gradient(
+      from var(--brand-angle),
+      transparent 0deg 58deg,
+      rgb(240 168 64 / 0.2) 76deg,
+      rgb(255 224 168 / 0.95) 90deg,
+      rgb(240 168 64 / 0.2) 104deg,
+      transparent 122deg 238deg,
+      rgb(222 116 36 / 0.55) 270deg,
+      transparent 302deg 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: brand-sweep-spin 6s linear infinite;
+  }
+
+  @keyframes brand-sweep-spin {
+    to {
+      --brand-angle: 360deg;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .brand-aura {
       animation: none;
-      opacity: 0.6;
+      opacity: 0.75;
+    }
+
+    .brand-sweep {
+      animation: none;
     }
   }
 

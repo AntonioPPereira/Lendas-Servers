@@ -40,6 +40,12 @@ const schema = z.object({
   HLSTATS_GAME: z.string().min(1).default("css"),
   SERVERS_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(10_000),
   RANKING_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(45_000),
+  /**
+   * De quanto em quanto tempo o ranking congela uma nova linha de base pra
+   * comparar posição e skill. É a janela que o painel mostra como "variação"
+   * — 1h por padrão. Ver services/RankingBaseline.ts.
+   */
+  RANKING_BASELINE_INTERVAL_MS: z.coerce.number().int().positive().default(3_600_000),
   /** Timeout de cada requisição HTTP ao HLstatsX. */
   HLSTATS_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 
@@ -113,6 +119,7 @@ export const config = {
     timeoutMs: env.HLSTATS_TIMEOUT_MS,
     serversCacheTtlMs: env.SERVERS_CACHE_TTL_MS,
     rankingCacheTtlMs: env.RANKING_CACHE_TTL_MS,
+    rankingBaselineIntervalMs: env.RANKING_BASELINE_INTERVAL_MS,
   },
   activityCacheTtlMs: env.ACTIVITY_CACHE_TTL_MS,
   activityLimit: env.ACTIVITY_LIMIT,

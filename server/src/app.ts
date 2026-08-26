@@ -8,6 +8,7 @@ import type { SteamAvatarService } from "./services/SteamAvatarService.js";
 import { LiveMatchState } from "./live/state.js";
 import { LiveBroadcaster } from "./live/broadcaster.js";
 import { NicknameDirectory } from "./live/nicknameDirectory.js";
+import { RankingBaseline } from "./services/RankingBaseline.js";
 import { createDemosRouter } from "./routes/demos.js";
 import { createServersRouter } from "./routes/servers.js";
 import { createRankingRouter } from "./routes/ranking.js";
@@ -42,6 +43,8 @@ export interface AppOptions {
   liveSseHeartbeatMs?: number;
   /** "IP_PORTA" preferido pra "Partida ao vivo" quando estiver ativo — ver LiveMatchState. */
   preferredLiveServerId?: string;
+  /** Janela de comparação de posição/skill no ranking — ver RankingBaseline. */
+  rankingBaselineIntervalMs?: number;
 }
 
 /**
@@ -60,6 +63,7 @@ export function createApp(services: AppServices, options: AppOptions = {}) {
   const liveState = new LiveMatchState(options.liveStaleMs ?? 30_000, options.preferredLiveServerId);
   const liveBroadcaster = new LiveBroadcaster();
   const nicknames = new NicknameDirectory();
+  const rankingBaseline = new RankingBaseline(options.rankingBaselineIntervalMs ?? 3_600_000);
 
   // Atrás de exatamente um proxy reverso em produção (Render, e qualquer PaaS
   // parecido) — sem isso o express-rate-limit não confia no X-Forwarded-For
@@ -74,7 +78,7 @@ export function createApp(services: AppServices, options: AppOptions = {}) {
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
   app.use("/api/demos", createDemosRouter(services.demos));
   app.use("/api/servers", createServersRouter(services.hlstats));
-  app.use("/api/ranking", createRankingRouter(services.hlstats, nicknames, services.avatars));
+  app.use("/api/ranking", createRankingRouter(services.hlstats, nicknames, services.avatars, rankingBaseline));
   app.use("/api/players", createPlayersRouter(services.hlstats, nicknames, services.avatars));
   app.use("/api/activity", createActivityRouter(services.steamFilter));
   app.use(

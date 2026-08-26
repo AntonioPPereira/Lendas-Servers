@@ -1,8 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { usePageEnter } from "@/hooks/useGsap";
 import { useResource } from "@/hooks/useResource";
-import { api, type Page } from "@/api/client";
-import type { RankedPlayer } from "@/data/types";
+import { api, type RankingPage } from "@/api/client";
 import { Flip, gsap, prefersReducedMotion } from "@/lib/motion";
 import { SectionTitle, Panel } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
@@ -18,10 +17,7 @@ export default function Ranking() {
   const [page, setPage] = useState(1);
 
   const flipState = useRef<Flip.FlipState | null>(null);
-  const resource = useResource<Page<RankedPlayer>>(
-    () => api.ranking({ query, page }),
-    [query, page],
-  );
+  const resource = useResource<RankingPage>(() => api.ranking({ query, page }), [query, page]);
 
   /** Capture geometry before the list re-sorts, so rows travel to their new rank. */
   function withReorder(change: () => void) {
@@ -48,6 +44,9 @@ export default function Ranking() {
   }, [resource.data]);
 
   const rows = resource.data?.items ?? [];
+  const comparedTo = resource.data?.comparedTo
+    ? new Date(resource.data.comparedTo).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : null;
   const showPodium = page === 1 && query.trim() === "" && rows.length >= 3;
 
   return (
@@ -69,6 +68,13 @@ export default function Ranking() {
       <div data-enter>
         <Panel flush className="overflow-hidden">
           <FilterBar>
+            {/* Variação sem origem não quer dizer nada — o painel sempre diz
+                desde quando as setas estão contando. */}
+            {comparedTo ? (
+              <span className="t-eyebrow text-[8.5px] text-ink-4">
+                Variação desde {comparedTo}
+              </span>
+            ) : null}
             <SearchBar
               value={query}
               onValueChange={(value) => withReorder(() => setQuery(value))}

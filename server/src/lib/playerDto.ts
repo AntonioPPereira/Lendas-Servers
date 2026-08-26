@@ -17,7 +17,11 @@ import type { HLStatsRankingRow } from "../services/HLStatsService.js";
  * (`NicknameDirectory`), resolvido pra foto pela Steam Web API (`SteamAvatarService`).
  * Ausente sempre que ninguém com esse nickname exato apareceu ao vivo ainda.
  */
-export function toPlayerDto(row: HLStatsRankingRow, avatarUrl?: string) {
+export function toPlayerDto(
+  row: HLStatsRankingRow,
+  avatarUrl?: string,
+  delta?: { rankDelta: number | null; skillDelta: number | null },
+) {
   return {
     id: row.hlstatsPlayerId,
     rank: row.rank,
@@ -32,6 +36,11 @@ export function toPlayerDto(row: HLStatsRankingRow, avatarUrl?: string) {
     accuracy: row.accuracy,
     connectionTimeMinutes: row.connectionTimeMinutes,
     avatarUrl,
+    // Variação desde a linha de base horária (RankingBaseline). Ausente nas
+    // rotas que não comparam; `null` dentro dela quando o jogador ainda não
+    // estava no retrato anterior.
+    rankDelta: delta?.rankDelta ?? null,
+    skillDelta: delta?.skillDelta ?? null,
   };
 }
 

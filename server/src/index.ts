@@ -23,6 +23,7 @@ const app = createApp(
     liveStaleMs: config.live.staleMs,
     liveSseHeartbeatMs: config.live.sseHeartbeatMs,
     preferredLiveServerId: config.live.preferredServerId,
+    rankingBaselineIntervalMs: config.hlstats.rankingBaselineIntervalMs,
   },
 );
 
