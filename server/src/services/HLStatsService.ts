@@ -16,11 +16,26 @@ export interface HLStatsConfig {
   timeoutMs: number;
 }
 
-type FetchLike = (url: string, init?: { signal?: AbortSignal }) => Promise<{
+type FetchLike = (url: string, init?: { signal?: AbortSignal; headers?: Record<string, string> }) => Promise<{
   ok: boolean;
   status: number;
   text(): Promise<string>;
 }>;
+
+/**
+ * O Node/undici não manda um User-Agent de navegador por padrão — o que
+ * facilmente entra numa heurística de bot do Cloudflare (confirmado: o
+ * HLstatsX está atrás dele, e um 403 direto começou a aparecer só quando o
+ * backend passou a rodar num datacenter em vez da máquina do dono do
+ * servidor). Identificar como um navegador real é legítimo aqui: é a
+ * própria comunidade lendo a página pública de estatísticas do seu próprio
+ * servidor, não um scraper de terceiro tentando driblar controle de acesso.
+ */
+const BROWSER_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+  "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+};
 
 /**
  * Único ponto de contato com o HLstatsX:CE.
@@ -112,7 +127,10 @@ export class HLStatsService {
   private async fetchText(url: string): Promise<string> {
     let response: Awaited<ReturnType<FetchLike>>;
     try {
-      response = await this.fetchImpl(url, { signal: AbortSignal.timeout(this.cfg.timeoutMs) });
+      response = await this.fetchImpl(url, {
+        signal: AbortSignal.timeout(this.cfg.timeoutMs),
+        headers: BROWSER_HEADERS,
+      });
     } catch (cause) {
       throw new HLStatsUnavailableError(cause);
     }
