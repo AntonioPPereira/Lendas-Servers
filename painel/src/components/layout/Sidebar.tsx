@@ -45,16 +45,23 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, className }: 
         )}
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto py-3">
+      <nav className="min-h-0 flex-1 overflow-y-auto py-4">
         {NAV_GROUPS.map((group) => (
-          <div key={group.label} className="mb-4 last:mb-0">
+          <div key={group.label} className="mb-5 last:mb-0">
             {collapsed ? (
               <div className="mx-auto mb-2 h-px w-6 bg-line-soft" />
             ) : (
-              <p className="t-eyebrow px-4 pb-2 text-[9px] text-ink-4">{group.label}</p>
+              <p
+                className={cn(
+                  "t-eyebrow px-4 pb-2 text-[9.5px]",
+                  group.label === "Ao vivo" ? "text-live/80" : "text-ink-3",
+                )}
+              >
+                {group.label}
+              </p>
             )}
 
-            <ul className={cn("space-y-px", collapsed ? "px-2" : "px-2")}>
+            <ul className={cn("space-y-0.5", collapsed ? "px-2" : "px-2")}>
               {group.items.map((item) => (
                 <li key={item.to}>
                   <NavLink
@@ -64,11 +71,11 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, className }: 
                     title={collapsed ? item.label : undefined}
                     className={({ isActive }) =>
                       cn(
-                        "group relative flex h-9 items-center rounded-xs text-[12.5px] transition-colors duration-150",
+                        "group relative flex h-10 items-center rounded-xs text-[13.5px] transition-colors duration-150",
                         collapsed ? "justify-center px-0" : "gap-2.5 px-2.5",
                         isActive
                           ? "bg-raised/80 text-ink"
-                          : "text-ink-3 hover:bg-raised/45 hover:text-ink-2",
+                          : "text-ink-2 hover:bg-raised/45 hover:text-ink",
                       )
                     }
                   >
@@ -83,13 +90,13 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, className }: 
                         />
                         <item.icon
                           className={cn(
-                            "size-4 shrink-0 transition-colors",
-                            isActive ? "text-brass" : "text-ink-4 group-hover:text-ink-3",
+                            "size-[18px] shrink-0 transition-colors",
+                            isActive ? "text-brass" : "text-ink-3 group-hover:text-ink-2",
                           )}
                         />
                         {collapsed ? null : <span className="truncate">{item.label}</span>}
                         {item.live && !collapsed ? (
-                          <span className="t-num ml-auto text-[10.5px] text-ink-4">
+                          <span className="t-num ml-auto text-[10.5px] text-ink-3">
                             {onlinePlayers}
                           </span>
                         ) : null}

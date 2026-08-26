@@ -65,6 +65,7 @@ function buildRoundHistory(): RoundResult[] {
 
 export const INITIAL_MATCH: LiveMatch = {
   serverId: PRIMARY_SERVER.id,
+  hostname: PRIMARY_SERVER.name,
   map: PRIMARY_SERVER.map,
   phase: "live",
   round: 17,

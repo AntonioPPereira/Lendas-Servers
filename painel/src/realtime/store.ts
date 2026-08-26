@@ -24,6 +24,7 @@ const ACTIVITY_LIMIT = 60;
  */
 const EMPTY_MATCH: LiveMatch = {
   serverId: "",
+  hostname: "",
   map: "",
   phase: "warmup",
   round: 0,

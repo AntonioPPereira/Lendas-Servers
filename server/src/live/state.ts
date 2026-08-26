@@ -33,6 +33,8 @@ export interface LivePlayerSnapshot {
 /** Mesmo shape do `LiveMatch` do frontend, mais o `serverId` de qual servidor é este. */
 export interface LiveMatchSnapshot {
   serverId: string;
+  /** `hostname` real do `server_snapshot` — nome do servidor tal como configurado nele, nunca inventado. */
+  hostname: string;
   map: string;
   phase: MatchPhase;
   round: number;
@@ -96,15 +98,21 @@ function emptyServer(serverId: string, nowIso: string): ServerEntry {
  * nenhuma decisão de requisito/bloqueio mora aqui, isso continua sendo do
  * `lendas_steamfilter` (lido via `SteamFilterLogService`, não por aqui).
  *
- * "Primário" (qual partida o LENDAS mostra como *a* partida ao vivo) é
- * sempre o servidor com mais gente conectada agora — mesmo critério de
- * `pickPrimaryServer()` no frontend (`useRealServers.ts`), pra não haver
- * duas noções diferentes de "servidor principal" no mesmo produto.
+ * "Primário" (qual partida o LENDAS mostra como *a* partida ao vivo) é o
+ * `preferredServerId` (Servidor 01, por pedido explícito — ver README)
+ * sempre que ele tiver mandado algum snapshot recente; só cai pro critério
+ * de mais gente conectada agora entre os demais se o preferido não estiver
+ * ativo. Mesmo fallback de `pickPrimaryServer()` no frontend
+ * (`useRealServers.ts`), pra não haver duas noções diferentes de "servidor
+ * principal" quando o preferido está fora do ar.
  */
 export class LiveMatchState {
   private readonly servers = new Map<string, ServerEntry>();
 
-  constructor(private readonly staleMs: number) {}
+  constructor(
+    private readonly staleMs: number,
+    private readonly preferredServerId?: string,
+  ) {}
 
   applyEvents(serverId: string, events: LiveIngestEvent[]): void {
     let entry = this.servers.get(serverId);
@@ -262,6 +270,11 @@ export class LiveMatchState {
 
   getPrimaryServerId(): string | null {
     this.pruneStale();
+
+    if (this.preferredServerId && this.servers.has(this.preferredServerId)) {
+      return this.preferredServerId;
+    }
+
     let best: ServerEntry | null = null;
     for (const entry of this.servers.values()) {
       if (!best || entry.connectedPlayers > best.connectedPlayers) best = entry;
@@ -274,6 +287,7 @@ export class LiveMatchState {
     if (!entry) return null;
     return {
       serverId: entry.serverId,
+      hostname: entry.hostname,
       map: entry.map,
       phase: entry.phase,
       round: entry.round,

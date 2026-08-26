@@ -29,6 +29,15 @@
   --color-brass-hi: #e2bd80;
   --color-brass-lo: #8c6a34;
   --color-brass-dim: #3c2f18;
+  /* Ember: the one hot brass moment, reserved for the live scoreboard glow.
+     Never used as a text/border color elsewhere — spending it everywhere
+     would cheapen the one place it should read as "this matters right now". */
+  --color-brass-ember: #f0a840;
+
+  /* Abyss: deeper than the page void — the recessed surface behind the
+     live-match hero, so the scoreboard reads like it's lit from a stage
+     floor instead of sitting flush with everything else. */
+  --color-abyss: #040403;
 
   /* CT: blued steel — the dark violet-grey sheen of a gun barrel, not
      the saturated "info" blue every dashboard reaches for by default. */
@@ -69,9 +78,12 @@
 :root {
   --amb-dust: 192 137 74;
   --amb-cold: 78 143 216;
-  --amb-stain: 0.26;
-  --amb-wear: 0.10;
-  --amb-grain: 0.055;
+  /* Empurrados pra cima de propósito — a versão anterior era tão sutil que
+     lia como "fundo escuro liso" em vez de "parede com luz entrando". O
+     ambiente precisa ser sentido de relance, não só existir no código. */
+  --amb-stain: 0.36;
+  --amb-wear: 0.14;
+  --amb-grain: 0.07;
 }
 
 /* ============================================================
@@ -106,12 +118,31 @@
      clássico. Luz de areia entrando por um vão, manchas de umidade no
      reboco, desgaste raspado e poeira em suspensão.
 
-     Quatro camadas fixas, empilhadas por ordem de árvore (html::before <
+     Cinco camadas fixas: a foto de fundo (z-index -1, a "parede" em si),
+     depois quatro texturas empilhadas por ordem de árvore (html::before <
      body::before < html::after < body::after) — o conteúdo entra em z-10,
      acima de todas. Todas compõem por alfa — nada de
      mix-blend-mode, que blenda contra o canvas e é imprevisível quando
      o fundo do body propaga pra ele. Nenhuma toca o main thread.
      ============================================================ */
+
+  /* 0 — A parede em si: uma foto real do mapa, fixa atrás de tudo, comum a
+     todas as páginas (não é o mesmo fundo reativo da Partida ao vivo — ali
+     ele reage ao mapa da partida real; aqui é uma escolha fixa de
+     identidade visual). z-index negativo pra ficar atrás até do reboco,
+     que precisa continuar pintando por cima como já fazia. */
+  #root::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url("/cs/maps/bg/dust2.avif");
+    background-size: cover;
+    background-position: center 38%;
+    opacity: 0.5;
+    filter: grayscale(0.4) contrast(1.08) brightness(0.5) saturate(0.85);
+  }
 
   /* 1 — Reboco: turbulência de baixa frequência dá o malhado grande do
      concreto, o que impede a superfície de ler como cinza chapado. */
@@ -136,10 +167,10 @@
     z-index: 0;
     pointer-events: none;
     background:
-      radial-gradient(95ch 60ch at 6% -12%, rgb(var(--amb-dust) / 0.16), transparent 60%),
-      radial-gradient(85ch 65ch at 104% 2%, rgb(var(--amb-cold) / 0.055), transparent 56%),
-      radial-gradient(120ch 40ch at 50% 118%, rgb(var(--amb-dust) / 0.07), transparent 62%),
-      radial-gradient(140% 110% at 50% 42%, transparent 46%, rgb(0 0 0 / 0.26) 80%, rgb(0 0 0 / 0.5) 100%);
+      radial-gradient(95ch 60ch at 6% -12%, rgb(var(--amb-dust) / 0.32), transparent 62%),
+      radial-gradient(85ch 65ch at 104% 2%, rgb(var(--amb-cold) / 0.11), transparent 58%),
+      radial-gradient(120ch 40ch at 50% 118%, rgb(var(--amb-dust) / 0.12), transparent 64%),
+      radial-gradient(140% 110% at 50% 42%, transparent 40%, rgb(0 0 0 / 0.34) 80%, rgb(0 0 0 / 0.6) 100%);
   }
 
   /* 3 — Desgaste: estrias raspadas (turbulência anisotrópica — frequência
@@ -254,6 +285,22 @@
     font-feature-settings: "zero" 1;
   }
 
+  /* Scoreboard numeral — its own scale, not a bigger .t-display. The one
+     number in the interface allowed to dominate a screen; used nowhere
+     but the live-match score. Fluid so it commands the hero without ever
+     overflowing on a narrow viewport. */
+  .t-score {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    /* Sem "zero":1 aqui — a barra do zero cortado do IBM Plex Mono, ótima
+       pra legibilidade numa tabela pequena, vira um traço estranho de tão
+       grande nesta escala. Em ~140px o zero precisa ler como zero. */
+    font-weight: 600;
+    font-size: clamp(3.5rem, 9vw, 8.75rem);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+  }
+
   /* ---------- Surfaces ---------- */
   .panel {
     position: relative;
@@ -319,6 +366,29 @@
       transparent
     );
     height: 1px;
+  }
+
+  /* Timecode rule — the signature divider: a broadcast-editing/tactical-grid
+     tick ruler, used exactly once per page (under the title) to say "this is
+     footage under review", never repeated as decoration on individual cards. */
+  .timecode-rule {
+    position: relative;
+    height: 1px;
+    background-color: var(--color-line);
+  }
+  .timecode-rule::before {
+    content: "";
+    position: absolute;
+    inset: -4px 0 auto 0;
+    height: 4px;
+    background-image: repeating-linear-gradient(
+      90deg,
+      var(--color-brass) 0,
+      var(--color-brass) 1px,
+      transparent 1px,
+      transparent 26px
+    );
+    opacity: 0.4;
   }
 
   /* Leader dots: label ..... value, the way a console status readout or a

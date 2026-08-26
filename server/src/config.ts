@@ -53,6 +53,13 @@ const schema = z.object({
   LIVE_API_TOKEN: z.string().default(""),
   /** Um servidor sem snapshot novo por esse tempo é considerado morto e removido do estado. */
   LIVE_STALE_MS: z.coerce.number().int().positive().default(30_000),
+  /**
+   * "IP_PORTA" do Servidor 01 — pedido explícito: a "Partida ao vivo" mostra
+   * este sempre que ele estiver ativo, mesmo que outro servidor tenha mais
+   * gente conectada no momento. Cai pro critério de mais gente conectada
+   * só se este não tiver mandado snapshot nenhum ainda.
+   */
+  LIVE_PREFERRED_SERVER_ID: z.string().min(1).default("104.234.65.244_27800"),
   /** Comentário de keep-alive no SSE, pra conexão não cair em proxy/load balancer no meio. */
   LIVE_SSE_HEARTBEAT_MS: z.coerce.number().int().positive().default(15_000),
 
@@ -101,6 +108,7 @@ export const config = {
     apiToken: env.LIVE_API_TOKEN,
     staleMs: env.LIVE_STALE_MS,
     sseHeartbeatMs: env.LIVE_SSE_HEARTBEAT_MS,
+    preferredServerId: env.LIVE_PREFERRED_SERVER_ID,
   },
   steam: {
     apiKey: env.STEAM_API_KEY,

@@ -147,6 +147,8 @@ export interface RoundResult {
 
 export interface LiveMatch {
   serverId: string;
+  /** Nome real do servidor (hostname reportado por ele), pra deixar claro qual partida é essa. */
+  hostname: string;
   map: string;
   phase: MatchPhase;
   round: number;

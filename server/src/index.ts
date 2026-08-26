@@ -22,6 +22,7 @@ const app = createApp(
     liveApiToken: config.live.apiToken,
     liveStaleMs: config.live.staleMs,
     liveSseHeartbeatMs: config.live.sseHeartbeatMs,
+    preferredLiveServerId: config.live.preferredServerId,
   },
 );
 

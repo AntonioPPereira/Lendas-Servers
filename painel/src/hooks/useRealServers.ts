@@ -22,9 +22,17 @@ export function useRealServers(): Resource<RealServer[]> {
   return resource;
 }
 
-/** O servidor com mais gente jogando agora — o mais relevante pra mostrar
- *  num espaço compacto quando há mais de um servidor real. */
+/** `deriveServerId()` no backend (`server/src/lib/serverId.ts`) — "SERVIDOR 01"
+ *  no nome de exibição sempre vira este id. Mantido em sincronia manualmente,
+ *  igual todo o resto do contrato entre painel/ e server/. */
+const PREFERRED_SERVER_ID = "lendas-01";
+
+/** Servidor 01 sempre que ele estiver online — pedido explícito, é o servidor
+ *  em foco. Só cai pro critério de mais gente jogando agora entre os demais
+ *  se ele não aparecer na listagem (fora do ar). */
 export function pickPrimaryServer(servers: RealServer[]): RealServer | null {
   if (servers.length === 0) return null;
+  const preferred = servers.find((server) => server.id === PREFERRED_SERVER_ID);
+  if (preferred) return preferred;
   return [...servers].sort((a, b) => b.players - a.players)[0]!;
 }

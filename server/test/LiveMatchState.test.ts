@@ -74,6 +74,21 @@ describe("LiveMatchState", () => {
     expect(state.getPrimaryServerId()).toBe("srv-vazio");
   });
 
+  it("com preferredServerId definido, prioriza esse servidor mesmo com menos gente conectada", () => {
+    const state = new LiveMatchState(30_000, "srv-preferido");
+    state.applyEvents("srv-cheio", [snapshotEvent({ players: 20, hostname: "Cheio" })]);
+    state.applyEvents("srv-preferido", [snapshotEvent({ players: 1, hostname: "Preferido" })]);
+
+    expect(state.getPrimaryServerId()).toBe("srv-preferido");
+  });
+
+  it("com preferredServerId definido mas ainda sem snapshot, cai pro critério de mais gente conectada", () => {
+    const state = new LiveMatchState(30_000, "srv-preferido");
+    state.applyEvents("srv-cheio", [snapshotEvent({ players: 20, hostname: "Cheio" })]);
+
+    expect(state.getPrimaryServerId()).toBe("srv-cheio");
+  });
+
   it("map_start zera placar, rounds e elenco", () => {
     const state = new LiveMatchState(30_000);
     state.applyEvents("srv1", [snapshotEvent({ ctScore: 10, tScore: 9 })]);

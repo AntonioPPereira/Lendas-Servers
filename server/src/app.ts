@@ -38,6 +38,8 @@ export interface AppOptions {
   liveStaleMs?: number;
   /** Intervalo do comentário de keep-alive de cada conexão SSE. */
   liveSseHeartbeatMs?: number;
+  /** "IP_PORTA" preferido pra "Partida ao vivo" quando estiver ativo — ver LiveMatchState. */
+  preferredLiveServerId?: string;
 }
 
 /**
@@ -53,7 +55,7 @@ export interface AppOptions {
  */
 export function createApp(services: AppServices, options: AppOptions = {}) {
   const app = express();
-  const liveState = new LiveMatchState(options.liveStaleMs ?? 30_000);
+  const liveState = new LiveMatchState(options.liveStaleMs ?? 30_000, options.preferredLiveServerId);
   const liveBroadcaster = new LiveBroadcaster();
 
   // Atrás de exatamente um proxy reverso em produção (Render, e qualquer PaaS
