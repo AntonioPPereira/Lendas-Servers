@@ -1,0 +1,220 @@
+import type {
+  ActivityEvent,
+  Ban,
+  BanState,
+  Demo,
+  MatchDetail,
+  NetworkStats,
+  RankedPlayer,
+  RealServer,
+} from "@/data/types";
+import { BANS } from "@/data/bans";
+import { MATCHES, MATCHES_BY_ID } from "@/data/matches";
+import { NETWORK_STATS } from "@/data/stats";
+import { config, isMockMode } from "@/lib/config";
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+function delay<T>(value: T, ms: number = config.mockLatency): Promise<T> {
+  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
+}
+
+async function request<T>(path: string): Promise<T> {
+  const response = await fetch(config.apiBaseUrl + path, {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new ApiError("Falha ao carregar " + path, response.status);
+  }
+  return (await response.json()) as T;
+}
+
+function paginate<T>(items: T[], page: number, pageSize: number): Page<T> {
+  const start = (page - 1) * pageSize;
+  return { items: items.slice(start, start + pageSize), total: items.length, page, pageSize };
+}
+
+/**
+ * Ranking e Jogadores não têm modo mock, nem filtro de período/temporada: o
+ * HLstatsX é sempre acumulado (all-time), sem esse recorte — ver
+ * server/README.md. Sem VITE_API_URL configurada, os métodos abaixo lançam
+ * em vez de fingir uma lista.
+ */
+export interface RankingQuery {
+  query?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** `/api/players` soma agregados sobre a lista inteira, além da página pedida. */
+export interface PlayersPage extends Page<RankedPlayer> {
+  totalKills: number;
+  totalHeadshots: number;
+}
+
+function requireApi(feature: string): void {
+  if (!config.apiBaseUrl) {
+    throw new ApiError(`VITE_API_URL não configurada — ${feature} exige o backend real (server/).`, 0);
+  }
+}
+
+export interface DemoQuery {
+  query?: string;
+  map?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/**
+ * URL de download direto — usada como `href` de um link normal, nunca via
+ * `fetch` + blob. O navegador segue o Content-Disposition que o backend
+ * manda; nenhum caminho de filesystem passa perto do frontend.
+ */
+export function demoDownloadUrl(id: string): string {
+  return config.apiBaseUrl + "/demos/" + encodeURIComponent(id) + "/download";
+}
+
+/** Formato exato que o backend manda pela rede — `size`, não `sizeBytes`. */
+interface DemoDto {
+  id: string;
+  filename: string;
+  map: string;
+  date: string;
+  time: string;
+  recordedAt: string;
+  size: number;
+  server: string;
+}
+
+function toDemo(dto: DemoDto): Demo {
+  const { size, ...rest } = dto;
+  return { ...rest, sizeBytes: size };
+}
+
+export interface BanQuery {
+  query?: string;
+  state?: BanState | "all";
+  page?: number;
+  pageSize?: number;
+}
+
+export const api = {
+  /** Sem mock: status/mapa/jogadores só existem de verdade via HLstatsX (server/). */
+  async servers(): Promise<RealServer[]> {
+    requireApi("servidores");
+    return request<RealServer[]>("/servers");
+  },
+
+  /**
+   * Veredito real do plugin `lendas_steamfilter`, lido pelo backend direto
+   * dos logs do SourceMod via SFTP (aprovado → "join", bloqueado →
+   * "blocked" com o motivo real). Sem modo mock: se o backend não
+   * responder, a página mostra o estado de indisponível, nunca inventa
+   * atividade. Nunca inclui "leave" — o plugin não loga desconexão, ver
+   * server/README.md.
+   */
+  async activity(): Promise<ActivityEvent[]> {
+    requireApi("atividade");
+    return request<ActivityEvent[]>("/activity");
+  },
+
+  async ranking(params: RankingQuery = {}): Promise<Page<RankedPlayer>> {
+    requireApi("ranking");
+    const { query = "", page = 1, pageSize = 25 } = params;
+    const search = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (query) search.set("q", query);
+    return request<Page<RankedPlayer>>("/ranking?" + search.toString());
+  },
+
+  /** Mesma fonte do ranking, com agregados pros cards de resumo da tela de Jogadores. */
+  async players(params: RankingQuery = {}): Promise<PlayersPage> {
+    requireApi("jogadores");
+    const { query = "", page = 1, pageSize = 24 } = params;
+    const search = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (query) search.set("q", query);
+    return request<PlayersPage>("/players?" + search.toString());
+  },
+
+  async player(id: string): Promise<RankedPlayer> {
+    requireApi("perfil de jogador");
+    return request<RankedPlayer>("/players/" + encodeURIComponent(id));
+  },
+
+  /**
+   * Demos não têm modo mock: o catálogo só existe de verdade no filesystem
+   * do servidor (via o backend + SFTP). Sem VITE_API_URL configurada, isto
+   * lança em vez de fingir uma lista — ver DATA-SOURCES.md.
+   */
+  async demos(params: DemoQuery = {}): Promise<Page<Demo>> {
+    requireApi("demos");
+    const { query = "", map = "all", page = 1, pageSize = 12 } = params;
+    const search = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (query) search.set("q", query);
+    if (map !== "all") search.set("map", map);
+    const raw = await request<Page<DemoDto>>("/demos?" + search.toString());
+    return { ...raw, items: raw.items.map(toDemo) };
+  },
+
+  async demo(id: string): Promise<Demo> {
+    requireApi("demos");
+    const raw = await request<DemoDto>("/demos/" + encodeURIComponent(id));
+    return toDemo(raw);
+  },
+
+  async matches(
+    params: { page?: number; pageSize?: number; map?: string } = {},
+  ): Promise<Page<MatchDetail>> {
+    const { page = 1, pageSize = 14, map = "all" } = params;
+    if (!isMockMode) return request<Page<MatchDetail>>("/matches?page=" + page + "&map=" + map);
+    const rows = map === "all" ? MATCHES : MATCHES.filter((m) => m.map === map);
+    return delay(paginate(rows, page, pageSize));
+  },
+
+  async match(id: string): Promise<MatchDetail> {
+    if (!isMockMode) return request<MatchDetail>("/matches/" + id);
+    const match = MATCHES_BY_ID.get(id);
+    if (!match) throw new ApiError("Partida não encontrada", 404);
+    return delay(match);
+  },
+
+  async bans(params: BanQuery = {}): Promise<Page<Ban>> {
+    const { query = "", state = "all", page = 1, pageSize = 12 } = params;
+    if (!isMockMode) {
+      const search = new URLSearchParams({ q: query, state, page: String(page) });
+      return request<Page<Ban>>("/bans?" + search.toString());
+    }
+
+    const needle = query.trim().toLowerCase();
+    const rows = BANS.filter((ban) => {
+      if (state !== "all" && ban.state !== state) return false;
+      if (!needle) return true;
+      return (
+        ban.target.nickname.toLowerCase().includes(needle) ||
+        ban.target.steamId.toLowerCase().includes(needle) ||
+        ban.target.steamId64.includes(needle) ||
+        ban.reason.toLowerCase().includes(needle)
+      );
+    });
+
+    return delay(paginate(rows, page, pageSize));
+  },
+
+  async stats(): Promise<NetworkStats> {
+    if (!isMockMode) return request<NetworkStats>("/stats");
+    return delay(NETWORK_STATS, 320);
+  },
+};

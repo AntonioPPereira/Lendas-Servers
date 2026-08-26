@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<head>
+	<link rel="stylesheet" type="text/css" href="hlstats.css" />
+	<link rel="stylesheet" type="text/css" href="styles/ua_styles.css" />
+	<link rel="stylesheet" type="text/css" href="css/SqueezeBox.css" />
+	<!-- U R A SMACKHEAD -->
+	<link rel="stylesheet" type="text/css" href="css/Autocompleter.css" />
+	<link rel="SHORTCUT ICON" href="favicon.ico" />
+	<script type="text/javascript" src="./includes/js/mootools.js"></script>
+	<script type="text/javascript" src="./includes/js/SqueezeBox.js"></script>
+	<script type="text/javascript" src="./includes/js/heatmap.js"></script>
+	<script type="text/javascript" src="./includes/js/tabs.js"></script>
+	<title>
+Clanservers Rank - Counter-Strike: Source - Player Rankings	</title>
+</head>
+<body> 
+
+			<!-- Either this is your first visit in a while, or you don't have javascript enabled -->
+			<form name="jsform" id="jsform" action="" method="post" style="display:none">
+			<div>
+			<input name="js" type="text" value="true" />
+			<script type="text/javascript">
+			document.jsform.submit();
+			</script>
+			</div>
+			</form><div class="block">
+	
+	<div class="headerblock">
+		<div class="title">
+			<a href="/hlstats.php"><img src="./hlstatsimg/icons/title.png" alt="HLstatsX Community Edition" title="HLstatsX Community Edition" /></a>
+		</div>
+
+		<div class="headertabs">
+			<ul>
+				<li><a href="/hlstats.php"><img src="./hlstatsimg/icons/title-contents.png" alt="Contents" /></a></li>
+				<li><a href="/hlstats.php?mode=search"><img src="./hlstatsimg/icons/title-search.png" alt="Search" /></a></li>
+								
+				<li><a href="/hlstats.php?mode=help"><img src="./hlstatsimg/icons/title-help.png" alt="Help" /></a></li>
+			</ul>
+
+		</div>
+	</div>
+	<div class="location" style="clear:both;width:100%;">
+		<ul class="fNormal" style="float:left">
+<li><a href="http://https://rank.clanservers.com.br/">Clanservers Rank</a> <span class="arrow">&raquo;</span></li><li><a href="https://mixlendas-rank.clanservers.com.br/hlstats.php">HLstatsX</a> <span class="arrow">&raquo;</span></li><li><a href="/hlstats.php?game=css">Counter-Strike: Source</a> <span class="arrow">&raquo;</span></li><li><strong>Player Rankings</strong>			</li>
+		</ul>
+
+	</div>
+	<div class="location_under" style="clear:both;width:100%;"></div>
+</div>
+
+<br />
+      
+<div class="content" style="clear:both;">
+        
+
+    
+		<nav>
+		<ul class="fancyNav">
+			<li><a href="/hlstats.php?game=css" class="fHeading">Servers</a></li>
+
+			<li><a href="/hlstats.php?mode=chat&amp;game=css" class="fHeading">Chat</a></li>
+			<li><a href="/hlstats.php?mode=players&amp;game=css" class="fHeading">Players</a></li>
+			<li><a href="/hlstats.php?mode=clans&amp;game=css" class="fHeading">Clans</a></li>
+
+			<li><a href="/hlstats.php?mode=countryclans&amp;game=css&amp;sort=nummembers" class="fHeading">Countries</a></li>
+			<li><a href="/hlstats.php?mode=awards&amp;game=css" class="fHeading">Awards</a></li>
+ 
+			<li><a href="/hlstats.php?mode=actions&amp;game=css" class="fHeading">Actions</a></li>
+			<li><a href="/hlstats.php?mode=weapons&amp;game=css" class="fHeading">Weapons</a></li>
+			<li><a href="/hlstats.php?mode=maps&amp;game=css" class="fHeading">Maps</a></li>
+	</ul></nav>
+  
+
+<div class="block">
+	<span class="fHeading">&nbsp;<img src="./hlstatsimg/downarrow.gif" alt="" />&nbsp;Player Rankings</span><br /><br />
+	<div class="subblock">
+		<div style="float:left;">
+			<script type="text/javascript" src="./includes/js/Observer.js"></script>
+			<script type="text/javascript" src="./includes/js/Autocompleter.js"></script>
+			<script type="text/javascript" src="./includes/js/Autocompleter.Request.js"></script>
+			<script type="text/javascript">
+				document.addEvent('domready', function() {
+					new Autocompleter.Request.HTML('playersearch', 'autocomplete.php?game=css', {
+						'indicatorClass': 'autocompleter-loading'
+					});
+				});
+			</script>
+
+			<form method="get" action="/hlstats.php" style="margin:0px;padding:0px;">
+				<input type="hidden" name="mode" value="search" />
+				<input type="hidden" name="game" value="css" />
+				<input type="hidden" name="st" value="player" />
+				<strong>&#8226;</strong> Find a player:
+				<input type="text" name="q" size="20" maxlength="64" class="textbox" id="playersearch" />
+				<input type="submit" value="Search" class="smallsubmit" />
+			</form>
+		</div>
+		<div style="float:right;">
+			<form method="get" action="/hlstats.php" style="margin:0px;padding:0px;">
+				<input type="hidden" name="mode" value="players" />
+				<input type="hidden" name="game" value="css" />
+				<strong>&#8226;</strong> Ranking View
+				<select name="rank_type"><option value="0">Total Ranking</option><option value="-1">Last Week</option><option value="-2">Last Month</option><option value="1">2026-08-25</option><option value="2">2026-08-24</option><option value="3">2026-08-23</option><option value="4">2026-08-22</option><option value="5">2026-08-21</option><option value="6">2026-08-20</option><option value="7">2026-08-19</option><option value="8">2026-08-18</option><option value="9">2026-08-17</option><option value="10">2026-08-16</option><option value="11">2026-08-15</option><option value="12">2026-08-14</option><option value="13">2026-08-13</option><option value="14">2026-08-12</option><option value="15">2026-08-11</option><option value="16">2026-08-10</option><option value="17">2026-08-09</option><option value="18">2026-08-08</option><option value="19">2026-08-07</option><option value="20">2026-08-06</option><option value="21">2026-08-05</option><option value="22">2026-08-04</option><option value="23">2026-08-03</option><option value="24">2026-08-02</option><option value="25">2026-08-01</option><option value="26">2026-07-31</option><option value="27">2026-07-30</option><option value="28">2026-07-29</option><option value="29">2026-07-28</option><option value="30">2026-07-27</option></select>				<input type="submit" value="View" class="smallsubmit" />
+			</form>
+		</div>
+		<div style="clear:both;"></div><br /><br />
+	</div>
+	
+<div class="subblock" style="text-align:center;">
+
+<table class="data-table">
+
+		<tr class="data-table-head">
+<td style="width:5%;text-align=:right;" class="fSmall">Rank</td>
+<td style="width:26%;text-align:left;" class="fSmall"><a href="/hlstats.php?mode=players&amp;game=css&amp;sort=lastName&amp;sortorder=desc" class="head" title="Change sorting order">Player</a></td>
+<td style="width:4%;text-align:left;" class="fSmall"><a href="/hlstats.php?mode=players&amp;game=css&amp;sort=mmrank&amp;sortorder=desc" class="head" title="Change sorting order">Rank</a></td>
+<td style="width:7%;text-align:right;" class="fSmall"><a href="/hlstats.php?mode=players&amp;game=css&amp;sort=skill&amp;sortorder=asc" class="head" title="Change sorting order">Points</a>&nbsp;<img src="./hlstatsimg/sort-descending.gif" style="padding-left:4px;padding-right:4px;" alt="sort-descending.gif" /></td>
+<td style="width:10%;text-align:left;" class="fSmall">Activity</td>
+<td style="width:10%;text-align:right;" class="fSmall"><a href="/hlstats.php?mode=players&amp;game=css&amp;sort=connection_time&amp;sortorder=desc" class="head" title="Change sorting order">Connection Time</a></td>
+<td style="width:7%;text-align:right;" class="fSmall"><a href="/hlstats.php?mode=players&amp;game=css&amp;sort=kills&amp;sortorder=desc" class="head" title="Change sorting order">Kills</a></td>
+<td style="width:7%;text-align:right;" class="fSmall"><a href="/hlstats.php?mode=players&amp;game=css&amp;sort=deaths&amp;sortorder=desc" class="head" title="Change sorting order">Deaths</a></td>
+<td style="width:6%;text-align:right;" class="fSmall"><a href="/hlstats.php?mode=players&amp;game=css&amp;sort=kpd&amp;sortorder=desc" class="head" title="Change sorting order">K:D</a></td>
+<td style="width:6%;text-align:right;" class="fSmall"><a href="/hlstats.php?mode=players&amp;game=css&amp;sort=headshots&amp;sortorder=desc" class="head" title="Change sorting order">Headshots</a></td>
+<td style="width:6%;text-align:right;" class="fSmall"><a href="/hlstats.php?mode=players&amp;game=css&amp;sort=hpk&amp;sortorder=desc" class="head" title="Change sorting order">HS:K</a></td>
+<td style="width:6%;text-align:right;" class="fSmall"><a href="/hlstats.php?mode=players&amp;game=css&amp;sort=acc&amp;sortorder=desc" class="head" title="Change sorting order">Accuracy</a></td>
+		</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">1</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=117"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" /><b>FLAIRZERA!</b></a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">28,749&nbsp;<img src="./hlstatsimg/t0.gif" alt="2184 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">3d&nbsp;00:10:03h</td>
+<td style="text-align:right;" class="bg1">4,031</td>
+<td style="text-align:right;" class="bg2">2,206</td>
+<td style="text-align:right;" class="bg1">1.83</td>
+<td style="text-align:right;" class="bg2">1,854</td>
+<td style="text-align:right;" class="bg1">0.46</td>
+<td style="text-align:right;" class="bg2">29.8%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">2</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=10"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />tiro</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">25,845&nbsp;<img src="./hlstatsimg/t0.gif" alt="1598 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">3d&nbsp;23:08:45h</td>
+<td style="text-align:right;" class="bg1">3,574</td>
+<td style="text-align:right;" class="bg2">2,923</td>
+<td style="text-align:right;" class="bg1">1.22</td>
+<td style="text-align:right;" class="bg2">1,590</td>
+<td style="text-align:right;" class="bg1">0.44</td>
+<td style="text-align:right;" class="bg2">21.3%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">3</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=11"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Vikt0r</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">22,098&nbsp;<img src="./hlstatsimg/t0.gif" alt="1430 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">3d&nbsp;07:48:24h</td>
+<td style="text-align:right;" class="bg1">3,068</td>
+<td style="text-align:right;" class="bg2">2,414</td>
+<td style="text-align:right;" class="bg1">1.27</td>
+<td style="text-align:right;" class="bg2">1,292</td>
+<td style="text-align:right;" class="bg1">0.42</td>
+<td style="text-align:right;" class="bg2">20.1%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">4</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=73"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />dNz -sdds VAC-</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">17,571&nbsp;<img src="./hlstatsimg/t0.gif" alt="571 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">2d&nbsp;23:36:57h</td>
+<td style="text-align:right;" class="bg1">1,965</td>
+<td style="text-align:right;" class="bg2">2,048</td>
+<td style="text-align:right;" class="bg1">0.96</td>
+<td style="text-align:right;" class="bg2">868</td>
+<td style="text-align:right;" class="bg1">0.44</td>
+<td style="text-align:right;" class="bg2">19.2%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">5</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=50"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />ZiniD</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">16,942&nbsp;<img src="./hlstatsimg/t0.gif" alt="613 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">2d&nbsp;03:04:49h</td>
+<td style="text-align:right;" class="bg1">1,760</td>
+<td style="text-align:right;" class="bg2">1,380</td>
+<td style="text-align:right;" class="bg1">1.28</td>
+<td style="text-align:right;" class="bg2">830</td>
+<td style="text-align:right;" class="bg1">0.47</td>
+<td style="text-align:right;" class="bg2">22.8%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">6</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=12"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />ToN</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">14,459&nbsp;<img src="./hlstatsimg/t0.gif" alt="608 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">2d&nbsp;06:37:05h</td>
+<td style="text-align:right;" class="bg1">1,457</td>
+<td style="text-align:right;" class="bg2">1,639</td>
+<td style="text-align:right;" class="bg1">0.89</td>
+<td style="text-align:right;" class="bg2">591</td>
+<td style="text-align:right;" class="bg1">0.41</td>
+<td style="text-align:right;" class="bg2">19.0%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">7</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=456"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Zoio /fnx</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">14,160&nbsp;<img src="./hlstatsimg/t0.gif" alt="939 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">2d&nbsp;12:07:01h</td>
+<td style="text-align:right;" class="bg1">1,153</td>
+<td style="text-align:right;" class="bg2">1,639</td>
+<td style="text-align:right;" class="bg1">0.70</td>
+<td style="text-align:right;" class="bg2">537</td>
+<td style="text-align:right;" class="bg1">0.47</td>
+<td style="text-align:right;" class="bg2">15.1%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">8</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=8"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />ADRIANO</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">13,927&nbsp;<img src="./hlstatsimg/t0.gif" alt="717 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;17:20:15h</td>
+<td style="text-align:right;" class="bg1">1,471</td>
+<td style="text-align:right;" class="bg2">1,285</td>
+<td style="text-align:right;" class="bg1">1.14</td>
+<td style="text-align:right;" class="bg2">609</td>
+<td style="text-align:right;" class="bg1">0.41</td>
+<td style="text-align:right;" class="bg2">16.0%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">9</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=25"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />NosieG</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">13,727&nbsp;<img src="./hlstatsimg/t0.gif" alt="422 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">2d&nbsp;08:14:34h</td>
+<td style="text-align:right;" class="bg1">1,513</td>
+<td style="text-align:right;" class="bg2">1,776</td>
+<td style="text-align:right;" class="bg1">0.85</td>
+<td style="text-align:right;" class="bg2">462</td>
+<td style="text-align:right;" class="bg1">0.31</td>
+<td style="text-align:right;" class="bg2">16.0%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">10</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=244"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Gil</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">13,198&nbsp;<img src="./hlstatsimg/t0.gif" alt="868 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;15:22:03h</td>
+<td style="text-align:right;" class="bg1">1,243</td>
+<td style="text-align:right;" class="bg2">1,195</td>
+<td style="text-align:right;" class="bg1">1.04</td>
+<td style="text-align:right;" class="bg2">668</td>
+<td style="text-align:right;" class="bg1">0.54</td>
+<td style="text-align:right;" class="bg2">18.5%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">11</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=113"><img src="./hlstatsimg/flags/us.gif" class="tableicon" alt="United states" title="United states" />My Last Days</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">13,124&nbsp;<img src="./hlstatsimg/t1.gif" alt="0 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;21:43:21h</td>
+<td style="text-align:right;" class="bg1">1,488</td>
+<td style="text-align:right;" class="bg2">1,289</td>
+<td style="text-align:right;" class="bg1">1.15</td>
+<td style="text-align:right;" class="bg2">739</td>
+<td style="text-align:right;" class="bg1">0.50</td>
+<td style="text-align:right;" class="bg2">18.9%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">12</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=4"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />☢ ☢ Prof. kingfrg ☢ ☢</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">12,212&nbsp;<img src="./hlstatsimg/t0.gif" alt="874 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">2d&nbsp;11:12:37h</td>
+<td style="text-align:right;" class="bg1">1,130</td>
+<td style="text-align:right;" class="bg2">1,830</td>
+<td style="text-align:right;" class="bg1">0.62</td>
+<td style="text-align:right;" class="bg2">456</td>
+<td style="text-align:right;" class="bg1">0.40</td>
+<td style="text-align:right;" class="bg2">17.0%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">13</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=398"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Dark</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">11,857&nbsp;<img src="./hlstatsimg/t0.gif" alt="19 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;11:09:01h</td>
+<td style="text-align:right;" class="bg1">941</td>
+<td style="text-align:right;" class="bg2">1,110</td>
+<td style="text-align:right;" class="bg1">0.85</td>
+<td style="text-align:right;" class="bg2">560</td>
+<td style="text-align:right;" class="bg1">0.60</td>
+<td style="text-align:right;" class="bg2">14.8%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">14</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=39"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />wly</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">11,745&nbsp;<img src="./hlstatsimg/t0.gif" alt="1303 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;10:03:40h</td>
+<td style="text-align:right;" class="bg1">851</td>
+<td style="text-align:right;" class="bg2">1,025</td>
+<td style="text-align:right;" class="bg1">0.83</td>
+<td style="text-align:right;" class="bg2">394</td>
+<td style="text-align:right;" class="bg1">0.46</td>
+<td style="text-align:right;" class="bg2">19.9%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">15</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=47"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />kHABET</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">11,704&nbsp;<img src="./hlstatsimg/t0.gif" alt="373 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;06:19:09h</td>
+<td style="text-align:right;" class="bg1">1,131</td>
+<td style="text-align:right;" class="bg2">916</td>
+<td style="text-align:right;" class="bg1">1.23</td>
+<td style="text-align:right;" class="bg2">774</td>
+<td style="text-align:right;" class="bg1">0.68</td>
+<td style="text-align:right;" class="bg2">20.8%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">16</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=41"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />BATMAN</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">11,015&nbsp;<img src="./hlstatsimg/t0.gif" alt="103 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;17:11:51h</td>
+<td style="text-align:right;" class="bg1">1,003</td>
+<td style="text-align:right;" class="bg2">1,258</td>
+<td style="text-align:right;" class="bg1">0.80</td>
+<td style="text-align:right;" class="bg2">403</td>
+<td style="text-align:right;" class="bg1">0.40</td>
+<td style="text-align:right;" class="bg2">20.3%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">17</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=88"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />K!K0</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">10,953&nbsp;<img src="./hlstatsimg/t0.gif" alt="300 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;10:07:31h</td>
+<td style="text-align:right;" class="bg1">798</td>
+<td style="text-align:right;" class="bg2">935</td>
+<td style="text-align:right;" class="bg1">0.85</td>
+<td style="text-align:right;" class="bg2">254</td>
+<td style="text-align:right;" class="bg1">0.32</td>
+<td style="text-align:right;" class="bg2">16.6%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">18</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=53"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Smoking</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">10,897&nbsp;<img src="./hlstatsimg/t0.gif" alt="467 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;14:33:26h</td>
+<td style="text-align:right;" class="bg1">990</td>
+<td style="text-align:right;" class="bg2">1,240</td>
+<td style="text-align:right;" class="bg1">0.80</td>
+<td style="text-align:right;" class="bg2">545</td>
+<td style="text-align:right;" class="bg1">0.55</td>
+<td style="text-align:right;" class="bg2">12.9%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">19</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=7"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />么 EzE</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">10,276&nbsp;<img src="./hlstatsimg/t0.gif" alt="470 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;09:41:58h</td>
+<td style="text-align:right;" class="bg1">976</td>
+<td style="text-align:right;" class="bg2">1,023</td>
+<td style="text-align:right;" class="bg1">0.95</td>
+<td style="text-align:right;" class="bg2">608</td>
+<td style="text-align:right;" class="bg1">0.62</td>
+<td style="text-align:right;" class="bg2">17.0%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">20</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=582"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />.api</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">10,224&nbsp;<img src="./hlstatsimg/t0.gif" alt="1499 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;15:53:27h</td>
+<td style="text-align:right;" class="bg1">745</td>
+<td style="text-align:right;" class="bg2">450</td>
+<td style="text-align:right;" class="bg1">1.66</td>
+<td style="text-align:right;" class="bg2">426</td>
+<td style="text-align:right;" class="bg1">0.57</td>
+<td style="text-align:right;" class="bg2">23.9%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">21</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=3"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />DAI-MANJI</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">9,910&nbsp;<img src="./hlstatsimg/t0.gif" alt="209 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;08:40:16h</td>
+<td style="text-align:right;" class="bg1">759</td>
+<td style="text-align:right;" class="bg2">1,000</td>
+<td style="text-align:right;" class="bg1">0.76</td>
+<td style="text-align:right;" class="bg2">311</td>
+<td style="text-align:right;" class="bg1">0.41</td>
+<td style="text-align:right;" class="bg2">18.7%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">22</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=107"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />'NuGato</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">9,495&nbsp;<img src="./hlstatsimg/t0.gif" alt="299 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;09:52:56h</td>
+<td style="text-align:right;" class="bg1">716</td>
+<td style="text-align:right;" class="bg2">999</td>
+<td style="text-align:right;" class="bg1">0.72</td>
+<td style="text-align:right;" class="bg2">297</td>
+<td style="text-align:right;" class="bg1">0.41</td>
+<td style="text-align:right;" class="bg2">16.6%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">23</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=292"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Jvsdbr54®</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">9,250&nbsp;<img src="./hlstatsimg/t0.gif" alt="95 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;09:34:09h</td>
+<td style="text-align:right;" class="bg1">583</td>
+<td style="text-align:right;" class="bg2">1,008</td>
+<td style="text-align:right;" class="bg1">0.58</td>
+<td style="text-align:right;" class="bg2">237</td>
+<td style="text-align:right;" class="bg1">0.41</td>
+<td style="text-align:right;" class="bg2">18.7%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">24</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=48"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Pesadelo=P</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">9,188&nbsp;<img src="./hlstatsimg/t0.gif" alt="542 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;01:12:01h</td>
+<td style="text-align:right;" class="bg1">808</td>
+<td style="text-align:right;" class="bg2">717</td>
+<td style="text-align:right;" class="bg1">1.13</td>
+<td style="text-align:right;" class="bg2">242</td>
+<td style="text-align:right;" class="bg1">0.30</td>
+<td style="text-align:right;" class="bg2">20.6%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">25</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=17"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Kangaçeiroz!</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">9,083&nbsp;<img src="./hlstatsimg/t0.gif" alt="653 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;10:53:46h</td>
+<td style="text-align:right;" class="bg1">703</td>
+<td style="text-align:right;" class="bg2">836</td>
+<td style="text-align:right;" class="bg1">0.84</td>
+<td style="text-align:right;" class="bg2">279</td>
+<td style="text-align:right;" class="bg1">0.40</td>
+<td style="text-align:right;" class="bg2">31.7%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">26</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=406"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />zMathhh</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">8,099&nbsp;<img src="./hlstatsimg/t0.gif" alt="363 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;03:21:17h</td>
+<td style="text-align:right;" class="bg1">514</td>
+<td style="text-align:right;" class="bg2">778</td>
+<td style="text-align:right;" class="bg1">0.66</td>
+<td style="text-align:right;" class="bg2">190</td>
+<td style="text-align:right;" class="bg1">0.37</td>
+<td style="text-align:right;" class="bg2">12.4%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">27</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=586"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />oNze-</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">8,053&nbsp;<img src="./hlstatsimg/t0.gif" alt="691 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;11:23:47h</td>
+<td style="text-align:right;" class="bg1">497</td>
+<td style="text-align:right;" class="bg2">356</td>
+<td style="text-align:right;" class="bg1">1.40</td>
+<td style="text-align:right;" class="bg2">273</td>
+<td style="text-align:right;" class="bg1">0.55</td>
+<td style="text-align:right;" class="bg2">17.5%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">28</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=27"><img src="./hlstatsimg/flags/ar.gif" class="tableicon" alt="Argentina" title="Argentina" />AleEEEEEEEEEEEEE★★★</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">7,900&nbsp;<img src="./hlstatsimg/t0.gif" alt="57 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">1d&nbsp;06:34:14h</td>
+<td style="text-align:right;" class="bg1">582</td>
+<td style="text-align:right;" class="bg2">843</td>
+<td style="text-align:right;" class="bg1">0.69</td>
+<td style="text-align:right;" class="bg2">237</td>
+<td style="text-align:right;" class="bg1">0.41</td>
+<td style="text-align:right;" class="bg2">17.5%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">29</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=269"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />farsand</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">7,740&nbsp;<img src="./hlstatsimg/t0.gif" alt="416 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;22:07:25h</td>
+<td style="text-align:right;" class="bg1">586</td>
+<td style="text-align:right;" class="bg2">634</td>
+<td style="text-align:right;" class="bg1">0.92</td>
+<td style="text-align:right;" class="bg2">323</td>
+<td style="text-align:right;" class="bg1">0.55</td>
+<td style="text-align:right;" class="bg2">15.9%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">30</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=54"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />&gt;&gt;&gt;&gt; Killer &lt;&lt;&lt;&lt;</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">7,730&nbsp;<img src="./hlstatsimg/t0.gif" alt="1015 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;11:52:56h</td>
+<td style="text-align:right;" class="bg1">490</td>
+<td style="text-align:right;" class="bg2">377</td>
+<td style="text-align:right;" class="bg1">1.30</td>
+<td style="text-align:right;" class="bg2">166</td>
+<td style="text-align:right;" class="bg1">0.34</td>
+<td style="text-align:right;" class="bg2">29.6%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">31</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=286"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Naves</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">7,372&nbsp;<img src="./hlstatsimg/t0.gif" alt="1513 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;20:41:32h</td>
+<td style="text-align:right;" class="bg1">482</td>
+<td style="text-align:right;" class="bg2">614</td>
+<td style="text-align:right;" class="bg1">0.79</td>
+<td style="text-align:right;" class="bg2">164</td>
+<td style="text-align:right;" class="bg1">0.34</td>
+<td style="text-align:right;" class="bg2">17.3%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">32</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=9"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Kai</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">6,834&nbsp;<img src="./hlstatsimg/t0.gif" alt="15 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;21:20:10h</td>
+<td style="text-align:right;" class="bg1">473</td>
+<td style="text-align:right;" class="bg2">334</td>
+<td style="text-align:right;" class="bg1">1.42</td>
+<td style="text-align:right;" class="bg2">228</td>
+<td style="text-align:right;" class="bg1">0.48</td>
+<td style="text-align:right;" class="bg2">22.2%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">33</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=20"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />QuiiN '</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">6,738&nbsp;<img src="./hlstatsimg/t0.gif" alt="365 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;23:17:30h</td>
+<td style="text-align:right;" class="bg1">501</td>
+<td style="text-align:right;" class="bg2">755</td>
+<td style="text-align:right;" class="bg1">0.66</td>
+<td style="text-align:right;" class="bg2">217</td>
+<td style="text-align:right;" class="bg1">0.43</td>
+<td style="text-align:right;" class="bg2">21.2%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">34</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=873"><img src="./hlstatsimg/flags/ar.gif" class="tableicon" alt="Argentina" title="Argentina" />arise</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">6,691&nbsp;<img src="./hlstatsimg/t0.gif" alt="1702 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;10:13:50h</td>
+<td style="text-align:right;" class="bg1">330</td>
+<td style="text-align:right;" class="bg2">260</td>
+<td style="text-align:right;" class="bg1">1.27</td>
+<td style="text-align:right;" class="bg2">184</td>
+<td style="text-align:right;" class="bg1">0.56</td>
+<td style="text-align:right;" class="bg2">19.5%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">35</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=36"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />rz</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">6,651&nbsp;<img src="./hlstatsimg/t0.gif" alt="381 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;12:37:45h</td>
+<td style="text-align:right;" class="bg1">445</td>
+<td style="text-align:right;" class="bg2">363</td>
+<td style="text-align:right;" class="bg1">1.23</td>
+<td style="text-align:right;" class="bg2">248</td>
+<td style="text-align:right;" class="bg1">0.56</td>
+<td style="text-align:right;" class="bg2">18.6%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">36</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=520"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />- 71ﾠ ヤ</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">6,592&nbsp;<img src="./hlstatsimg/t0.gif" alt="76 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;09:55:33h</td>
+<td style="text-align:right;" class="bg1">351</td>
+<td style="text-align:right;" class="bg2">337</td>
+<td style="text-align:right;" class="bg1">1.04</td>
+<td style="text-align:right;" class="bg2">168</td>
+<td style="text-align:right;" class="bg1">0.48</td>
+<td style="text-align:right;" class="bg2">25.7%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">37</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=35"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />gh</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">6,555&nbsp;<img src="./hlstatsimg/t1.gif" alt="0 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;13:44:01h</td>
+<td style="text-align:right;" class="bg1">667</td>
+<td style="text-align:right;" class="bg2">397</td>
+<td style="text-align:right;" class="bg1">1.68</td>
+<td style="text-align:right;" class="bg2">398</td>
+<td style="text-align:right;" class="bg1">0.60</td>
+<td style="text-align:right;" class="bg2">16.3%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">38</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=1"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Miojo</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">5,857&nbsp;<img src="./hlstatsimg/t1.gif" alt="0 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;15:57:11h</td>
+<td style="text-align:right;" class="bg1">668</td>
+<td style="text-align:right;" class="bg2">473</td>
+<td style="text-align:right;" class="bg1">1.41</td>
+<td style="text-align:right;" class="bg2">424</td>
+<td style="text-align:right;" class="bg1">0.63</td>
+<td style="text-align:right;" class="bg2">17.7%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">39</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=920"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />McLovin144Hz</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">5,784&nbsp;<img src="./hlstatsimg/t1.gif" alt="0 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;08:55:26h</td>
+<td style="text-align:right;" class="bg1">293</td>
+<td style="text-align:right;" class="bg2">280</td>
+<td style="text-align:right;" class="bg1">1.05</td>
+<td style="text-align:right;" class="bg2">155</td>
+<td style="text-align:right;" class="bg1">0.53</td>
+<td style="text-align:right;" class="bg2">23.0%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">40</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=291"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />k*</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">5,745&nbsp;<img src="./hlstatsimg/t0.gif" alt="69 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;05:57:22h</td>
+<td style="text-align:right;" class="bg1">284</td>
+<td style="text-align:right;" class="bg2">163</td>
+<td style="text-align:right;" class="bg1">1.74</td>
+<td style="text-align:right;" class="bg2">144</td>
+<td style="text-align:right;" class="bg1">0.51</td>
+<td style="text-align:right;" class="bg2">17.9%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">41</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=531"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Enkrid</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">5,392&nbsp;<img src="./hlstatsimg/t1.gif" alt="0 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;07:13:49h</td>
+<td style="text-align:right;" class="bg1">276</td>
+<td style="text-align:right;" class="bg2">207</td>
+<td style="text-align:right;" class="bg1">1.33</td>
+<td style="text-align:right;" class="bg2">161</td>
+<td style="text-align:right;" class="bg1">0.58</td>
+<td style="text-align:right;" class="bg2">16.6%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">42</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=75"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />BARBA RUIVA</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">5,173&nbsp;<img src="./hlstatsimg/t0.gif" alt="712 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;10:01:31h</td>
+<td style="text-align:right;" class="bg1">279</td>
+<td style="text-align:right;" class="bg2">294</td>
+<td style="text-align:right;" class="bg1">0.95</td>
+<td style="text-align:right;" class="bg2">102</td>
+<td style="text-align:right;" class="bg1">0.37</td>
+<td style="text-align:right;" class="bg2">19.8%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">43</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=513"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Gatinho - SKINS</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">5,114&nbsp;<img src="./hlstatsimg/t0.gif" alt="154 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;13:13:13h</td>
+<td style="text-align:right;" class="bg1">288</td>
+<td style="text-align:right;" class="bg2">384</td>
+<td style="text-align:right;" class="bg1">0.75</td>
+<td style="text-align:right;" class="bg2">126</td>
+<td style="text-align:right;" class="bg1">0.44</td>
+<td style="text-align:right;" class="bg2">17.1%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">44</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=185"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />LittleJohn</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">4,477&nbsp;<img src="./hlstatsimg/t0.gif" alt="185 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;13:28:16h</td>
+<td style="text-align:right;" class="bg1">291</td>
+<td style="text-align:right;" class="bg2">365</td>
+<td style="text-align:right;" class="bg1">0.80</td>
+<td style="text-align:right;" class="bg2">160</td>
+<td style="text-align:right;" class="bg1">0.55</td>
+<td style="text-align:right;" class="bg2">13.6%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">45</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=133"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Mr Bean ™</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">4,383&nbsp;<img src="./hlstatsimg/t0.gif" alt="344 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;09:34:15h</td>
+<td style="text-align:right;" class="bg1">228</td>
+<td style="text-align:right;" class="bg2">264</td>
+<td style="text-align:right;" class="bg1">0.86</td>
+<td style="text-align:right;" class="bg2">105</td>
+<td style="text-align:right;" class="bg1">0.46</td>
+<td style="text-align:right;" class="bg2">16.9%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">46</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=199"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />g0d</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">4,162&nbsp;<img src="./hlstatsimg/t0.gif" alt="462 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;07:15:25h</td>
+<td style="text-align:right;" class="bg1">208</td>
+<td style="text-align:right;" class="bg2">240</td>
+<td style="text-align:right;" class="bg1">0.87</td>
+<td style="text-align:right;" class="bg2">99</td>
+<td style="text-align:right;" class="bg1">0.48</td>
+<td style="text-align:right;" class="bg2">18.9%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">47</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=24"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />CHIVAS</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">4,126&nbsp;<img src="./hlstatsimg/t0.gif" alt="996 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;06:55:48h</td>
+<td style="text-align:right;" class="bg1">190</td>
+<td style="text-align:right;" class="bg2">239</td>
+<td style="text-align:right;" class="bg1">0.79</td>
+<td style="text-align:right;" class="bg2">95</td>
+<td style="text-align:right;" class="bg1">0.50</td>
+<td style="text-align:right;" class="bg2">16.2%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">48</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=256"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />™M 4 s T e R</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">4,086&nbsp;<img src="./hlstatsimg/t0.gif" alt="315 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;08:20:21h</td>
+<td style="text-align:right;" class="bg1">278</td>
+<td style="text-align:right;" class="bg2">212</td>
+<td style="text-align:right;" class="bg1">1.31</td>
+<td style="text-align:right;" class="bg2">149</td>
+<td style="text-align:right;" class="bg1">0.54</td>
+<td style="text-align:right;" class="bg2">19.8%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">49</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=56"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />着卩卂尺Ҝ乇尺 ❟❛❟</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">4,068&nbsp;<img src="./hlstatsimg/t1.gif" alt="0 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;04:47:07h</td>
+<td style="text-align:right;" class="bg1">182</td>
+<td style="text-align:right;" class="bg2">143</td>
+<td style="text-align:right;" class="bg1">1.27</td>
+<td style="text-align:right;" class="bg2">75</td>
+<td style="text-align:right;" class="bg1">0.41</td>
+<td style="text-align:right;" class="bg2">25.8%</td>
+</tr>
+
+<tr>
+<td style="text-align:right;" class="bg1">50</td>
+<td class="bg2">&nbsp;<a href="/hlstats.php?mode=playerinfo&amp;player=18"><img src="./hlstatsimg/flags/br.gif" class="tableicon" alt="Brazil" title="Brazil" />Perturbado &gt;.&lt;BrInKeDo AsSaSsIn</a></td>
+<td class="bg1"><img src="./hlstatsimg/mmranks/0.png" class="tableicon" alt="elorank" style="height:20px;width:50px;" /></td>
+<td style="text-align:right;" class="bg2">4,051&nbsp;<img src="./hlstatsimg/t0.gif" alt="303 Points" /></td>
+<td class="bg1"><meter min="0" max="100" low="25" high="50" optimum="75" value="100"></meter></td>
+<td style="text-align:right;" class="bg2">0d&nbsp;08:05:21h</td>
+<td style="text-align:right;" class="bg1">189</td>
+<td style="text-align:right;" class="bg2">245</td>
+<td style="text-align:right;" class="bg1">0.77</td>
+<td style="text-align:right;" class="bg2">83</td>
+<td style="text-align:right;" class="bg1">0.44</td>
+<td style="text-align:right;" class="bg2">24.8%</td>
+</tr>
+
+		</table>
+</div><br /><br />
+<div class="subblock" style="text-align:right;">
+	<span style="text-align:right;">
+Page: <b>1</b> <a href="/hlstats.php?mode=players&amp;game=css&amp;page=2">2</a> <a href="/hlstats.php?mode=players&amp;game=css&amp;page=3">3</a> <a href="/hlstats.php?mode=players&amp;game=css&amp;page=4">4</a> <a href="/hlstats.php?mode=players&amp;game=css&amp;page=5">5</a> <a href="/hlstats.php?mode=players&amp;game=css&amp;page=6">6</a> 	</span>
+</div><br /><br />
+<br /><br />
+	<div class="subblock">
+		<div style="float:left;">
+			<form method="get" action="/hlstats.php">
+				<input type="hidden" name="mode" value="players" />
+<input type="hidden" name="game" value="css" />
+				<strong>&#8226;</strong> Only show players with
+					<input type="text" name="minkills" size="4" maxlength="2" value="1" class="textbox" /> or more kills.
+					<input type="submit" value="Apply" class="smallsubmit" />
+			</form>
+		</div>
+		<div style="float:right;">
+			Go to: <a href="/hlstats.php?mode=clans&amp;game=css">Clan Rankings</a>
+		</div>	
+	</div>
+</div>
+<div style="clear:both;"></div>
+<br />
+<br />
+	<div id="footer">
+			<a href="http://www.hlxce.com" target="_blank"><img src="./hlstatsimg/footer-small.png" alt="HLstatsX Community Edition" border="0" /></a>
+	</div>
+<br />
+<div class="fSmall" style="text-align:center;">
+You are currently viewing the basic version of this page, please enable JavaScript and reload the page to access full functionality.<br />Generated in real-time by <a href="http://www.hlxce.com" target="_blank">HLstatsX Community Edition 1.7.0</a><br />
+All images are copyrighted by their respective owners.
+
+<br /><br />[<a href="/hlstats.php?mode=admin">Admin</a>]</div>
+</div>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a30e60d45d1fe018',t:'MTc4NzcwMDU2MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

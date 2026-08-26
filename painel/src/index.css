@@ -1,0 +1,403 @@
+@import "tailwindcss";
+
+/* ============================================================
+   LENDAS — design tokens
+   Palette derived from spent materials, not from a UI kit: blued
+   gun steel (CT), oxidised brass casings (accent), sun-bleached
+   dust2 rust (T). Every neutral is warmed toward the concrete wall
+   instead of the default cool "slate" a component library reaches
+   for — a panel should feel cut from the same material as the room
+   it sits in, not floated on top of it in a colder grey.
+   ============================================================ */
+@theme {
+  --color-void: #060605;
+  --color-base: #0d0c0b;
+  --color-panel: #141210;
+  --color-panel-2: #1a1815;
+  --color-raised: #211e19;
+  --color-line: #362f27;
+  --color-line-soft: #1e1b17;
+
+  --color-ink: #ece7de;
+  --color-ink-2: #aba59c;
+  --color-ink-3: #7d766c;
+  --color-ink-4: #534c43;
+
+  /* Brass: an oxidised cartridge, not a trophy. Duller and more olive
+     than a gold you'd find in a "premium" or "unlocked" badge. */
+  --color-brass: #c2924e;
+  --color-brass-hi: #e2bd80;
+  --color-brass-lo: #8c6a34;
+  --color-brass-dim: #3c2f18;
+
+  /* CT: blued steel — the dark violet-grey sheen of a gun barrel, not
+     the saturated "info" blue every dashboard reaches for by default. */
+  --color-ct: #7996a8;
+  --color-ct-hi: #aec2cf;
+  --color-ct-dim: #263139;
+  /* T: dust2 sandstone gone to rust. */
+  --color-t: #ac7c49;
+  --color-t-hi: #d0a877;
+
+  /* Chart series steps: snapped into the dark-mode lightness band so no
+     series outshouts another. Brand brass stays for accents and text. */
+  --color-chart-brass: #a8813f;
+  --color-chart-ct: #7996a8;
+  --color-chart-t: #a8763f;
+
+  --color-live: #37d07a;
+  --color-danger: #d9453b;
+  --color-warn: #e8952a;
+  --color-info: #7996a8;
+
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --ease-out-hud: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-hud: cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+/* Ambience knobs for the concrete backdrop. Kept outside @theme because
+   they tune a surface, not a design token anything else consumes. */
+:root {
+  --amb-dust: 192 137 74;
+  --amb-cold: 78 143 216;
+  --amb-stain: 0.26;
+  --amb-wear: 0.10;
+  --amb-grain: 0.055;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-line-soft);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-base);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* ============================================================
+     AMBIENTE — concreto & poeira
+     O shell não é uma tela escura: é uma parede de concreto de mapa
+     clássico. Luz de areia entrando por um vão, manchas de umidade no
+     reboco, desgaste raspado e poeira em suspensão.
+
+     Quatro camadas fixas, empilhadas por ordem de árvore (html::before <
+     body::before < html::after < body::after) — o conteúdo entra em z-10,
+     acima de todas. Todas compõem por alfa — nada de
+     mix-blend-mode, que blenda contra o canvas e é imprevisível quando
+     o fundo do body propaga pra ele. Nenhuma toca o main thread.
+     ============================================================ */
+
+  /* 1 — Reboco: turbulência de baixa frequência dá o malhado grande do
+     concreto, o que impede a superfície de ler como cinza chapado. */
+  html::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: var(--amb-stain);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='680' height='680'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.026' numOctaves='5' seed='12' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.55'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='680' height='680' filter='url(%23c)'/%3E%3C/svg%3E");
+    background-size: 680px 680px;
+  }
+
+  /* 2 — Luz: poeira quente entrando pelo canto superior esquerdo, rebote
+     frio do lado CT, calor baixo do chão de areia e vinheta fechando as
+     bordas. É esta camada que dá a temperatura; o reboco só dá a matéria. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(95ch 60ch at 6% -12%, rgb(var(--amb-dust) / 0.16), transparent 60%),
+      radial-gradient(85ch 65ch at 104% 2%, rgb(var(--amb-cold) / 0.055), transparent 56%),
+      radial-gradient(120ch 40ch at 50% 118%, rgb(var(--amb-dust) / 0.07), transparent 62%),
+      radial-gradient(140% 110% at 50% 42%, transparent 46%, rgb(0 0 0 / 0.26) 80%, rgb(0 0 0 / 0.5) 100%);
+  }
+
+  /* 3 — Desgaste: estrias raspadas (turbulência anisotrópica — frequência
+     baixa em x, alta em y) como marcas de uso na parede. Camada própria
+     porque precisa de intensidade separada do grão. */
+  html::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: var(--amb-wear);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.005 0.62' numOctaves='3' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.42'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='520' height='520' filter='url(%23w)'/%3E%3C/svg%3E");
+    background-size: 520px 520px;
+  }
+
+  /* 4 — Poeira: grão fino por cima de tudo. Impede banding nas áreas
+     escuras grandes e costura painel e parede na mesma superfície. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: -50%;
+    z-index: 2;
+    pointer-events: none;
+    opacity: var(--amb-grain);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  ::selection {
+    background: rgb(232 179 58 / 0.28);
+    color: var(--color-brass-hi);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brass);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-void);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-raised);
+    border: 2px solid var(--color-void);
+    border-radius: 6px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2b323c;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ============================================================
+   TYPE ROLES
+   Display is Archivo pushed WIDE — broadcast signage, not the
+   condensed italics every esports template reaches for.
+   ============================================================ */
+@layer components {
+  .t-display {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-variation-settings: "wdth" 112;
+    letter-spacing: -0.012em;
+    text-transform: uppercase;
+    line-height: 0.95;
+  }
+
+  .t-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-variation-settings: "wdth" 108;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    line-height: 1.1;
+  }
+
+  .t-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-ink-3);
+  }
+
+  .t-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "zero" 1;
+  }
+
+  /* ---------- Surfaces ---------- */
+  .panel {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.022), transparent 120px),
+      rgb(15 18 22 / 0.84);
+    border: 1px solid var(--color-line-soft);
+    border-radius: var(--radius-md);
+    box-shadow: 0 18px 44px -28px rgb(0 0 0 / 0.95);
+  }
+
+  .panel-flush {
+    background: rgb(15 18 22 / 0.84);
+    border: 1px solid var(--color-line-soft);
+    border-radius: var(--radius-md);
+  }
+
+  /* HUD corner brackets — used only on the live match module,
+     the one place the interface claims to be a readout. */
+  .hud-frame::before,
+  .hud-frame::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+    border-color: var(--color-brass);
+    opacity: 0.55;
+  }
+  .hud-frame::before {
+    top: -1px;
+    left: -1px;
+    border-top: 1px solid;
+    border-left: 1px solid;
+  }
+  .hud-frame::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 1px solid;
+    border-right: 1px solid;
+  }
+
+  /* Brass is a metal here, not a glow: a 1px lit edge + a slow sheen. */
+  .brass-edge {
+    box-shadow:
+      inset 0 1px 0 rgb(255 210 119 / 0.28),
+      inset 0 0 0 1px rgb(232 179 58 / 0.16);
+  }
+
+  .brass-text {
+    background: linear-gradient(178deg, #fff0c8 4%, var(--color-brass) 42%, #b98d23 78%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hairline {
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      var(--color-line) 12%,
+      var(--color-line) 88%,
+      transparent
+    );
+    height: 1px;
+  }
+
+  /* Leader dots: label ..... value, the way a console status readout or a
+     printed spec sheet ties a key to its value across a gap. Used once, in
+     ServerStatus — the panel's one console-flavoured moment. */
+  .leader {
+    border-bottom: 1px dotted var(--color-line);
+    margin-bottom: 0.3em;
+  }
+
+  /* Diagonal hazard hatching — bans and permanent states only. */
+  .hatch-danger {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgb(217 69 59 / 0.1) 0 6px,
+      transparent 6px 12px
+    );
+  }
+
+  .scanlines {
+    background-image: repeating-linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.022) 0 1px,
+      transparent 1px 3px
+    );
+  }
+
+  /* ---------- States ---------- */
+  .row-interactive {
+    transition:
+      background-color 0.16s var(--ease-out-hud),
+      box-shadow 0.16s var(--ease-out-hud);
+  }
+  .row-interactive:hover {
+    background-color: var(--color-panel-2);
+    box-shadow: inset 2px 0 0 0 var(--color-brass);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .mask-fade-r {
+    mask-image: linear-gradient(90deg, #000 82%, transparent);
+  }
+
+  .grid-lines {
+    background-image:
+      linear-gradient(var(--color-line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-line-soft) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+}
+
+/* Motion primitives kept in CSS so idle/ambient loops never touch the
+   main thread through JS. */
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+@keyframes ring-live {
+  0% { transform: scale(0.7); opacity: 0.65; }
+  75%, 100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(200%); }
+}
+@keyframes radar-sweep {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(300%); }
+}
