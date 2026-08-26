@@ -36,6 +36,17 @@ export class SteamAvatarService {
     private readonly fetchImpl: FetchLike = fetch as unknown as FetchLike,
   ) {}
 
+  /**
+   * Leitura síncrona só do cache, sem disparar rede — usado por quem não
+   * pode esperar uma chamada à Steam Web API (ex.: servir uma página do
+   * ranking). Quem precisa garantir a resolução (o pipeline de live) chama
+   * `resolve()`; isso aqui só reaproveita o que já foi resolvido antes.
+   */
+  peek(steamId64: string): string | undefined {
+    const cached = this.cache.get(steamId64);
+    return cached && cached.expiresAt > Date.now() ? cached.url : undefined;
+  }
+
   /** Devolve só os SteamID64 que resolveram (do cache ou de uma consulta nova). */
   async resolve(steamId64s: readonly string[]): Promise<Map<string, string>> {
     const result = new Map<string, string>();

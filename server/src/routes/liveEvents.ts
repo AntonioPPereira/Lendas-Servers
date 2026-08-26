@@ -4,6 +4,7 @@ import { liveIngestPayloadSchema, type LiveIngestEvent } from "../live/schema.js
 import type { LiveMatchState } from "../live/state.js";
 import type { LiveBroadcaster } from "../live/broadcaster.js";
 import type { SteamAvatarService } from "../services/SteamAvatarService.js";
+import type { NicknameDirectory } from "../live/nicknameDirectory.js";
 import { createLiveAuth } from "../middleware/liveAuth.js";
 
 function steamIdsIn(events: LiveIngestEvent[]): string[] {
@@ -13,6 +14,19 @@ function steamIdsIn(events: LiveIngestEvent[]): string[] {
     else if (event.kind === "player_connect") ids.push(event.steamId64);
   }
   return ids;
+}
+
+/** Recorta os pares nickname+SteamID64 real que apareceram neste lote de eventos. */
+function nicknameSightingsIn(events: LiveIngestEvent[]): Array<{ nickname: string; steamId64: string }> {
+  const sightings: Array<{ nickname: string; steamId64: string }> = [];
+  for (const event of events) {
+    if (event.kind === "player_snapshot") {
+      for (const p of event.players) sightings.push({ nickname: p.nickname, steamId64: p.steamId64 });
+    } else if (event.kind === "player_connect") {
+      sightings.push({ nickname: event.nickname, steamId64: event.steamId64 });
+    }
+  }
+  return sightings;
 }
 
 /**
@@ -26,6 +40,7 @@ export function createLiveEventsRouter(
   state: LiveMatchState,
   broadcaster: LiveBroadcaster,
   avatars: SteamAvatarService,
+  nicknames: NicknameDirectory,
   apiToken: string,
 ): Router {
   const router = Router();
@@ -57,6 +72,10 @@ export function createLiveEventsRouter(
     res.status(202).json({ accepted: payload.events.length });
 
     broadcastPrimaryIfNeeded(payload.serverId);
+
+    for (const { nickname, steamId64 } of nicknameSightingsIn(payload.events)) {
+      nicknames.record(nickname, steamId64);
+    }
 
     const newIds = steamIdsIn(payload.events);
     if (newIds.length === 0) return;

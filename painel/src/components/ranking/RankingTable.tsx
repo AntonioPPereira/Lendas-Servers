@@ -44,7 +44,7 @@ export const RankingRow = memo(function RankingRow({ player }: { player: RankedP
       </span>
 
       <span className="flex min-w-0 items-center gap-2.5">
-        <PlayerAvatar seed={player.id} nickname={player.nickname} size="sm" />
+        <PlayerAvatar seed={player.id} nickname={player.nickname} avatarUrl={player.avatarUrl} size="sm" />
         <span className="min-w-0">
           <span className="block truncate text-[12.5px] text-ink">{player.nickname}</span>
           <span className="t-num block truncate text-[10px] text-ink-4">

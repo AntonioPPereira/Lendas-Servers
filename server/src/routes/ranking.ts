@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { HLStatsService } from "../services/HLStatsService.js";
+import type { SteamAvatarService } from "../services/SteamAvatarService.js";
+import type { NicknameDirectory } from "../live/nicknameDirectory.js";
 import { paginate } from "../lib/paginate.js";
 import { toPlayerDto } from "../lib/playerDto.js";
 
@@ -16,8 +18,17 @@ const listQuerySchema = z.object({
  * "semana") nem por temporada nessa fonte, então nenhum dos dois filtros
  * dá pra oferecer aqui (o frontend precisou perder essas abas).
  */
-export function createRankingRouter(hlstats: HLStatsService): Router {
+export function createRankingRouter(
+  hlstats: HLStatsService,
+  nicknames: NicknameDirectory,
+  avatars: SteamAvatarService,
+): Router {
   const router = Router();
+
+  function avatarFor(nickname: string): string | undefined {
+    const steamId64 = nicknames.lookup(nickname);
+    return steamId64 ? avatars.peek(steamId64) : undefined;
+  }
 
   router.get("/", async (req, res, next) => {
     try {
@@ -32,7 +43,7 @@ export function createRankingRouter(hlstats: HLStatsService): Router {
       }
 
       const page = paginate(rows, query.page, query.pageSize);
-      res.json({ ...page, items: page.items.map(toPlayerDto) });
+      res.json({ ...page, items: page.items.map((row) => toPlayerDto(row, avatarFor(row.nickname))) });
     } catch (err) {
       next(err);
     }

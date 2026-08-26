@@ -114,6 +114,12 @@ export interface RankedPlayer {
   accuracy: number | null;
   /** Minutos conectados, total histórico rastreado pelo HLstatsX. */
   connectionTimeMinutes: number | null;
+  /**
+   * Foto real via Steam Web API, cruzada pelo backend a partir do nickname
+   * mais recente visto ao vivo (o HLstatsX nunca expõe SteamID). Ausente =
+   * `PlayerAvatar` cai pro emblema gerado.
+   */
+  avatarUrl?: string;
 }
 
 export interface LivePlayer {

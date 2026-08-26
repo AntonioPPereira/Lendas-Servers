@@ -164,7 +164,7 @@ export default function Overview() {
                           {player.rank === 1 ? (
                             <Trophy className="size-3.5 shrink-0 text-brass" />
                           ) : null}
-                          <PlayerAvatar seed={player.id} nickname={player.nickname} size="sm" />
+                          <PlayerAvatar seed={player.id} nickname={player.nickname} avatarUrl={player.avatarUrl} size="sm" />
                           <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">
                             {player.nickname}
                           </span>

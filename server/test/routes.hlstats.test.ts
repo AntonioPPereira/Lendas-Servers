@@ -20,8 +20,12 @@ const singlePagePlayersHtml = readFileSync(path.join(fixturesDir, "hlstats-playe
 
 const CFG = { baseUrl: "http://example.invalid/hlstats.php", game: "css", timeoutMs: 1000 };
 const SFTP_CONN = { host: "x", port: 22, username: "u", password: "p", base: BASE };
+const LIVE_TOKEN = "s3gredo-de-teste";
 
-function buildApp(routes: Record<string, string | Error | { status: number }>) {
+function buildApp(
+  routes: Record<string, string | Error | { status: number }>,
+  opts: { avatarFetchImpl?: typeof fetch; liveApiToken?: string } = {},
+) {
   const fetchImpl = vi.fn(async (url: string) => {
     const match = Object.entries(routes).find(([key]) => url.includes(key));
     if (!match) throw new Error(`sem rota no fake fetch: ${url}`);
@@ -33,8 +37,11 @@ function buildApp(routes: Record<string, string | Error | { status: number }>) {
   const hlstats = new HLStatsService(CFG, 60_000, 60_000, fetchImpl as never);
   const demos = new SftpDemoService(SFTP_CONN, 60_000, () => makeFakeClient({ tree: SAMPLE_TREE }).client);
   const steamFilter = new SteamFilterLogService(SFTP_CONN, 60_000, 60);
-  const avatars = new SteamAvatarService("", 0);
-  return createApp({ demos, hlstats, steamFilter, avatars });
+  const avatars = new SteamAvatarService(opts.avatarFetchImpl ? "KEY" : "", 3_600_000, opts.avatarFetchImpl as never);
+  return createApp(
+    { demos, hlstats, steamFilter, avatars },
+    { liveApiToken: opts.liveApiToken ?? LIVE_TOKEN },
+  );
 }
 
 describe("GET /api/servers", () => {
@@ -132,5 +139,50 @@ describe("GET /api/players", () => {
     const app = buildApp({ "mode=players": singlePagePlayersHtml });
     const res = await request(app).get("/api/players/999999999").expect(404);
     expect(res.body.error).toBe("not_found");
+  });
+});
+
+describe("avatar real cruzado com o live (nickname -> SteamID64 -> Steam Web API)", () => {
+  const LIVE_STEAM_ID = "76561198009634211";
+  const T = "2026-08-26T22:00:00.000Z";
+
+  function fakeAvatarFetch() {
+    return vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        response: { players: [{ steamid: LIVE_STEAM_ID, avatarfull: "https://avatars.example/tiro.jpg" }] },
+      }),
+    }));
+  }
+
+  it("nickname do HLstatsX que já apareceu ao vivo ganha o avatar real no ranking e em /api/players", async () => {
+    const app = buildApp({ "mode=players": singlePagePlayersHtml }, { avatarFetchImpl: fakeAvatarFetch() as never });
+
+    await request(app)
+      .post("/api/live/events")
+      .set("Authorization", `Bearer ${LIVE_TOKEN}`)
+      .send({
+        serverId: "srv1",
+        events: [
+          { kind: "player_connect", steamId64: LIVE_STEAM_ID, steamId: "STEAM_1:0:1", nickname: "tiro", userId: 1, timestamp: T },
+        ],
+      })
+      .expect(202);
+
+    await vi.waitFor(async () => {
+      const res = await request(app).get("/api/ranking").query({ q: "tiro" }).expect(200);
+      expect(res.body.items[0].avatarUrl).toBe("https://avatars.example/tiro.jpg");
+    });
+
+    const players = await request(app).get("/api/players").query({ q: "tiro" }).expect(200);
+    expect(players.body.items[0].avatarUrl).toBe("https://avatars.example/tiro.jpg");
+  });
+
+  it("nickname que nunca apareceu ao vivo não ganha avatar inventado", async () => {
+    const app = buildApp({ "mode=players": singlePagePlayersHtml }, { avatarFetchImpl: fakeAvatarFetch() as never });
+
+    const res = await request(app).get("/api/ranking").query({ q: "tiro" }).expect(200);
+    expect(res.body.items[0].avatarUrl).toBeUndefined();
   });
 });

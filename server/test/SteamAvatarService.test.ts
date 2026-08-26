@@ -82,3 +82,22 @@ describe("SteamAvatarService.resolve", () => {
     await expect(service.resolve([ID_A])).resolves.toEqual(new Map());
   });
 });
+
+describe("SteamAvatarService.peek", () => {
+  it("undefined pra ID nunca resolvido, sem chamar a rede", () => {
+    const fetchImpl = vi.fn();
+    const service = new SteamAvatarService("KEY", 3_600_000, fetchImpl as never);
+
+    expect(service.peek(ID_A)).toBeUndefined();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("devolve o que já está em cache depois de um resolve(), sem nova chamada de rede", async () => {
+    const fetchImpl = vi.fn(async () => fakeSteamResponse([{ steamid: ID_A, avatarfull: "https://avatars.example/a.jpg" }]));
+    const service = new SteamAvatarService("KEY", 3_600_000, fetchImpl as never);
+
+    await service.resolve([ID_A]);
+    expect(service.peek(ID_A)).toBe("https://avatars.example/a.jpg");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});

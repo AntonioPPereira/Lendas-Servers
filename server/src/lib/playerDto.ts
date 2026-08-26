@@ -11,7 +11,13 @@ import type { HLStatsRankingRow } from "../services/HLStatsService.js";
  * jogador real — ver HLStatsService). Enquanto isso não mudar, `id` é o
  * único identificador estável que existe pra um jogador real.
  */
-export function toPlayerDto(row: HLStatsRankingRow) {
+/**
+ * `avatarUrl` vem de fora (nunca desta linha do HLstatsX — ver comentário
+ * acima): é o SteamID64 mais recente visto ao vivo com este mesmo nickname
+ * (`NicknameDirectory`), resolvido pra foto pela Steam Web API (`SteamAvatarService`).
+ * Ausente sempre que ninguém com esse nickname exato apareceu ao vivo ainda.
+ */
+export function toPlayerDto(row: HLStatsRankingRow, avatarUrl?: string) {
   return {
     id: row.hlstatsPlayerId,
     rank: row.rank,
@@ -25,6 +31,7 @@ export function toPlayerDto(row: HLStatsRankingRow) {
     hsRate: row.hsRate,
     accuracy: row.accuracy,
     connectionTimeMinutes: row.connectionTimeMinutes,
+    avatarUrl,
   };
 }
 

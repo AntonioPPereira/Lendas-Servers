@@ -76,7 +76,12 @@ export function Podium({ players, className }: { players: RankedPlayer[]; classN
             </div>
 
             <div className="mt-3 flex items-center gap-3">
-              <PlayerAvatar seed={player.id} nickname={player.nickname} size={champion ? "lg" : "md"} />
+              <PlayerAvatar
+                seed={player.id}
+                nickname={player.nickname}
+                avatarUrl={player.avatarUrl}
+                size={champion ? "lg" : "md"}
+              />
               <div className="min-w-0">
                 <p className={cn("truncate font-medium text-ink", champion ? "text-[16px]" : "text-[14px]")}>
                   {player.nickname}

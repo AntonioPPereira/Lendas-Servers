@@ -59,7 +59,7 @@ export default function PlayerProfile() {
       <div data-enter>
         <Panel className="overflow-hidden">
           <div className="flex flex-col gap-5 p-4 sm:flex-row sm:items-center sm:p-5">
-            <PlayerAvatar seed={player.id} nickname={player.nickname} size="xl" />
+            <PlayerAvatar seed={player.id} nickname={player.nickname} avatarUrl={player.avatarUrl} size="xl" />
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2.5">

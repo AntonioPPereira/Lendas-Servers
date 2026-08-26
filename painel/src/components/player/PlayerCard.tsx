@@ -22,7 +22,7 @@ export function PlayerCard({ player, className }: { player: RankedPlayer; classN
       )}
     >
       <div className="flex items-start gap-3">
-        <PlayerAvatar seed={player.id} nickname={player.nickname} size="lg" />
+        <PlayerAvatar seed={player.id} nickname={player.nickname} avatarUrl={player.avatarUrl} size="lg" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-medium text-ink">{player.nickname}</p>
           <p className="t-num mt-1 truncate text-[10.5px] text-ink-4">

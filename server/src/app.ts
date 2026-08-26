@@ -7,6 +7,7 @@ import type { SteamFilterLogService } from "./services/SteamFilterLogService.js"
 import type { SteamAvatarService } from "./services/SteamAvatarService.js";
 import { LiveMatchState } from "./live/state.js";
 import { LiveBroadcaster } from "./live/broadcaster.js";
+import { NicknameDirectory } from "./live/nicknameDirectory.js";
 import { createDemosRouter } from "./routes/demos.js";
 import { createServersRouter } from "./routes/servers.js";
 import { createRankingRouter } from "./routes/ranking.js";
@@ -47,16 +48,17 @@ export interface AppOptions {
  * rodam sem precisar de um .env real, e o app fica genuinamente testável
  * fora do processo de produção.
  *
- * `LiveMatchState`/`LiveBroadcaster` nascem aqui dentro (um por `createApp`,
- * nunca compartilhado entre chamadas) — ao contrário dos outros serviços,
- * não fazem I/O externo nenhum, são só coordenação em memória entre as duas
- * rotas de live; isolar por instância de app é o que mantém os testes sem
- * estado vazando de um caso pro outro.
+ * `LiveMatchState`/`LiveBroadcaster`/`NicknameDirectory` nascem aqui dentro
+ * (um por `createApp`, nunca compartilhado entre chamadas) — ao contrário
+ * dos outros serviços, não fazem I/O externo nenhum, são só coordenação em
+ * memória entre as rotas de live e o ranking; isolar por instância de app é
+ * o que mantém os testes sem estado vazando de um caso pro outro.
  */
 export function createApp(services: AppServices, options: AppOptions = {}) {
   const app = express();
   const liveState = new LiveMatchState(options.liveStaleMs ?? 30_000, options.preferredLiveServerId);
   const liveBroadcaster = new LiveBroadcaster();
+  const nicknames = new NicknameDirectory();
 
   // Atrás de exatamente um proxy reverso em produção (Render, e qualquer PaaS
   // parecido) — sem isso o express-rate-limit não confia no X-Forwarded-For
@@ -71,12 +73,12 @@ export function createApp(services: AppServices, options: AppOptions = {}) {
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
   app.use("/api/demos", createDemosRouter(services.demos));
   app.use("/api/servers", createServersRouter(services.hlstats));
-  app.use("/api/ranking", createRankingRouter(services.hlstats));
-  app.use("/api/players", createPlayersRouter(services.hlstats));
+  app.use("/api/ranking", createRankingRouter(services.hlstats, nicknames, services.avatars));
+  app.use("/api/players", createPlayersRouter(services.hlstats, nicknames, services.avatars));
   app.use("/api/activity", createActivityRouter(services.steamFilter));
   app.use(
     "/api/live/events",
-    createLiveEventsRouter(liveState, liveBroadcaster, services.avatars, options.liveApiToken ?? ""),
+    createLiveEventsRouter(liveState, liveBroadcaster, services.avatars, nicknames, options.liveApiToken ?? ""),
   );
   app.use(
     "/api/live/stream",
