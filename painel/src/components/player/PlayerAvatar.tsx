@@ -12,6 +12,7 @@ const SIZES = {
   md: "size-10",
   lg: "size-14",
   xl: "size-20",
+  xxl: "size-24",
 } as const;
 
 /** Larger renders get a finer grid so the mark reads as an emblem, not a blob. */
@@ -21,6 +22,9 @@ const RESOLUTION: Record<keyof typeof SIZES, number> = {
   md: 5,
   lg: 7,
   xl: 7,
+  // Acima de 80px uma malha 7×7 vira bloco grande demais; 9×9 mantém o
+  // desenho lendo como emblema em vez de mosaico.
+  xxl: 9,
 };
 
 interface PlayerAvatarProps {

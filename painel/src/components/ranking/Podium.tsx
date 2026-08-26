@@ -9,6 +9,29 @@ import { PODIUM_AGENT, TEAM_CREST } from "@/lib/csAssets";
 import { PlayerAvatar } from "@/components/player/PlayerAvatar";
 
 /**
+ * Pontos de origem das brasas, fixos de propósito: sorteá-los a cada render
+ * faria as partículas saltarem de lugar a cada atualização do ranking. A
+ * variação orgânica vem da GSAP (altura, deriva e duração sorteadas por
+ * ciclo), não da posição inicial.
+ */
+const EMBER_ORIGINS: ReadonlyArray<{ left: string; bottom: string; big?: boolean }> = [
+  { left: "9%", bottom: "16%", big: true },
+  { left: "16%", bottom: "26%" },
+  { left: "23%", bottom: "10%" },
+  { left: "30%", bottom: "31%" },
+  { left: "36%", bottom: "18%", big: true },
+  { left: "43%", bottom: "8%" },
+  { left: "50%", bottom: "28%" },
+  { left: "56%", bottom: "14%" },
+  { left: "62%", bottom: "34%", big: true },
+  { left: "69%", bottom: "12%" },
+  { left: "75%", bottom: "24%" },
+  { left: "82%", bottom: "9%" },
+  { left: "88%", bottom: "29%", big: true },
+  { left: "94%", bottom: "19%" },
+];
+
+/**
  * The ladder head. First place is the only element in the product that gets a
  * metal treatment: a lit edge and a single sheen pass on mount.
  */
@@ -94,6 +117,47 @@ export function Podium({ players, className }: { players: RankedPlayer[]; classN
         repeat: -1,
         ease: "none",
       });
+      // Duas tweens cobrem as brasas dos três cards inteiros: valores em
+      // função são reavaliados por alvo e, com repeatRefresh, também a cada
+      // ciclo — variedade orgânica sem uma timeline por partícula. Só
+      // transform e opacity, nada que force layout.
+      //
+      // Subida com tremeluzir embutido nos keyframes de opacity: brasa de
+      // verdade não apaga num fade linear, ela oscila enquanto sobe.
+      gsap.fromTo(
+        "[data-ember]",
+        { y: 0, opacity: 0, scale: 0.4 },
+        {
+          keyframes: {
+            opacity: [0, 0.95, 0.5, 0.85, 0.35, 0.6, 0.15, 0],
+            easeEach: "sine.inOut",
+          },
+          y: () => gsap.utils.random(-190, -320),
+          scale: () => gsap.utils.random(0.7, 1.5),
+          duration: () => gsap.utils.random(4.4, 7.8),
+          ease: "sine.out",
+          repeat: -1,
+          repeatRefresh: true,
+          stagger: { each: 0.17, from: "random", repeat: -1 },
+        },
+      );
+
+      // Deriva lateral independente da subida: o cruzamento das duas
+      // durações (nunca múltiplas uma da outra) é o que faz cada brasa
+      // desenhar um caminho serpenteado diferente, em vez de subir reto.
+      gsap.fromTo(
+        "[data-ember]",
+        { x: () => gsap.utils.random(-6, 6) },
+        {
+          x: () => gsap.utils.random(-30, 30),
+          duration: () => gsap.utils.random(2.3, 4.1),
+          ease: "sine.inOut",
+          repeat: -1,
+          yoyo: true,
+          repeatRefresh: true,
+        },
+      );
+
       gsap.to("[data-edge-corner]", {
         opacity: 0.72,
         scale: 1.18,
@@ -195,10 +259,24 @@ export function Podium({ players, className }: { players: RankedPlayer[]; classN
               />
             ) : null}
 
+            {/* Brasas na cor da posição, subindo por trás do operador. */}
+            <span className="pointer-events-none absolute inset-0 z-[2] overflow-hidden" aria-hidden="true">
+              {EMBER_ORIGINS.map(({ left, bottom, big }, index) => (
+                <span
+                  key={index}
+                  data-ember
+                  data-ember-big={big ? "" : undefined}
+                  className="ranking-ember"
+                  style={{ left, bottom }}
+                />
+              ))}
+            </span>
+
             {/* O operador desta posição do pódio — decoração de rank (o
                 mesmo personagem pra quem estiver em 1º/2º/3º), sangrando
                 pela base do card igual aos bustos da Partida ao vivo, nunca
-                um retrato do jogador de verdade. */}
+                um retrato do jogador de verdade. Puxado pra esquerda pra
+                abrir o canto superior direito pra placa de identidade. */}
             <img
               data-agent
               src={PODIUM_AGENT[player.rank as 1 | 2 | 3]}
@@ -206,10 +284,42 @@ export function Podium({ players, className }: { players: RankedPlayer[]; classN
               aria-hidden="true"
               draggable={false}
               className={cn(
-                "pointer-events-none absolute bottom-0 left-0 z-[3] h-[23rem] w-[96%] select-none object-contain object-bottom opacity-95 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-x-1 group-hover:scale-[1.025] [mask-image:linear-gradient(180deg,transparent,#000_18%)]",
-                champion ? "h-[24rem] w-[98%]" : "h-[23rem] w-[96%]",
+                "pointer-events-none absolute bottom-0 -left-4 z-[3] select-none object-contain object-bottom opacity-95 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-x-1 group-hover:scale-[1.025] [mask-image:linear-gradient(180deg,transparent,#000_18%)]",
+                champion ? "h-[24rem] w-[88%]" : "h-[23rem] w-[86%]",
               )}
             />
+
+            {/* Placa de identidade: retrato do jogador em tamanho de
+                transmissão, com o nome sobre um plaquê escuro próprio — é o
+                que garante leitura em cima do operador, sem precisar
+                empurrar a arte pra fora do card. */}
+            <div
+              data-player-avatar
+              className="pointer-events-none absolute right-3 top-14 z-[6] flex w-[6.5rem] flex-col items-center transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-1 group-hover:scale-[1.04]"
+            >
+              <PlayerAvatar
+                seed={player.id}
+                nickname={player.nickname}
+                avatarUrl={player.avatarUrl}
+                size={champion ? "xxl" : "xl"}
+                className={cn(
+                  "shadow-[0_10px_28px_-10px_rgb(0_0_0_/_0.95)]",
+                  champion
+                    ? "border-brass/45 ring-brass/35"
+                    : "border-ct/40 ring-ct/25",
+                )}
+              />
+              <span
+                className={cn(
+                  "mt-1.5 max-w-full truncate rounded-xs border px-2 py-0.5 text-center font-medium text-ink backdrop-blur-[2px]",
+                  champion
+                    ? "border-brass/30 bg-abyss/80 text-[13.5px]"
+                    : "border-line-soft bg-abyss/80 text-[12.5px]",
+                )}
+              >
+                {player.nickname}
+              </span>
+            </div>
 
             <div className="relative z-10 flex items-start justify-between gap-3">
               <span
@@ -224,10 +334,9 @@ export function Podium({ players, className }: { players: RankedPlayer[]; classN
             </div>
 
             <div className="relative z-10 mt-auto -mx-4 -mb-4 bg-gradient-to-t from-panel via-panel/85 to-transparent px-4 pb-4 pt-12">
-              {/* Identidade ancorando o bloco: brasão, avatar e nickname na
-                  mesma linha. O emblema gerado só lê como brasão em tamanho
-                  pequeno — grande demais ele vira ruído e rouba a cena do
-                  operador, que é o herói da composição. */}
+              {/* O nickname mora na placa de identidade lá em cima; aqui
+                  fica só brasão + pontuação, pra não repetir o nome duas
+                  vezes no mesmo card. */}
               <div className="flex items-center gap-2.5">
                 <span
                   data-crest
@@ -246,29 +355,15 @@ export function Podium({ players, className }: { players: RankedPlayer[]; classN
                   />
                 </span>
 
-                <span data-player-avatar className="shrink-0">
-                  <PlayerAvatar
-                    seed={player.id}
-                    nickname={player.nickname}
-                    avatarUrl={player.avatarUrl}
-                    size={champion ? "md" : "sm"}
-                    className={champion ? "border-brass/50" : undefined}
-                  />
-                </span>
-
                 <p
                   className={cn(
-                    "min-w-0 truncate font-medium text-ink [text-shadow:0_1px_5px_rgb(0_0_0_/_0.95)]",
-                    champion ? "text-[16px]" : "text-[14px]",
+                    "t-num min-w-0 truncate [text-shadow:0_1px_5px_rgb(0_0_0_/_0.95)]",
+                    champion ? "text-[14px] text-ink" : "text-[12.5px] text-ink-2",
                   )}
                 >
-                  {player.nickname}
+                  {formatNumber(player.skill)} <span className="text-ink-4">pontos</span>
                 </p>
               </div>
-
-              <p className="t-num mt-1.5 text-[11px] text-ink-3">
-                {formatNumber(player.skill)} pontos
-              </p>
 
               <dl className="mt-3 grid grid-cols-3 gap-2">
                 <Stat label="K/D" value={formatDecimal(player.kd ?? 0)} highlight={champion} />

@@ -351,6 +351,13 @@
     box-shadow: inset 0 0 0 1px rgb(226 189 128 / 0.1), 0 0 26px rgb(194 146 78 / 0.1);
   }
 
+  /**
+   * A varredura gira o ângulo do gradiente cônico na própria caixa do card.
+   * Tentei trocar por um quadrado girando via transform atrás da máscara,
+   * esperando composição de GPU — medido, ficou PIOR (35fps contra 42): a
+   * camada mascarada precisa ser recomposta a cada frame de qualquer jeito, e
+   * ela é ~2x a área do card. Menos área ganha do truque "mais moderno".
+   */
   .ranking-edge-scan {
     --edge-angle: 0deg;
     padding: 1px;
@@ -371,12 +378,16 @@
     transition: opacity 360ms var(--ease-out-hud), filter 360ms var(--ease-out-hud);
   }
 
+  /**
+   * Sem `filter: drop-shadow` aqui: estes elementos animam scaleX/scaleY, e
+   * filtro em elemento que transforma força re-rasterizar o desfoque todo
+   * frame. O halo vem do próprio gradiente, que a GPU só re-compõe.
+   */
   .ranking-edge-side {
     position: absolute;
     display: block;
     opacity: 0;
     background: linear-gradient(90deg, transparent, rgb(117 185 235 / 0.9) 48%, transparent);
-    filter: drop-shadow(0 0 4px rgb(89 157 213 / 0.45));
     transform-origin: left center;
   }
 
@@ -416,7 +427,6 @@
 
   [data-edge-card="1"] .ranking-edge-side {
     background: linear-gradient(90deg, transparent, rgb(226 189 128 / 0.96) 48%, transparent);
-    filter: drop-shadow(0 0 5px rgb(194 146 78 / 0.58));
   }
 
   [data-edge-card="1"] .ranking-edge-side:nth-child(2) {
@@ -472,6 +482,47 @@
     opacity: 0.5;
   }
 
+  /**
+   * Brasas subindo dentro do card, na cor da posição. Pontos de 3px com
+   * halo — a GSAP move só transform/opacity, então os 27 (9 por card)
+   * cabem numa composição de GPU sem custo perceptível.
+   */
+  .ranking-ember {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 999px;
+    /* Núcleo quase branco desbotando pra cor do time: é o núcleo quente que
+       faz o ponto ler como brasa em vez de bolinha colorida. */
+    background: radial-gradient(circle, rgb(232 245 255 / 0.98) 0%, rgb(140 195 240 / 0.9) 45%, rgb(89 157 213 / 0) 100%);
+    box-shadow:
+      0 0 5px 1px rgb(117 185 235 / 0.55),
+      0 0 12px 3px rgb(89 157 213 / 0.22);
+  }
+
+  .ranking-ember[data-ember-big] {
+    width: 5px;
+    height: 5px;
+    box-shadow:
+      0 0 7px 2px rgb(117 185 235 / 0.6),
+      0 0 18px 5px rgb(89 157 213 / 0.26);
+  }
+
+  [data-edge-card="1"] .ranking-ember {
+    background: radial-gradient(circle, rgb(255 248 232 / 0.99) 0%, rgb(246 206 141 / 0.92) 45%, rgb(226 168 80 / 0) 100%);
+    box-shadow:
+      0 0 6px 1px rgb(240 190 120 / 0.6),
+      0 0 14px 4px rgb(226 168 80 / 0.26);
+  }
+
+  [data-edge-card="1"] .ranking-ember[data-ember-big] {
+    width: 6px;
+    height: 6px;
+    box-shadow:
+      0 0 9px 2px rgb(244 205 145 / 0.66),
+      0 0 22px 6px rgb(226 168 80 / 0.3);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .ranking-edge-scan {
       opacity: 0;
@@ -483,6 +534,11 @@
 
     .ranking-edge-corner {
       opacity: 0.3;
+    }
+
+    /* Brasa parada não significa nada — é movimento puro, some inteira. */
+    .ranking-ember {
+      display: none;
     }
   }
 
