@@ -7,7 +7,7 @@ import { api, type Page } from "@/api/client";
 import type { RankedPlayer } from "@/data/types";
 import { useRealActivity } from "@/hooks/useRealActivity";
 import { cn } from "@/lib/cn";
-import { MATCHES } from "@/data/matches";
+import { asset } from "@/lib/csAssets";
 import { formatDecimal, formatNumber } from "@/lib/format";
 import { LinkButton } from "@/components/ui/Button";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -16,7 +16,6 @@ import { LiveMatch } from "@/components/match/LiveMatch";
 import { Scoreboard } from "@/components/match/Scoreboard";
 import { RoundStrip } from "@/components/match/RoundStrip";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
-import { MatchCard } from "@/components/match/MatchCard";
 import { PlayerAvatar } from "@/components/player/PlayerAvatar";
 
 /** Referência estável — evita recriar array a cada render sem dado ainda. */
@@ -27,12 +26,12 @@ export default function Overview() {
   const match = useLiveMatch();
   const activity = useRealActivity();
   const connection = useConnection();
-  // pageSize 6, não 5: fecha a lista bem perto da altura natural da coluna
-  // de partidas ao lado, sem precisar esticar o painel com espaço vazio.
-  const topRanking = useResource<Page<RankedPlayer>>(() => api.ranking({ page: 1, pageSize: 6 }), []);
+  // Top 10 fechado: número redondo que a comunidade entende de cara, e
+  // preenche a coluna ao lado da Atividade (que rola bem mais longa) sem
+  // deixar o painel oco embaixo.
+  const topRanking = useResource<Page<RankedPlayer>>(() => api.ranking({ page: 1, pageSize: 10 }), []);
   const topPlayers = topRanking.data?.items ?? EMPTY_TOP;
 
-  const recentMatches = MATCHES.slice(0, 4);
   const booting = connection === "connecting";
 
   return (
@@ -81,41 +80,41 @@ export default function Overview() {
           </Panel>
         </div>
 
-        <div data-enter className="min-w-0">
-          <Panel className="flex h-full flex-col overflow-hidden">
-            <PanelHeader
-              label="Atividade ao vivo"
-              accent="brass"
-              actions={
-                <Link
-                  to="/atividade"
-                  className="t-eyebrow text-[9px] text-ink-3 transition-colors hover:text-brass"
-                >
-                  Ver tudo
-                </Link>
-              }
+        {/* Cartaz da rede, ao lado do placar. Leva ao Ranking porque é
+            exatamente o que ele anuncia — a premiação do topo. */}
+        <div data-enter className="relative min-w-0">
+          <span
+            aria-hidden="true"
+            className="brand-aura pointer-events-none absolute -inset-3 rounded-md blur-2xl"
+          />
+          <Link
+            to="/ranking"
+            className="brand-banner panel group relative block h-full overflow-hidden p-0"
+          >
+            <img
+              src={asset("/brand/lendas-premium.jpg")}
+              alt="LENDASCS, Counter-Strike: Source — premiação de R$ 50,00 para quem estiver no topo do rank."
+              draggable={false}
+              className="size-full select-none object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]"
             />
-            <div className="min-h-0 flex-1 overflow-y-auto px-3.5 py-2">
-              {activity.status === "error" ? (
-                <ErrorState
-                  title="Atividade indisponível"
-                  hint="O servidor de arquivos (SFTP) está fora do ar no momento."
-                  onRetry={activity.reload}
-                  className="py-8"
-                />
-              ) : activity.status === "loading" && !activity.data ? (
-                <LoadingState label="Consultando o filtro de requisitos" className="py-8" />
-              ) : (
-                <ActivityTimeline events={activity.data ?? []} limit={14} />
-              )}
-            </div>
-          </Panel>
+          </Link>
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      {/* "Últimas partidas" morava na coluna da direita aqui, alimentado por
+          MATCHES (dado gerado). Saiu junto com a rota de Partidas indo pra
+          manutenção — a Visão geral é a primeira tela que alguém vê, e não
+          podia ser justamente ela a mostrar placar inventado. A Atividade
+          desceu pro lugar dele, e o Topo passou a fechar a coluna do placar. */}
+      {/* Quem manda na altura desta linha é o Topo, que tem altura fixa (10
+          linhas). A Atividade é longa e variável, então a coluna dela sai do
+          fluxo no xl (o filho vira absolute) e não empurra a linha pra
+          baixo — ela passa a preencher exatamente a altura do Topo e rola
+          por dentro. É isso que deixa os dois painéis terminando na mesma
+          linha sem nenhum vão morto, em vez de um esticar atrás do outro. */}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div data-enter className="min-w-0">
-          <Panel className="flex h-full flex-col overflow-hidden">
+          <Panel hud className="overflow-hidden">
             <PanelHeader
               label="Topo da comunidade"
               accent="brass"
@@ -128,10 +127,7 @@ export default function Overview() {
                 </Link>
               }
             />
-            {/* flex-1: a lista tem só 5 linhas, bem mais baixa que as 4
-                partidas da coluna ao lado — sem isso a borda do painel
-                terminava bem antes da coluna vizinha. */}
-            <div className="flex-1">
+            <div>
               {topRanking.status === "error" ? (
                 <ErrorState
                   title="Ranking indisponível"
@@ -189,19 +185,37 @@ export default function Overview() {
           </Panel>
         </div>
 
-        <div data-enter className="min-w-0 space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="t-eyebrow">Últimas partidas</h2>
-            <Link
-              to="/partidas"
-              className="t-eyebrow text-[9px] text-ink-3 transition-colors hover:text-brass"
-            >
-              Histórico
-            </Link>
+        <div data-enter className="relative min-w-0">
+          <div className="xl:absolute xl:inset-0">
+            <Panel className="flex h-full flex-col overflow-hidden">
+              <PanelHeader
+                label="Atividade ao vivo"
+                accent="brass"
+                actions={
+                  <Link
+                    to="/atividade"
+                    className="t-eyebrow text-[9px] text-ink-3 transition-colors hover:text-brass"
+                  >
+                    Ver tudo
+                  </Link>
+                }
+              />
+              <div className="min-h-0 flex-1 overflow-y-auto px-3.5 py-2">
+                {activity.status === "error" ? (
+                  <ErrorState
+                    title="Atividade indisponível"
+                    hint="O servidor de arquivos (SFTP) está fora do ar no momento."
+                    onRetry={activity.reload}
+                    className="py-8"
+                  />
+                ) : activity.status === "loading" && !activity.data ? (
+                  <LoadingState label="Consultando o filtro de requisitos" className="py-8" />
+                ) : (
+                  <ActivityTimeline events={activity.data ?? []} limit={14} />
+                )}
+              </div>
+            </Panel>
           </div>
-          {recentMatches.map((entry) => (
-            <MatchCard key={entry.id} match={entry} />
-          ))}
         </div>
       </div>
     </div>

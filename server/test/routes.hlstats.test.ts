@@ -186,3 +186,11 @@ describe("avatar real cruzado com o live (nickname -> SteamID64 -> Steam Web API
     expect(res.body.items[0].avatarUrl).toBeUndefined();
   });
 });
+
+describe("ordem da lista de servidores", () => {
+  it("Servidor 01 vem antes do 02, mesmo o HLstatsX listando ao contrário", async () => {
+    const app = buildApp({ "hlstats.php?game=css": homeHtml });
+    const res = await request(app).get("/api/servers").expect(200);
+    expect(res.body.map((s: { id: string }) => s.id)).toEqual(["lendas-01", "lendas-02"]);
+  });
+});

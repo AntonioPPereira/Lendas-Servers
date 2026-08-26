@@ -626,6 +626,49 @@
     border-right: 1px solid;
   }
 
+  /**
+   * Aura do cartaz da rede. A arte é dominada por dourado e fogo, então o
+   * halo puxa o mesmo âmbar em vez de um brilho neutro — parece luz saindo
+   * da própria imagem, não uma sombra colorida atrás dela. Só `opacity`
+   * anima; o desfoque é rasterizado uma vez e apenas re-composto.
+   */
+  .brand-aura {
+    background: radial-gradient(
+      58% 58% at 50% 50%,
+      rgb(240 168 64 / 0.52),
+      rgb(194 146 78 / 0.24) 55%,
+      transparent 78%
+    );
+    animation: brand-aura-breathe 5.5s ease-in-out infinite;
+  }
+
+  @keyframes brand-aura-breathe {
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 0.88;
+    }
+  }
+
+  .brand-banner {
+    border-color: color-mix(in srgb, var(--color-brass) 34%, transparent);
+    transition: border-color 420ms var(--ease-out-hud), box-shadow 420ms var(--ease-out-hud);
+  }
+
+  .group:hover .brand-banner,
+  .brand-banner:hover {
+    border-color: color-mix(in srgb, var(--color-brass-hi) 55%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brand-aura {
+      animation: none;
+      opacity: 0.6;
+    }
+  }
+
   /* Brass is a metal here, not a glow: a 1px lit edge + a slow sheen. */
   .brass-edge {
     box-shadow:

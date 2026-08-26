@@ -4,7 +4,7 @@
  */
 
 /** Resolve contra a base do Vite para não quebrar em deploy com subcaminho. */
-function asset(path: string): string {
+export function asset(path: string): string {
   return import.meta.env.BASE_URL.replace(/\/$/, "") + path;
 }
 

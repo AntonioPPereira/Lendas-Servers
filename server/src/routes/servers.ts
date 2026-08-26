@@ -24,13 +24,30 @@ function toDto(row: HLStatsServerRow) {
   };
 }
 
+/**
+ * O HLstatsX lista na ordem dele (por atividade recente), então o Servidor
+ * 02 aparecia antes do 01. Ordena pelo número real do nome — quem não segue
+ * a convenção "SERVIDOR N" cai pro fim, em ordem alfabética, em vez de se
+ * misturar de forma imprevisível no meio dos numerados.
+ */
+function byServerNumber(a: HLStatsServerRow, b: HLStatsServerRow): number {
+  const numberOf = (row: HLStatsServerRow) => {
+    const match = /SERVIDOR\s+(\d+)/i.exec(row.name);
+    return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+  };
+  const diff = numberOf(a) - numberOf(b);
+  if (diff !== 0 && Number.isFinite(diff)) return diff;
+  if (diff !== 0) return numberOf(a) === Number.POSITIVE_INFINITY ? 1 : -1;
+  return a.name.localeCompare(b.name, "pt-BR");
+}
+
 export function createServersRouter(hlstats: HLStatsService): Router {
   const router = Router();
 
   router.get("/", async (_req, res, next) => {
     try {
       const rows = await hlstats.getServers();
-      res.json(rows.map(toDto));
+      res.json([...rows].sort(byServerNumber).map(toDto));
     } catch (err) {
       next(err);
     }

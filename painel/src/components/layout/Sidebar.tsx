@@ -94,11 +94,29 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, className }: 
                             isActive ? "text-brass" : "text-ink-3 group-hover:text-ink-2",
                           )}
                         />
-                        {collapsed ? null : <span className="truncate">{item.label}</span>}
+                        {collapsed ? null : (
+                          <span className={cn("truncate", item.maintenance && "text-ink-3")}>
+                            {item.label}
+                          </span>
+                        )}
                         {item.live && !collapsed ? (
                           <span className="t-num ml-auto text-[10.5px] text-ink-3">
                             {onlinePlayers}
                           </span>
+                        ) : null}
+                        {/* Seção em obra: a marca fica no menu pra ninguém
+                            descobrir só depois de clicar. Recolhido não cabe
+                            texto, então vira um ponto no lugar do ícone. */}
+                        {item.maintenance && !collapsed ? (
+                          <span className="t-eyebrow ml-auto shrink-0 rounded-xs border border-warn/25 bg-warn/10 px-1.5 py-0.5 text-[8.5px] text-warn">
+                            Obra
+                          </span>
+                        ) : null}
+                        {item.maintenance && collapsed ? (
+                          <span
+                            className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-warn/70"
+                            aria-hidden="true"
+                          />
                         ) : null}
                       </>
                     )}

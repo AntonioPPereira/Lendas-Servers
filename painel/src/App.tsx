@@ -12,14 +12,21 @@ const Servers = lazy(() => import("@/pages/Servers"));
 const Ranking = lazy(() => import("@/pages/Ranking"));
 const Demos = lazy(() => import("@/pages/Demos"));
 const DemoDetail = lazy(() => import("@/pages/DemoDetail"));
-const Bans = lazy(() => import("@/pages/Bans"));
 const Players = lazy(() => import("@/pages/Players"));
 const PlayerProfile = lazy(() => import("@/pages/PlayerProfile"));
 const Activity = lazy(() => import("@/pages/Activity"));
-const Matches = lazy(() => import("@/pages/Matches"));
-const MatchDetail = lazy(() => import("@/pages/MatchDetail"));
-const Stats = lazy(() => import("@/pages/Stats"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const Maintenance = lazy(() => import("@/pages/Maintenance"));
+
+/**
+ * Partidas, Banimentos e Estatísticas apontam pra Maintenance: foram feitas
+ * antes de existir fonte real e seguiam exibindo dados gerados, destoando do
+ * resto do painel. Os módulos `pages/Matches`, `pages/MatchDetail`,
+ * `pages/Bans` e `pages/Stats` continuam no repositório de propósito — a
+ * obra é temporária, e apagá-los agora só daria trabalho de reescrever a
+ * casca quando a fonte existir. Pra religar, é trocar o element da rota de
+ * volta.
+ */
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
 
 function PublicApp() {
@@ -34,13 +41,40 @@ function PublicApp() {
               <Route path="/ranking" element={<Ranking />} />
               <Route path="/demos" element={<Demos />} />
               <Route path="/demos/:id" element={<DemoDetail />} />
-              <Route path="/banimentos" element={<Bans />} />
               <Route path="/jogadores" element={<Players />} />
               <Route path="/jogadores/:id" element={<PlayerProfile />} />
               <Route path="/atividade" element={<Activity />} />
-              <Route path="/partidas" element={<Matches />} />
-              <Route path="/partidas/:id" element={<MatchDetail />} />
-              <Route path="/estatisticas" element={<Stats />} />
+
+              <Route
+                path="/banimentos"
+                element={
+                  <Maintenance
+                    eyebrow="Moderação"
+                    title="Banimentos"
+                    reason="A lista de banimentos ainda não tem fonte real ligada — o registro do SourceBans desta rede não é exposto pelo painel hoje."
+                  />
+                }
+              />
+              <Route
+                path="/partidas/*"
+                element={
+                  <Maintenance
+                    eyebrow="Arquivo"
+                    title="Partidas"
+                    reason="O histórico de partidas depende de uma fonte que ainda não existe: o HLstatsX desta instalação não expõe partida por partida."
+                  />
+                }
+              />
+              <Route
+                path="/estatisticas"
+                element={
+                  <Maintenance
+                    eyebrow="Arquivo"
+                    title="Estatísticas"
+                    reason="Os agregados desta tela dependem do histórico de partidas, que ainda não tem fonte real ligada."
+                  />
+                }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

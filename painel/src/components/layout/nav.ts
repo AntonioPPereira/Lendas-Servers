@@ -18,6 +18,8 @@ export interface NavItem {
   end?: boolean;
   /** Rendered as a live counter in the rail. */
   live?: boolean;
+  /** Seção em obra: continua clicável (leva à página de manutenção), mas sinalizada no menu. */
+  maintenance?: boolean;
 }
 
 export interface NavGroup {
@@ -49,9 +51,9 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Arquivo",
     items: [
       { to: "/demos", label: "Demos", icon: Clapperboard },
-      { to: "/partidas", label: "Partidas", icon: Swords },
-      { to: "/banimentos", label: "Banimentos", icon: Gavel },
-      { to: "/estatisticas", label: "Estatísticas", icon: ChartColumn },
+      { to: "/partidas", label: "Partidas", icon: Swords, maintenance: true },
+      { to: "/banimentos", label: "Banimentos", icon: Gavel, maintenance: true },
+      { to: "/estatisticas", label: "Estatísticas", icon: ChartColumn, maintenance: true },
     ],
   },
 ];
