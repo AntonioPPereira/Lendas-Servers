@@ -102,3 +102,14 @@ export const TEAM_AGENT = {
   CT: asset("/cs/agents/ct.png"),
   T: asset("/cs/agents/t.png"),
 } as const;
+
+/**
+ * Um operador CT diferente pra cada posição do pódio (1º/2º/3º), fornecidos
+ * pelo usuário — decoração de rank, não retrato do jogador: o mesmo
+ * personagem aparece pra quem quer que esteja naquela posição no momento.
+ */
+export const PODIUM_AGENT: Record<1 | 2 | 3, string> = {
+  1: asset("/cs/agents/podium/rank-1.png"),
+  2: asset("/cs/agents/podium/rank-2.png"),
+  3: asset("/cs/agents/podium/rank-3.png"),
+};

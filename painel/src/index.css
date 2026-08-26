@@ -330,6 +330,162 @@
     border-radius: var(--radius-md);
   }
 
+  .ranking-edge-base {
+    border: 1px solid rgb(89 157 213 / 0.18);
+    box-shadow: inset 0 0 0 1px rgb(89 157 213 / 0.035), 0 0 18px rgb(33 126 208 / 0.035);
+    transition: border-color 360ms var(--ease-out-hud), box-shadow 360ms var(--ease-out-hud);
+  }
+
+  [data-edge-card="1"] .ranking-edge-base {
+    border-color: rgb(194 146 78 / 0.34);
+    box-shadow: inset 0 0 0 1px rgb(226 189 128 / 0.06), 0 0 22px rgb(194 146 78 / 0.06);
+  }
+
+  .group:hover .ranking-edge-base {
+    border-color: rgb(117 185 235 / 0.38);
+    box-shadow: inset 0 0 0 1px rgb(117 185 235 / 0.08), 0 0 22px rgb(33 126 208 / 0.08);
+  }
+
+  [data-edge-card="1"].group:hover .ranking-edge-base {
+    border-color: rgb(226 189 128 / 0.5);
+    box-shadow: inset 0 0 0 1px rgb(226 189 128 / 0.1), 0 0 26px rgb(194 146 78 / 0.1);
+  }
+
+  .ranking-edge-scan {
+    --edge-angle: 0deg;
+    padding: 1px;
+    opacity: 0.26;
+    background: conic-gradient(
+      from var(--edge-angle),
+      transparent 0deg 70deg,
+      rgb(89 157 213 / 0.08) 78deg,
+      rgb(117 185 235 / 0.7) 86deg,
+      transparent 96deg 250deg,
+      rgb(89 157 213 / 0.08) 258deg,
+      transparent 270deg 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    transition: opacity 360ms var(--ease-out-hud), filter 360ms var(--ease-out-hud);
+  }
+
+  .ranking-edge-side {
+    position: absolute;
+    display: block;
+    opacity: 0;
+    background: linear-gradient(90deg, transparent, rgb(117 185 235 / 0.9) 48%, transparent);
+    filter: drop-shadow(0 0 4px rgb(89 157 213 / 0.45));
+    transform-origin: left center;
+  }
+
+  .ranking-edge-side:nth-child(1) {
+    top: 0;
+    right: 5px;
+    left: 5px;
+    height: 1px;
+  }
+
+  .ranking-edge-side:nth-child(2) {
+    top: 5px;
+    right: 0;
+    bottom: 5px;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgb(117 185 235 / 0.9) 48%, transparent);
+    transform-origin: center top;
+  }
+
+  .ranking-edge-side:nth-child(3) {
+    right: 5px;
+    bottom: 0;
+    left: 5px;
+    height: 1px;
+    background: linear-gradient(270deg, transparent, rgb(117 185 235 / 0.9) 48%, transparent);
+    transform-origin: right center;
+  }
+
+  .ranking-edge-side:nth-child(4) {
+    top: 5px;
+    bottom: 5px;
+    left: 0;
+    width: 1px;
+    background: linear-gradient(0deg, transparent, rgb(117 185 235 / 0.9) 48%, transparent);
+    transform-origin: center bottom;
+  }
+
+  [data-edge-card="1"] .ranking-edge-side {
+    background: linear-gradient(90deg, transparent, rgb(226 189 128 / 0.96) 48%, transparent);
+    filter: drop-shadow(0 0 5px rgb(194 146 78 / 0.58));
+  }
+
+  [data-edge-card="1"] .ranking-edge-side:nth-child(2) {
+    background: linear-gradient(180deg, transparent, rgb(226 189 128 / 0.96) 48%, transparent);
+  }
+
+  [data-edge-card="1"] .ranking-edge-side:nth-child(3) {
+    background: linear-gradient(270deg, transparent, rgb(226 189 128 / 0.96) 48%, transparent);
+  }
+
+  [data-edge-card="1"] .ranking-edge-side:nth-child(4) {
+    background: linear-gradient(0deg, transparent, rgb(226 189 128 / 0.96) 48%, transparent);
+  }
+
+  [data-edge-card="1"] .ranking-edge-scan {
+    background: conic-gradient(
+      from var(--edge-angle),
+      transparent 0deg 70deg,
+      rgb(194 146 78 / 0.1) 78deg,
+      rgb(226 189 128 / 0.76) 86deg,
+      transparent 96deg 250deg,
+      rgb(194 146 78 / 0.1) 258deg,
+      transparent 270deg 360deg
+    );
+  }
+
+  .group:hover .ranking-edge-scan {
+    opacity: 0.56;
+    filter: brightness(1.12);
+  }
+
+  .ranking-edge-corner {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgb(117 185 235 / 0.7);
+    box-shadow: 0 0 7px rgb(89 157 213 / 0.42);
+    opacity: 0.32;
+    transform: scale(1);
+  }
+
+  .ranking-edge-corner:nth-child(1) { top: 5px; left: 5px; }
+  .ranking-edge-corner:nth-child(2) { top: 5px; right: 5px; }
+  .ranking-edge-corner:nth-child(3) { right: 5px; bottom: 5px; }
+  .ranking-edge-corner:nth-child(4) { bottom: 5px; left: 5px; }
+
+  .ranking-edge-corners-champion .ranking-edge-corner {
+    width: 5px;
+    height: 5px;
+    background: rgb(226 189 128 / 0.82);
+    box-shadow: 0 0 8px rgb(194 146 78 / 0.5);
+    opacity: 0.5;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ranking-edge-scan {
+      opacity: 0;
+    }
+
+    .ranking-edge-side {
+      opacity: 0;
+    }
+
+    .ranking-edge-corner {
+      opacity: 0.3;
+    }
+  }
+
   /* HUD corner brackets — used only on the live match module,
      the one place the interface claims to be a readout. */
   .hud-frame::before,
