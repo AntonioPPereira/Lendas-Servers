@@ -234,19 +234,13 @@ export function Podium({ players, className }: { players: RankedPlayer[]; classN
               <span data-edge-corner className="ranking-edge-corner" />
             </span>
 
-            <span
-              className={cn(
-                "pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_68%_42%,rgb(55_145_220_/_0.2),transparent_34%),linear-gradient(180deg,rgb(9_16_21_/_0.18),rgb(9_8_7_/_0.78))]",
-                champion && "bg-[radial-gradient(circle_at_68%_38%,rgb(194_146_78_/_0.22),transparent_34%),radial-gradient(circle_at_54%_48%,rgb(55_145_220_/_0.18),transparent_38%),linear-gradient(180deg,rgb(9_16_21_/_0.1),rgb(9_8_7_/_0.82))]",
-              )}
-              aria-hidden="true"
-            />
+            <span className="ranking-card-wash pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
 
             <span
               data-champion-glow={champion ? true : undefined}
               className={cn(
-                "pointer-events-none absolute right-[10%] top-[18%] z-[1] aspect-square w-36 rounded-full bg-[radial-gradient(circle,rgb(71_164_241_/_0.34),rgb(33_126_208_/_0.12)_46%,transparent_70%)] opacity-60 blur-[10px]",
-                champion && "right-[13%] top-[15%] w-48 bg-[radial-gradient(circle,rgb(226_189_128_/_0.3),rgb(33_126_208_/_0.16)_48%,transparent_72%)]",
+                "ranking-card-halo pointer-events-none absolute z-[1] aspect-square rounded-full opacity-60 blur-[10px]",
+                champion ? "right-[13%] top-[15%] w-48" : "right-[10%] top-[18%] w-36",
               )}
               aria-hidden="true"
             />
@@ -302,19 +296,12 @@ export function Podium({ players, className }: { players: RankedPlayer[]; classN
                 nickname={player.nickname}
                 avatarUrl={player.avatarUrl}
                 size={champion ? "xxl" : "xl"}
-                className={cn(
-                  "shadow-[0_10px_28px_-10px_rgb(0_0_0_/_0.95)]",
-                  champion
-                    ? "border-brass/45 ring-brass/35"
-                    : "border-ct/40 ring-ct/25",
-                )}
+                className="ranking-portrait-medal shadow-[0_10px_28px_-10px_rgb(0_0_0_/_0.95)]"
               />
               <span
                 className={cn(
-                  "mt-1.5 max-w-full truncate rounded-xs border px-2 py-0.5 text-center font-medium text-ink backdrop-blur-[2px]",
-                  champion
-                    ? "border-brass/30 bg-abyss/80 text-[13.5px]"
-                    : "border-line-soft bg-abyss/80 text-[12.5px]",
+                  "ranking-portrait-medal mt-1.5 max-w-full truncate rounded-xs border bg-abyss/80 px-2 py-0.5 text-center font-medium text-ink backdrop-blur-[2px]",
+                  champion ? "text-[13.5px]" : "text-[12.5px]",
                 )}
               >
                 {player.nickname}
@@ -325,12 +312,23 @@ export function Podium({ players, className }: { players: RankedPlayer[]; classN
               <span
                 className={cn(
                   "t-display leading-none [text-shadow:0_1px_6px_rgb(0_0_0_/_0.85)]",
-                  champion ? "brass-text text-[44px]" : "text-[30px] text-ink-4",
+                  champion ? "brass-text text-[44px]" : "ranking-rank-medal text-[30px]",
                 )}
               >
                 {player.rank}
               </span>
-              {champion ? <Crown className="size-4 shrink-0 text-brass drop-shadow-[0_1px_4px_rgb(0_0_0_/_0.85)]" /> : null}
+              {/* Coroa em todas as três posições, cada uma no metal da sua
+                  medalha. A do campeão é maior e preenchida; as outras ficam
+                  só no contorno, pra continuar existindo uma hierarquia
+                  entre elas em vez de três coroas iguais. */}
+              <Crown
+                aria-hidden="true"
+                strokeWidth={champion ? 2 : 1.75}
+                className={cn(
+                  "ranking-crown shrink-0",
+                  champion ? "size-6" : "size-[18px]",
+                )}
+              />
             </div>
 
             <div className="relative z-10 mt-auto -mx-4 -mb-4 bg-gradient-to-t from-panel via-panel/85 to-transparent px-4 pb-4 pt-12">
@@ -341,7 +339,7 @@ export function Podium({ players, className }: { players: RankedPlayer[]; classN
                 <span
                   data-crest
                   className={cn(
-                    "flex shrink-0 items-center justify-center drop-shadow-[0_0_9px_rgb(48_145_230_/_0.75)]",
+                    "ranking-crest-glow flex shrink-0 items-center justify-center",
                     "transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110",
                     champion ? "size-9" : "size-7",
                   )}
