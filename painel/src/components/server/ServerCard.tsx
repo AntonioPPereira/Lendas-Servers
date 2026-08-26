@@ -1,13 +1,15 @@
 import { Timer, Users } from "lucide-react";
 import type { RealServer } from "@/data/types";
 import { cn } from "@/lib/cn";
-import { formatDuration, mapLabel, mapPrefix } from "@/lib/format";
+import { formatDuration, mapLabel } from "@/lib/format";
+import { mapBackground } from "@/lib/csAssets";
 import { Badge, PulseDot } from "@/components/ui/Badge";
 import { Meter } from "@/components/ui/Meter";
 import { RealConnectButton } from "./RealConnectButton";
 
 export function ServerCard({ server, className }: { server: RealServer; className?: string }) {
   const full = server.players >= server.maxPlayers;
+  const backdrop = mapBackground(server.map);
 
   return (
     <article
@@ -18,22 +20,47 @@ export function ServerCard({ server, className }: { server: RealServer; classNam
         className,
       )}
     >
-      <header className="flex items-center gap-2.5 border-b border-line-soft px-4 py-3">
-        <PulseDot tone="live" />
-        <div className="min-w-0 flex-1">
-          <h3 className="t-title truncate text-[12.5px] text-ink">{server.name}</h3>
-          <p className="t-num mt-0.5 truncate text-[10px] text-ink-4">
-            {server.host}:{server.port}
-          </p>
+      {/* Mesma placa de identificação por foto do mapa dos cards de demo —
+          o mapa deixa de ser só texto, aparece de verdade quando existe. */}
+      <div className="relative h-28 shrink-0 overflow-hidden bg-abyss">
+        {backdrop ? (
+          <img
+            src={backdrop}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 size-full select-none object-cover [filter:contrast(1.05)_saturate(1.15)]"
+          />
+        ) : (
+          <span className="t-display absolute -right-1 -top-2 select-none text-[64px] leading-none text-ink opacity-[0.06]">
+            {mapLabel(server.map)}
+          </span>
+        )}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, rgb(4 4 3 / 0.6) 0%, transparent 24%, transparent 45%, var(--color-abyss) 96%)",
+          }}
+        />
+        <div className="relative z-10 flex h-full flex-col justify-between p-3">
+          <div className="flex items-start gap-2">
+            <PulseDot tone="live" className="mt-1 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="t-title truncate text-[12px] text-ink">{server.name}</p>
+              <p className="t-num truncate text-[9.5px] text-ink-3">
+                {server.host}:{server.port}
+              </p>
+            </div>
+            <Badge tone="live" className="shrink-0">
+              Online
+            </Badge>
+          </div>
+          <p className="t-display truncate text-[19px] text-ink">{mapLabel(server.map)}</p>
         </div>
-        <Badge tone="live">Online</Badge>
-      </header>
+      </div>
 
       <div className="px-4 py-3.5">
-        <p className="t-eyebrow text-[9px]">{mapPrefix(server.map)}</p>
-        <p className="t-display mt-1 truncate text-[22px] text-ink">{mapLabel(server.map)}</p>
-
-        <div className="mt-3 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <Users className="size-3.5 shrink-0 text-ink-4" />
           <span className="t-num text-[12px] text-ink-2">
             {server.players}

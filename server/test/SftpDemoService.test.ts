@@ -7,13 +7,14 @@ import { BASE, SAMPLE_IDS_BY_RECENCY, SAMPLE_TREE, makeFakeClient } from "./help
 const CONN = { host: "104.234.65.248", port: 8822, username: "u", password: "p", base: BASE };
 
 describe("SftpDemoService.listDemos", () => {
-  it("descobre os dois servidores sozinho e lista só pastas YYYY-MM / arquivos .dem, mais recente primeiro", async () => {
+  it("descobre os dois servidores sozinho e lista só o período pedido / arquivos .dem, mais recente primeiro", async () => {
     const { client } = makeFakeClient({ tree: SAMPLE_TREE });
     const service = new SftpDemoService(CONN, 60_000, () => client);
 
-    const demos = await service.listDemos();
+    const demos = await service.listDemos("2026-08");
 
-    expect(demos.map((d) => d.id)).toEqual(SAMPLE_IDS_BY_RECENCY);
+    // Só as 3 de agosto — a de julho (inferno) fica de fora sem pedir esse período.
+    expect(demos.map((d) => d.id)).toEqual(SAMPLE_IDS_BY_RECENCY.filter((id) => !id.includes("de_inferno")));
     expect(demos[0]?.server).toBe("104.234.65.243:27490"); // o mais recente é do 2º servidor
     expect(demos[1]?.server).toBe("104.234.65.244:27800");
     expect(demos[1]?.sizeBytes).toBe(13);
@@ -22,14 +23,40 @@ describe("SftpDemoService.listDemos", () => {
     expect(demos[1]?.time).toBe("16:46");
   });
 
-  it("usa cache dentro do TTL: uma segunda chamada não reconecta", async () => {
+  it("um período diferente traz só o que está naquela pasta", async () => {
+    const { client } = makeFakeClient({ tree: SAMPLE_TREE });
+    const service = new SftpDemoService(CONN, 60_000, () => client);
+
+    const demos = await service.listDemos("2026-07");
+    expect(demos.map((d) => d.id)).toEqual(["27800-20260715-2010-de_inferno"]);
+  });
+
+  it("período sem nenhuma demo em nenhum servidor volta lista vazia, não erro", async () => {
+    const { client } = makeFakeClient({ tree: SAMPLE_TREE });
+    const service = new SftpDemoService(CONN, 60_000, () => client);
+
+    const demos = await service.listDemos("2020-01");
+    expect(demos).toEqual([]);
+  });
+
+  it("usa cache dentro do TTL: uma segunda chamada pro MESMO período não reconecta", async () => {
     const factory = vi.fn(() => makeFakeClient({ tree: SAMPLE_TREE }).client);
     const service = new SftpDemoService(CONN, 60_000, factory);
 
-    await service.listDemos();
-    await service.listDemos();
+    await service.listDemos("2026-08");
+    await service.listDemos("2026-08");
 
     expect(factory).toHaveBeenCalledTimes(1);
+  });
+
+  it("cada período tem seu próprio cache — pedir outro período sempre reconecta", async () => {
+    const factory = vi.fn(() => makeFakeClient({ tree: SAMPLE_TREE }).client);
+    const service = new SftpDemoService(CONN, 60_000, factory);
+
+    await service.listDemos("2026-08");
+    await service.listDemos("2026-07");
+
+    expect(factory).toHaveBeenCalledTimes(2);
   });
 
   it("cai pra lista velha em cache se o SFTP ficar indisponível depois", async () => {
@@ -45,11 +72,30 @@ describe("SftpDemoService.listDemos", () => {
     // TTL 0: a segunda chamada sempre tenta um refresh de verdade.
     const service = new SftpDemoService(CONN, 0, factory);
 
-    const first = await service.listDemos();
-    expect(first.length).toBe(4);
+    const first = await service.listDemos("2026-08");
+    expect(first.length).toBe(3);
 
-    const second = await service.listDemos();
+    const second = await service.listDemos("2026-08");
     expect(second).toEqual(first); // caiu pro stale em vez de lançar
+  });
+});
+
+describe("SftpDemoService.listPeriods", () => {
+  it("lista os meses únicos entre todos os servidores, mais recente primeiro", async () => {
+    const { client } = makeFakeClient({ tree: SAMPLE_TREE });
+    const service = new SftpDemoService(CONN, 60_000, () => client);
+
+    expect(await service.listPeriods()).toEqual(["2026-08", "2026-07"]);
+  });
+
+  it("usa cache dentro do TTL: uma segunda chamada não reconecta", async () => {
+    const factory = vi.fn(() => makeFakeClient({ tree: SAMPLE_TREE }).client);
+    const service = new SftpDemoService(CONN, 60_000, factory);
+
+    await service.listPeriods();
+    await service.listPeriods();
+
+    expect(factory).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -127,7 +173,7 @@ describe("classificação de erros de conexão", () => {
     });
     const service = new SftpDemoService(CONN, 60_000, () => client);
 
-    await expect(service.listDemos()).rejects.toBeInstanceOf(SftpAuthError);
+    await expect(service.listDemos("2026-08")).rejects.toBeInstanceOf(SftpAuthError);
   });
 
   it("host inalcançável vira SftpUnavailableError", async () => {
@@ -137,6 +183,6 @@ describe("classificação de erros de conexão", () => {
     });
     const service = new SftpDemoService(CONN, 60_000, () => client);
 
-    await expect(service.listDemos()).rejects.toBeInstanceOf(SftpUnavailableError);
+    await expect(service.listDemos("2026-08")).rejects.toBeInstanceOf(SftpUnavailableError);
   });
 });

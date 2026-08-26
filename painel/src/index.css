@@ -10,18 +10,27 @@
    it sits in, not floated on top of it in a colder grey.
    ============================================================ */
 @theme {
-  --color-void: #060605;
-  --color-base: #0d0c0b;
-  --color-panel: #141210;
-  --color-panel-2: #1a1815;
-  --color-raised: #211e19;
-  --color-line: #362f27;
-  --color-line-soft: #1e1b17;
+  /* Escala levantada em 2026-08-26: a versão original lia como "fundo escuro
+     liso" em vez de concreto de verdade — os degraus entre void/base/panel
+     eram tão apertados (6→13→20 num canal de 255) que quase não se via
+     superfície nenhuma, só um preto uniforme. Mantém o mesmo tom quente,
+     só com mais luz nele. */
+  --color-void: #0d0c0a;
+  --color-base: #16130f;
+  --color-panel: #201c17;
+  --color-panel-2: #292420;
+  --color-raised: #332c25;
+  --color-line: #4a4033;
+  --color-line-soft: #2c2620;
 
+  /* ink-2/3/4 levantados junto com o fundo (2026-08-26): o fundo dos painéis
+     ficou bem mais claro, e o texto apagado (IP de servidor, legendas,
+     metadados) que antes lia razoável contra um fundo quase preto ficou
+     difícil de ler contra o fundo novo — o contraste relativo caiu. */
   --color-ink: #ece7de;
-  --color-ink-2: #aba59c;
-  --color-ink-3: #7d766c;
-  --color-ink-4: #534c43;
+  --color-ink-2: #bab3a9;
+  --color-ink-3: #948c81;
+  --color-ink-4: #6b6258;
 
   /* Brass: an oxidised cartridge, not a trophy. Duller and more olive
      than a gold you'd find in a "premium" or "unlocked" badge. */
@@ -37,7 +46,7 @@
   /* Abyss: deeper than the page void — the recessed surface behind the
      live-match hero, so the scoreboard reads like it's lit from a stage
      floor instead of sitting flush with everything else. */
-  --color-abyss: #040403;
+  --color-abyss: #0a0907;
 
   /* CT: blued steel — the dark violet-grey sheen of a gun barrel, not
      the saturated "info" blue every dashboard reaches for by default. */
@@ -81,9 +90,9 @@
   /* Empurrados pra cima de propósito — a versão anterior era tão sutil que
      lia como "fundo escuro liso" em vez de "parede com luz entrando". O
      ambiente precisa ser sentido de relance, não só existir no código. */
-  --amb-stain: 0.36;
-  --amb-wear: 0.14;
-  --amb-grain: 0.07;
+  --amb-stain: 0.24;
+  --amb-wear: 0.12;
+  --amb-grain: 0.06;
 }
 
 /* ============================================================
@@ -140,8 +149,8 @@
     background-image: url("/cs/maps/bg/dust2.avif");
     background-size: cover;
     background-position: center 38%;
-    opacity: 0.5;
-    filter: grayscale(0.4) contrast(1.08) brightness(0.5) saturate(0.85);
+    opacity: 0.62;
+    filter: contrast(1.05) saturate(1.1);
   }
 
   /* 1 — Reboco: turbulência de baixa frequência dá o malhado grande do
@@ -170,7 +179,7 @@
       radial-gradient(95ch 60ch at 6% -12%, rgb(var(--amb-dust) / 0.32), transparent 62%),
       radial-gradient(85ch 65ch at 104% 2%, rgb(var(--amb-cold) / 0.11), transparent 58%),
       radial-gradient(120ch 40ch at 50% 118%, rgb(var(--amb-dust) / 0.12), transparent 64%),
-      radial-gradient(140% 110% at 50% 42%, transparent 40%, rgb(0 0 0 / 0.34) 80%, rgb(0 0 0 / 0.6) 100%);
+      radial-gradient(140% 110% at 50% 42%, transparent 50%, rgb(0 0 0 / 0.2) 82%, rgb(0 0 0 / 0.38) 100%);
   }
 
   /* 3 — Desgaste: estrias raspadas (turbulência anisotrópica — frequência
@@ -304,16 +313,19 @@
   /* ---------- Surfaces ---------- */
   .panel {
     position: relative;
+    /* Antes: rgb(15 18 22 / 0.84), um cinza-azulado sem relação nenhuma com
+       a paleta marrom quente do resto do tema — provável sobra de uma
+       versão anterior. Corrigido pra usar o token de verdade. */
     background:
       linear-gradient(180deg, rgb(255 255 255 / 0.022), transparent 120px),
-      rgb(15 18 22 / 0.84);
+      color-mix(in srgb, var(--color-panel-2) 92%, transparent);
     border: 1px solid var(--color-line-soft);
     border-radius: var(--radius-md);
     box-shadow: 0 18px 44px -28px rgb(0 0 0 / 0.95);
   }
 
   .panel-flush {
-    background: rgb(15 18 22 / 0.84);
+    background: color-mix(in srgb, var(--color-panel-2) 92%, transparent);
     border: 1px solid var(--color-line-soft);
     border-radius: var(--radius-md);
   }

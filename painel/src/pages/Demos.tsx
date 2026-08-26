@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { Grid2x2, List } from "lucide-react";
-import { usePageEnter } from "@/hooks/useGsap";
+import { FolderOpen, Grid2x2, List } from "lucide-react";
+import { useGsapScope, usePageEnter } from "@/hooks/useGsap";
+import { gsap, prefersReducedMotion } from "@/lib/motion";
 import { useResource } from "@/hooks/useResource";
-import { api, type Page } from "@/api/client";
-import type { Demo } from "@/data/types";
+import { api, type DemoPeriods, type DemosPage } from "@/api/client";
 import { UNIQUE_MAPS } from "@/data/seed";
-import { mapLabel } from "@/lib/format";
+import { formatPeriod, mapLabel } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { SectionTitle, Panel } from "@/components/ui/Panel";
+import { SectionTitle, Panel, PanelHeader } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
 import { FilterBar, SearchBar, Select } from "@/components/ui/Field";
 import { EmptyState, ErrorState, LoadingState, SkeletonRows } from "@/components/ui/States";
@@ -20,19 +20,39 @@ const MAP_OPTIONS = [
   ...UNIQUE_MAPS.map((map) => ({ value: map, label: mapLabel(map) })),
 ];
 
+/** Página "vazia" pra quando nenhum mês foi escolhido ainda — nunca dispara o fetch de verdade. */
+const NO_PERIOD_CHOSEN: DemosPage = { items: [], total: 0, page: 1, pageSize: 1, period: "" };
+
 export default function Demos() {
   const scope = usePageEnter<HTMLDivElement>();
   const [query, setQuery] = useState("");
   const [map, setMap] = useState("all");
+  // Fica indefinido até o jogador escolher uma pasta de mês — a lista só
+  // abre depois disso, e só aí o backend é consultado (nunca varre nada
+  // sozinho ao abrir a página).
+  const [period, setPeriod] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [view, setView] = useState<"grid" | "list">("grid");
 
-  const resource = useResource<Page<Demo>>(
-    () => api.demos({ query, map, page, pageSize: view === "grid" ? 9 : 14 }),
-    [query, map, page, view],
+  const periods = useResource<DemoPeriods>(() => api.demoPeriods(), []);
+
+  const resource = useResource<DemosPage>(
+    () =>
+      period
+        ? api.demos({ query, map, period, page, pageSize: view === "grid" ? 9 : 14 })
+        : Promise.resolve(NO_PERIOD_CHOSEN),
+    [query, map, period, page, view],
   );
 
+  // A entrada da lista, só quando um mês é escolhido pela primeira vez —
+  // "abre" de verdade, não fica montada e escondida por trás dos panos.
+  const revealRef = useGsapScope<HTMLDivElement>(({ scope: el }) => {
+    if (prefersReducedMotion()) return;
+    gsap.fromTo(el, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" });
+  }, [period]);
+
   const demos = resource.data?.items ?? [];
+  const periodOptions = (periods.data?.items ?? []).map((p) => ({ value: p, label: formatPeriod(p) }));
 
   function resetFilters() {
     setQuery("");
@@ -50,7 +70,50 @@ export default function Demos() {
         />
       </div>
 
+      {/* Pastas por mês — o mesmo recorte "cstrike/demos/AAAA-MM" que existe
+          de verdade no servidor, só que navegável em vez de um <select>.
+          Superfície própria (não flutua sobre o fundo do site): sem isso o
+          texto ficava ilegível em cima de qualquer foto de mapa mais clara. */}
       <div data-enter>
+        <Panel hud className="overflow-hidden">
+          <PanelHeader label="Arquivo por período" accent="brass" hint="Escolha um mês pra abrir" />
+          <div className="flex flex-wrap gap-3 p-4">
+            {periodOptions.map(({ value, label }) => {
+              const active = value === period;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setPeriod(value);
+                    setPage(1);
+                  }}
+                  aria-pressed={active}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-xs border px-4 py-3 transition-colors",
+                    active
+                      ? "border-brass/45 bg-panel-2 brass-edge"
+                      : "border-line-soft bg-panel-2/50 hover:border-line hover:bg-panel-2",
+                  )}
+                >
+                  <FolderOpen className={cn("size-5 shrink-0", active ? "text-brass" : "text-ink-4")} />
+                  <span className="flex flex-col items-start leading-tight">
+                    <span className={cn("t-title text-[14px] capitalize", active ? "text-ink" : "text-ink-2")}>
+                      {label}
+                    </span>
+                    {value === periods.data?.current ? (
+                      <span className="t-eyebrow mt-0.5 text-[7.5px] text-live">Mês atual</span>
+                    ) : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </Panel>
+      </div>
+
+      {period ? (
+        <div ref={revealRef}>
         <Panel flush className="overflow-hidden">
           <FilterBar>
             <Select
@@ -130,7 +193,7 @@ export default function Demos() {
             </>
           )}
 
-          {resource.data ? (
+          {resource.data && resource.data.total > 0 ? (
             <Pagination
               page={resource.data.page}
               pageSize={resource.data.pageSize}
@@ -140,7 +203,8 @@ export default function Demos() {
             />
           ) : null}
         </Panel>
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

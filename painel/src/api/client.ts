@@ -75,8 +75,22 @@ function requireApi(feature: string): void {
 export interface DemoQuery {
   query?: string;
   map?: string;
+  /** "2026-08" — sem isso, o backend cai no mês corrente (nunca varre o histórico inteiro). */
+  period?: string;
   page?: number;
   pageSize?: number;
+}
+
+/** Além dos itens da página, o backend confirma qual período foi de fato aplicado. */
+export interface DemosPage extends Page<Demo> {
+  period: string;
+}
+
+export interface DemoPeriods {
+  /** "2026-08", "2026-07", ... — mais recente primeiro. */
+  items: string[];
+  /** Período corrente segundo o relógio do backend — mesmo default usado quando `period` não é enviado. */
+  current: string;
 }
 
 /**
@@ -159,14 +173,21 @@ export const api = {
    * do servidor (via o backend + SFTP). Sem VITE_API_URL configurada, isto
    * lança em vez de fingir uma lista — ver DATA-SOURCES.md.
    */
-  async demos(params: DemoQuery = {}): Promise<Page<Demo>> {
+  async demos(params: DemoQuery = {}): Promise<DemosPage> {
     requireApi("demos");
-    const { query = "", map = "all", page = 1, pageSize = 12 } = params;
+    const { query = "", map = "all", period, page = 1, pageSize = 12 } = params;
     const search = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (query) search.set("q", query);
     if (map !== "all") search.set("map", map);
-    const raw = await request<Page<DemoDto>>("/demos?" + search.toString());
+    if (period) search.set("period", period);
+    const raw = await request<DemosPage & { items: DemoDto[] }>("/demos?" + search.toString());
     return { ...raw, items: raw.items.map(toDemo) };
+  },
+
+  /** Quais meses têm demo pelo menos numa das raízes do SFTP — pro filtro de período. */
+  async demoPeriods(): Promise<DemoPeriods> {
+    requireApi("demos");
+    return request<DemoPeriods>("/demos/periods");
   },
 
   async demo(id: string): Promise<Demo> {

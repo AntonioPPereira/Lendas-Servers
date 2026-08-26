@@ -64,13 +64,28 @@ export function normalizeMapKey(map: string): string {
  * Fotos reais de fundo pra Partida ao vivo, uma por mapa-base. Só existem
  * pros mapas que a comunidade forneceu — os demais caem no tratamento
  * tipográfico (nome gigante e pálido), nunca numa imagem genérica ou de
- * outro mapa.
+ * outro mapa. Guarda o nome do arquivo (com a extensão real de cada
+ * envio) em vez de assumir um formato único.
  */
-const MAP_BACKGROUNDS = new Set(["dust2"]);
+const MAP_BACKGROUNDS: Record<string, string> = {
+  dust2: "dust2.avif",
+  mirage: "mirage.jpg",
+  cache: "cache.jpg",
+  inferno: "inferno.avif",
+  train: "train.jpg",
+  nuke: "nuke.jpg",
+  tuscan: "tuscan.jpg",
+  season: "season.jpg",
+  overpass: "overpass.jpg",
+  aztec: "aztec.jpg",
+  cbble: "cbble.jpg",
+  assault: "assault.jpg",
+};
 
 export function mapBackground(map: string): string | null {
   const key = normalizeMapKey(map);
-  return MAP_BACKGROUNDS.has(key) ? asset(`/cs/maps/bg/${key}.avif`) : null;
+  const filename = MAP_BACKGROUNDS[key];
+  return filename ? asset(`/cs/maps/bg/${filename}`) : null;
 }
 
 export const TEAM_CREST = {

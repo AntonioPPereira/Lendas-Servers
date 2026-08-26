@@ -87,6 +87,15 @@ export function mapPrefix(map: string): string {
   return (match?.[1] ?? "map").toUpperCase();
 }
 
+const periodFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+
+/** "2026-08" -> "agosto de 2026" */
+export function formatPeriod(period: string): string {
+  const [year, month] = period.split("-").map(Number);
+  if (!year || !month) return period;
+  return periodFmt.format(new Date(year, month - 1, 1));
+}
+
 export function initials(nickname: string): string {
   const clean = nickname.replace(/[^\p{L}\p{N}]/gu, "");
   return (clean.slice(0, 2) || "??").toUpperCase();

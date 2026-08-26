@@ -71,23 +71,47 @@ const DEMOS_SUBPATH = ["cstrike", "demos"];
  * conexão a cada elemento renderizado no frontend.
  */
 export class SftpDemoService {
-  private readonly cache: TtlCache<DemoFile[]>;
+  /** Um cache por período ("2026-08") — nunca um cache só pro histórico inteiro. */
+  private readonly cachesByPeriod = new Map<string, TtlCache<DemoFile[]>>();
+  private readonly periodsCache: TtlCache<string[]>;
 
   constructor(
     private readonly conn: SftpConnectionConfig,
-    cacheTtlMs: number,
+    private readonly cacheTtlMs: number,
     private readonly createClient: SftpClientFactory = () => new SftpClient(),
   ) {
-    this.cache = new TtlCache<DemoFile[]>(cacheTtlMs);
+    this.periodsCache = new TtlCache<string[]>(cacheTtlMs);
   }
 
-  /** Lista cacheada de todas as demos, de todos os servidores, mais recente primeiro. */
-  async listDemos(): Promise<DemoFile[]> {
+  /**
+   * Demos de um único período ("2026-08"), em todos os servidores — nunca
+   * varre o histórico inteiro. Pedido explícito (2026-08-26): o arquivo cresce
+   * sem parar (gravação automática a cada partida) e listar tudo a cada
+   * expiração de cache ficaria mais pesado no SFTP a cada mês que passa,
+   * mesmo sem ninguém pedindo o histórico velho.
+   */
+  async listDemos(period: string): Promise<DemoFile[]> {
+    let cache = this.cachesByPeriod.get(period);
+    if (!cache) {
+      cache = new TtlCache<DemoFile[]>(this.cacheTtlMs);
+      this.cachesByPeriod.set(period, cache);
+    }
     try {
-      return await this.cache.get(() => this.fetchAll());
+      return await cache.get(() => this.fetchPeriod(period));
     } catch (cause) {
       // Fonte fora do ar: uma lista velha ainda é melhor que uma tela quebrada.
-      const stale = this.cache.peekStale();
+      const stale = cache.peekStale();
+      if (stale) return stale;
+      throw cause;
+    }
+  }
+
+  /** Só os nomes dos períodos que existem (sem descer nos arquivos de cada um) — pro filtro de período. */
+  async listPeriods(): Promise<string[]> {
+    try {
+      return await this.periodsCache.get(() => this.fetchPeriods());
+    } catch (cause) {
+      const stale = this.periodsCache.peekStale();
       if (stale) return stale;
       throw cause;
     }
@@ -95,9 +119,13 @@ export class SftpDemoService {
 
   /** Uma demo por ID. `null` = ID válido mas arquivo (ou servidor) não existe. Lança se o ID for mal formado. */
   async getDemo(id: string): Promise<DemoFile | null> {
-    if (!parseDemoId(id)) throw new InvalidDemoIdError(id);
+    const parsedForCache = parseDemoId(id);
+    if (!parsedForCache) throw new InvalidDemoIdError(id);
 
-    const fromCache = this.cache.peekStale()?.find((d) => d.id === id);
+    const fromCache = this.cachesByPeriod
+      .get(parsedForCache.yearMonth)
+      ?.peekStale()
+      ?.find((d) => d.id === id);
     if (fromCache) return fromCache;
 
     return this.withConnection(async (sftp) => {
@@ -145,25 +173,38 @@ export class SftpDemoService {
     return roots;
   }
 
-  private async fetchAll(): Promise<DemoFile[]> {
+  /** Nomes de pasta YYYY-MM únicos entre todos os servidores, mais recente primeiro. */
+  private async fetchPeriods(): Promise<string[]> {
+    return this.withConnection(async (sftp) => {
+      const roots = await this.discoverRoots(sftp);
+      const months = new Set<string>();
+
+      for (const root of roots) {
+        const entries = await this.listOrEmpty(sftp, root.root);
+        for (const entry of entries) {
+          if (entry.type === "d" && isYearMonthDir(entry.name)) months.add(entry.name);
+        }
+      }
+
+      return [...months].sort((a, b) => b.localeCompare(a));
+    });
+  }
+
+  /** Só a pasta `period` de cada servidor — nunca lista os outros meses. */
+  private async fetchPeriod(period: string): Promise<DemoFile[]> {
     return this.withConnection(async (sftp) => {
       const roots = await this.discoverRoots(sftp);
 
       const all: DemoFile[] = [];
       for (const root of roots) {
-        const monthEntries = await this.listOrEmpty(sftp, root.root);
-        const monthDirs = monthEntries.filter((entry) => entry.type === "d" && isYearMonthDir(entry.name));
-
-        for (const month of monthDirs) {
-          const dirPath = `${root.root}/${month.name}`;
-          const files = await sftp.list(dirPath);
-          for (const file of files) {
-            if (file.type !== "-" || !isDemoFilename(file.name)) continue;
-            const id = buildDemoId(root.port, file.name);
-            const parsed = parseDemoId(id);
-            if (!parsed) continue; // defesa extra, não deveria falhar se isDemoFilename já bateu
-            all.push(this.toDemoFile(parsed, file.size, root));
-          }
+        const dirPath = `${root.root}/${period}`;
+        const files = await this.listOrEmpty(sftp, dirPath);
+        for (const file of files) {
+          if (file.type !== "-" || !isDemoFilename(file.name)) continue;
+          const id = buildDemoId(root.port, file.name);
+          const parsed = parseDemoId(id);
+          if (!parsed) continue; // defesa extra, não deveria falhar se isDemoFilename já bateu
+          all.push(this.toDemoFile(parsed, file.size, root));
         }
       }
 

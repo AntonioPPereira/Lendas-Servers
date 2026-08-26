@@ -72,11 +72,14 @@ export function SectionTitle({
 }: SectionTitleProps) {
   return (
     <div className={cn("flex flex-wrap items-end justify-between gap-4", className)}>
-      <div className="min-w-0">
+      {/* Todo título de página flutua sobre o fundo do site (a foto do mapa),
+          nunca sobre uma superfície própria — sombra garante leitura mesmo
+          numa área clara da foto, em vez de depender de sorte de contraste. */}
+      <div className="min-w-0 [text-shadow:0_1px_5px_rgb(0_0_0_/_0.85)]">
         {eyebrow ? <p className="t-eyebrow mb-2 text-brass">{eyebrow}</p> : null}
         <h1 className="t-display text-[26px] text-ink sm:text-[32px]">{title}</h1>
         {description ? (
-          <p className="mt-2 max-w-[68ch] text-[13px] leading-relaxed text-ink-3">{description}</p>
+          <p className="mt-2 max-w-[68ch] text-[13px] leading-relaxed text-ink-2">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}

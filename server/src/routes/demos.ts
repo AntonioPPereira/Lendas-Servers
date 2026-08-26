@@ -11,7 +11,18 @@ const listQuerySchema = z.object({
   map: z.string().trim().max(64).optional(),
   server: z.string().trim().max(32).optional(),
   q: z.string().trim().max(120).optional(),
+  /** "2026-08" — sem isso, cai no mês corrente (nunca varre o histórico inteiro). */
+  period: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/, 'period deve estar no formato "AAAA-MM"')
+    .optional(),
 });
+
+/** "2026-08" a partir do relógio real — mesmo formato das pastas no SFTP. */
+function currentPeriod(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
 
 /** Formato de resposta pro frontend — deliberadamente menor que o modelo
  *  interno `DemoFile`: só expõe o que a listagem de arquivo realmente prova. */
@@ -40,10 +51,21 @@ const downloadLimiter = rateLimit({
 export function createDemosRouter(service: SftpDemoService): Router {
   const router = Router();
 
+  // Antes de "/:id" — senão "periods" seria lido como um ID de demo.
+  router.get("/periods", async (_req, res, next) => {
+    try {
+      const items = await service.listPeriods();
+      res.json({ items, current: currentPeriod() });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.get("/", async (req, res, next) => {
     try {
       const query = listQuerySchema.parse(req.query);
-      let demos = await service.listDemos();
+      const period = query.period ?? currentPeriod();
+      let demos = await service.listDemos(period);
 
       if (query.map) {
         demos = demos.filter((demo) => demo.map === query.map);
@@ -60,7 +82,7 @@ export function createDemosRouter(service: SftpDemoService): Router {
       }
 
       const page = paginate(demos, query.page, query.pageSize);
-      res.json({ ...page, items: page.items.map(toDto) });
+      res.json({ ...page, items: page.items.map(toDto), period });
     } catch (err) {
       next(err);
     }

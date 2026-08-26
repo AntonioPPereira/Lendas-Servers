@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
 import { SftpDemoService } from "../src/services/SftpDemoService.js";
@@ -26,12 +26,18 @@ function buildApp(opts: Parameters<typeof makeFakeClient>[0] = { tree: SAMPLE_TR
 }
 
 describe("GET /api/demos", () => {
-  it("responde a listagem paginada no formato acordado com o frontend", async () => {
+  it("responde a listagem paginada no formato acordado com o frontend, escopada por período", async () => {
     const { app } = buildApp();
-    const res = await request(app).get("/api/demos").expect(200);
+    const res = await request(app).get("/api/demos").query({ period: "2026-08" }).expect(200);
 
-    expect(res.body.total).toBe(4);
-    expect(res.body.items.map((d: { id: string }) => d.id)).toEqual(SAMPLE_IDS_BY_RECENCY);
+    // 2026-08 tem 3 das 4 demos da fixture — a de 2026-07 (inferno) fica de fora sem pedir esse período.
+    expect(res.body.total).toBe(3);
+    expect(res.body.period).toBe("2026-08");
+    expect(res.body.items.map((d: { id: string }) => d.id)).toEqual([
+      "27490-20260801-1900-de_mirage_csgo_v2",
+      "27800-20260801-1646-de_dust2",
+      "27800-20260801-1643-de_tuscan",
+    ]);
     expect(res.body.items[1]).toEqual({
       id: "27800-20260801-1646-de_dust2",
       filename: "20260801-1646-de_dust2.dem",
@@ -44,23 +50,61 @@ describe("GET /api/demos", () => {
     });
   });
 
-  it("filtra por mapa, por servidor e por busca textual", async () => {
+  it("sem period, cai no mês corrente — nunca varre o histórico inteiro", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T12:00:00Z"));
+    try {
+      const { app } = buildApp();
+      const res = await request(app).get("/api/demos").expect(200);
+
+      expect(res.body.period).toBe("2026-07");
+      expect(res.body.total).toBe(1);
+      expect(res.body.items[0].id).toBe("27800-20260715-2010-de_inferno");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("filtra por mapa, por servidor e por busca textual, dentro do período pedido", async () => {
     const { app } = buildApp();
 
-    const byMap = await request(app).get("/api/demos").query({ map: "de_tuscan" }).expect(200);
+    const byMap = await request(app)
+      .get("/api/demos")
+      .query({ period: "2026-08", map: "de_tuscan" })
+      .expect(200);
     expect(byMap.body.items).toHaveLength(1);
     expect(byMap.body.items[0].map).toBe("de_tuscan");
 
     const byServer = await request(app)
       .get("/api/demos")
-      .query({ server: "104.234.65.243:27490" })
+      .query({ period: "2026-08", server: "104.234.65.243:27490" })
       .expect(200);
     expect(byServer.body.items).toHaveLength(1);
     expect(byServer.body.items[0].id).toBe("27490-20260801-1900-de_mirage_csgo_v2");
 
-    const byQuery = await request(app).get("/api/demos").query({ q: "inferno" }).expect(200);
+    const byQuery = await request(app)
+      .get("/api/demos")
+      .query({ period: "2026-07", q: "inferno" })
+      .expect(200);
     expect(byQuery.body.items).toHaveLength(1);
     expect(byQuery.body.items[0].id).toBe("27800-20260715-2010-de_inferno");
+  });
+
+  it("400 pra period em formato inválido", async () => {
+    const { app } = buildApp();
+    await request(app).get("/api/demos").query({ period: "agosto-2026" }).expect(400);
+  });
+});
+
+describe("GET /api/demos/periods", () => {
+  it("lista os períodos existentes entre todos os servidores, mais recente primeiro, sem descer nos arquivos", async () => {
+    const { app, connectCalls } = buildApp();
+    const res = await request(app).get("/api/demos/periods").expect(200);
+
+    expect(res.body.items).toEqual(["2026-08", "2026-07"]);
+    expect(typeof res.body.current).toBe("string");
+    // Só uma conexão: descobre as raízes e lista o topo de cada uma, nunca entra nos meses.
+    expect(connectCalls()).toBe(1);
   });
 });
 
