@@ -3,13 +3,15 @@ import { Link } from "react-router-dom";
 import { Bomb, Timer } from "lucide-react";
 import type { LiveMatch as LiveMatchModel } from "@/data/types";
 import { cn } from "@/lib/cn";
-import { formatClock, mapLabel } from "@/lib/format";
+import { formatClock, formatDecimal, mapLabel } from "@/lib/format";
 import { useValueFlash } from "@/hooks/useCountUp";
 import { useGsapScope } from "@/hooks/useGsap";
 import { gsap, prefersReducedMotion } from "@/lib/motion";
 import { Badge } from "@/components/ui/Badge";
+import { Meter } from "@/components/ui/Meter";
 import { PlayerAvatar } from "@/components/player/PlayerAvatar";
 import { TeamCrest } from "./TeamCrest";
+import { RoundStrip } from "./RoundStrip";
 import { TEAM_AGENT, mapBackground } from "@/lib/csAssets";
 import { MapIcon } from "./MapIcon";
 
@@ -45,6 +47,9 @@ export function LiveMatch({
     () => [...match.players].sort((a, b) => b.score - a.score)[0] ?? null,
     [match.players],
   );
+  // Deaths 0 com kills > 0 é K/D "perfeito" — dividir por zero daria
+  // Infinity, então o próprio número de kills é a leitura honesta ali.
+  const starKd = star ? (star.deaths === 0 ? star.kills : star.kills / star.deaths) : 0;
   const backdrop = mapBackground(match.map);
 
   // Entrada cinematográfica: uma vez, quando a transmissão entra no ar. Os
@@ -124,6 +129,12 @@ export function LiveMatch({
             background: "radial-gradient(56% 60% at 50% 38%, rgb(194 146 78 / 0.07), transparent 72%)",
           }}
         />
+        {/* Fogo dos dois lados, atrás dos operadores: brasa azulada no CT,
+            alaranjada no T. É o que dá a leitura de dois lados se
+            enfrentando sem precisar de divisória no meio da cena. */}
+        <span className="side-fire side-fire-ct" />
+        <span className="side-fire side-fire-t" />
+
         {urgent ? (
           <div
             className="absolute left-1/2 top-1/2 size-[440px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 [mask-image:radial-gradient(closest-side,#000,transparent)]"
@@ -141,7 +152,7 @@ export function LiveMatch({
         alt=""
         aria-hidden="true"
         draggable={false}
-        className="pointer-events-none absolute bottom-0 left-0 z-10 w-[clamp(150px,26vw,320px)] select-none object-contain object-bottom opacity-90 [mask-image:linear-gradient(90deg,transparent,#000_38%)]"
+        className="pointer-events-none absolute bottom-0 left-0 z-10 w-[clamp(190px,33vw,440px)] select-none object-contain object-bottom opacity-95 [mask-image:linear-gradient(90deg,transparent,#000_34%)]"
       />
       <img
         data-op="t"
@@ -149,7 +160,7 @@ export function LiveMatch({
         alt=""
         aria-hidden="true"
         draggable={false}
-        className="pointer-events-none absolute bottom-0 right-0 z-10 w-[clamp(150px,26vw,320px)] select-none object-contain object-bottom opacity-90 [mask-image:linear-gradient(270deg,transparent,#000_38%)]"
+        className="pointer-events-none absolute bottom-0 right-0 z-10 w-[clamp(190px,33vw,440px)] select-none object-contain object-bottom opacity-95 [mask-image:linear-gradient(270deg,transparent,#000_34%)]"
       />
 
       {/* Camada 2 — a transmissão em si: identificação, placar, destaque.
@@ -184,14 +195,26 @@ export function LiveMatch({
         </div>
       </div>
 
-      <div data-hud className="relative z-20 flex flex-1 flex-col items-center justify-center gap-4 px-4 py-4">
-        <div className="flex items-end gap-4 rounded-xs bg-abyss/55 px-4 py-3 backdrop-blur-[2px] sm:gap-8 sm:px-8 sm:py-4">
-          <div className="flex flex-col items-center gap-1.5">
-            <TeamCrest team="CT" className="size-7 sm:size-9" />
-            <span ref={ctAliveRef} className="t-num text-[11px] text-ct-hi sm:text-[12.5px]">
-              {ctAlive}
+      <div data-hud className="relative z-20 flex flex-1 flex-col items-center justify-center gap-3 px-4 py-3">
+        {/* Cabeçalho dos dois lados, encostado nas bordas por cima dos
+            operadores: nome do time e quantos ainda estão vivos agora. */}
+        <div className="flex w-full items-start justify-between gap-3">
+          <TeamHeading team="CT" alive={ctAlive} aliveRef={ctAliveRef} />
+
+          {/* Ícone e nome na mesma linha: empilhados, a placa de fallback
+              ("DE", pra mapa sem ícone oficial) ficava pendurada torta em
+              cima do nome. */}
+          <span className="flex shrink-0 items-center gap-2 pt-1">
+            <MapIcon map={match.map} decorative className="size-5 opacity-75" />
+            <span className="t-eyebrow whitespace-nowrap text-[10px] text-ink-2">
+              {mapLabel(match.map)}
             </span>
-          </div>
+          </span>
+
+          <TeamHeading team="T" alive={tAlive} aliveRef={tAliveRef} align="right" />
+        </div>
+
+        <div className="flex items-center gap-4 rounded-xs bg-abyss/55 px-5 py-2 backdrop-blur-[2px] sm:gap-7 sm:px-8">
           <span ref={ctRef} className="t-score text-ct">
             {match.ctScore}
           </span>
@@ -201,29 +224,52 @@ export function LiveMatch({
           <span ref={tRef} className="t-score text-t">
             {match.tScore}
           </span>
-          <div className="flex flex-col items-center gap-1.5">
-            <TeamCrest team="T" className="size-7 sm:size-9" />
-            <span ref={tAliveRef} className="t-num text-[11px] text-t-hi sm:text-[12.5px]">
-              {tAlive}
-            </span>
-          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span ref={roundRef} className="t-eyebrow whitespace-nowrap text-[9px]">
+        {/* Rodada com barra de avanço da partida — o mesmo número que já
+            existia, agora com a leitura de "quanto falta" junto. */}
+        <div className="w-full max-w-[230px]">
+          <span ref={roundRef} className="t-eyebrow block text-center text-[9px]">
             Rodada {match.round}/{match.maxRounds}
           </span>
-          <span className="h-3 w-px bg-line" aria-hidden="true" />
+          <Meter
+            value={match.round}
+            max={Math.max(match.maxRounds, 1)}
+            height={2}
+            tone="brass"
+            className="mt-1.5"
+          />
+        </div>
+
+        <div className="flex flex-col items-center">
           <span
             className={cn(
-              "t-num flex items-center gap-1.5 text-[14px] tabular-nums transition-colors",
+              "t-num flex items-center gap-1.5 text-[17px] tabular-nums transition-colors",
               urgent ? "text-brass-ember" : "text-ink",
             )}
           >
-            <Timer className="size-3.5" />
+            <Timer className="size-4" />
             {formatClock(match.clock)}
           </span>
+          <span className="t-eyebrow mt-0.5 text-[8px] text-ink-4">Tempo restante</span>
         </div>
+
+        {/* Régua de rodadas ladeada pelos brasões: de que lado cada rodada
+            caiu, e como. Só aparece com rodada jogada — régua vazia não
+            informa nada e ainda ocupa a cena. */}
+        {match.rounds.length > 0 ? (
+          <div className="flex w-full max-w-[660px] items-center gap-3">
+            <TeamCrest team="CT" className="size-7 shrink-0 opacity-85" />
+            <RoundStrip
+              rounds={match.rounds}
+              maxRounds={match.maxRounds}
+              currentRound={match.round}
+              size="sm"
+              className="flex-1 justify-center"
+            />
+            <TeamCrest team="T" className="size-7 shrink-0 opacity-85" />
+          </div>
+        ) : null}
       </div>
 
       {star ? (
@@ -232,18 +278,84 @@ export function LiveMatch({
           to={"/jogadores/" + star.steamId64}
           className="group relative z-20 flex items-center gap-3 border-t border-line-soft/60 bg-gradient-to-t from-abyss via-abyss/90 to-abyss/40 px-4 py-2.5 transition-colors hover:from-panel-2/70 sm:px-6"
         >
-          <PlayerAvatar seed={star.avatarSeed} size="sm" team={star.team} />
+          {/* nickname é obrigatório aqui: sem ele o texto acessível do
+              avatar cai pro seed, e o leitor de tela anuncia um SteamID de
+              17 dígitos no lugar do nome do jogador. */}
+          <PlayerAvatar
+            seed={star.avatarSeed}
+            nickname={star.nickname}
+            avatarUrl={star.avatarUrl}
+            size="sm"
+            team={star.team}
+          />
           <span className="min-w-0 flex-1">
             <span className="t-eyebrow block text-[8px] text-brass">Destaque da partida</span>
             <span className="mt-0.5 block truncate text-[12.5px] text-ink">
               <span className="font-medium">{star.nickname}</span>{" "}
+              {/* Sem assistências e sem MVP: os dois nativos do cstrike que
+                  os alimentam não existem nesta instalação de CS:S, então
+                  seriam um zero eterno se passando por estatística. */}
               <span className="t-num text-ink-4">
-                — {star.kills} K · {star.assists} A · {star.deaths} D · {star.mvps} MVP
+                — {star.kills} K · {star.deaths} D
               </span>
+            </span>
+          </span>
+
+          <span className="shrink-0 text-right">
+            <span className="t-eyebrow block text-[8px]">K/D</span>
+            <span
+              className={cn(
+                "t-num mt-0.5 block text-[14px] tabular-nums",
+                starKd >= 1.2 ? "text-brass" : starKd >= 1 ? "text-ink" : "text-ink-3",
+              )}
+            >
+              {formatDecimal(starKd)}
             </span>
           </span>
         </Link>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * Identificação de um lado no alto da cena: brasão, nome do time e quantos
+ * seguem vivos na rodada. O nome some no mobile — ali a coluna é estreita
+ * demais e o brasão já diz de quem se trata.
+ */
+function TeamHeading({
+  team,
+  alive,
+  aliveRef,
+  align = "left",
+}: {
+  team: "CT" | "T";
+  alive: number;
+  aliveRef: React.RefObject<HTMLSpanElement | null>;
+  align?: "left" | "right";
+}) {
+  const right = align === "right";
+  return (
+    <span
+      className={cn(
+        "flex min-w-0 items-center gap-2.5",
+        right && "flex-row-reverse text-right",
+      )}
+    >
+      <TeamCrest team={team} className="size-12 shrink-0 sm:size-16" />
+      <span className="min-w-0">
+        <span
+          className={cn(
+            "t-eyebrow hidden truncate text-[11px] sm:block",
+            team === "CT" ? "text-ct-hi" : "text-t-hi",
+          )}
+        >
+          {team === "CT" ? "Counter-Terrorists" : "Terrorists"}
+        </span>
+        <span ref={aliveRef} className="t-num mt-1 block text-[12px] text-ink-3">
+          {alive} {alive === 1 ? "vivo" : "vivos"}
+        </span>
+      </span>
+    </span>
   );
 }

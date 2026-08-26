@@ -20,9 +20,13 @@ interface ScoreboardRowProps {
   final?: boolean;
 }
 
-/** Assists and ping are the first things to go when the row runs out of room. */
+/**
+ * Sem coluna de assistências: `CS_GetClientAssists` não existe nesta
+ * instalação de CS:S, então ela seria um zero eterno se passando por
+ * estatística. O ping é o primeiro a sair quando a linha aperta.
+ */
 export const SCOREBOARD_COLUMNS =
-  "grid-cols-[16px_minmax(0,1fr)_28px_28px_44px] sm:grid-cols-[18px_minmax(0,1fr)_30px_30px_30px_46px_40px]";
+  "grid-cols-[16px_minmax(0,1fr)_28px_28px_44px] sm:grid-cols-[18px_minmax(0,1fr)_30px_30px_46px_40px]";
 
 export const ScoreboardRow = memo(function ScoreboardRow({
   player,
@@ -97,9 +101,6 @@ export const ScoreboardRow = memo(function ScoreboardRow({
 
       <span ref={killsRef} className="t-num text-center text-[12px] tabular-nums text-ink">
         {player.kills}
-      </span>
-      <span className="t-num hidden text-center text-[12px] tabular-nums text-ink-3 sm:block">
-        {player.assists}
       </span>
       <span className="t-num text-center text-[12px] tabular-nums text-ink-3">{player.deaths}</span>
       <span ref={scoreRef} className="t-num text-right text-[12px] tabular-nums text-ink-2">

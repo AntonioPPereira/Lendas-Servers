@@ -732,6 +732,78 @@
     }
   }
 
+  /**
+   * Fogo lateral da transmissão: brasa azulada do lado CT, alaranjada do
+   * lado T. Ancorado na borda externa e dissolvendo pro centro, é o que dá
+   * a leitura de "dois lados se enfrentando" sem precisar de moldura nem
+   * de linha divisória gritando no meio.
+   *
+   * Duas camadas com períodos diferentes (e primos entre si) fazem a
+   * intensidade nunca repetir o mesmo desenho — chama regular denuncia
+   * animação; chama irregular parece luz de verdade.
+   */
+  .side-fire {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .side-fire::before,
+  .side-fire::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: inherit;
+    animation: side-fire-flicker 7s ease-in-out infinite;
+  }
+
+  .side-fire::after {
+    animation-duration: 11s;
+    animation-delay: -3s;
+    opacity: 0.55;
+  }
+
+  @keyframes side-fire-flicker {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    35% {
+      opacity: 0.9;
+      transform: scale(1.05);
+    }
+    65% {
+      opacity: 0.68;
+      transform: scale(0.98);
+    }
+  }
+
+  .side-fire-ct {
+    background: radial-gradient(
+      64% 86% at 0% 45%,
+      rgb(112 176 240 / 0.26),
+      rgb(70 130 200 / 0.12) 42%,
+      transparent 72%
+    );
+  }
+
+  .side-fire-t {
+    background: radial-gradient(
+      64% 86% at 100% 45%,
+      rgb(244 158 66 / 0.26),
+      rgb(206 108 34 / 0.12) 42%,
+      transparent 72%
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .side-fire::before,
+    .side-fire::after {
+      animation: none;
+    }
+  }
+
   /* Brass is a metal here, not a glow: a 1px lit edge + a slow sheen. */
   .brass-edge {
     box-shadow:

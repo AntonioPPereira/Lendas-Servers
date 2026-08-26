@@ -93,6 +93,9 @@ export const TEAM_CREST = {
   T: asset("/cs/teams/t_logo.svg"),
 } as const;
 
+/** C4 real do jogo (arte branca monocromática) — marca a rodada que a bomba decidiu. */
+export const BOMB_ICON = asset("/cs/weapons/c4.svg");
+
 /**
  * Retratos dos agentes (SAS e Phoenix), fornecidos pelo usuário. São bustos
  * de 512×384 com fundo transparente: funcionam grandes, ladeando o placar,

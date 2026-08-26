@@ -22,10 +22,17 @@ function TeamColumn({ team, label, score, players, final = false }: TeamColumnPr
   const alive = sorted.filter((p) => p.alive).length;
 
   return (
-    <div className="min-w-0 flex-1">
+    <div className="relative min-w-0 flex-1 overflow-hidden">
+      {/* Brasa do lado: azul no CT, laranja no T, ancorada na borda externa.
+          Fica atrás de tudo (z-0) e o conteúdo sobe pra z-10. */}
+      <span
+        aria-hidden="true"
+        className={cn("side-fire z-0", team === "CT" ? "side-fire-ct" : "side-fire-t")}
+      />
+
       <header
         className={cn(
-          "flex items-center gap-2.5 border-b px-3 py-2",
+          "relative z-10 flex items-center gap-2.5 border-b px-3 py-2",
           team === "CT" ? "border-ct/25 bg-ct/[0.06]" : "border-t/25 bg-t/[0.06]",
         )}
       >
@@ -46,17 +53,16 @@ function TeamColumn({ team, label, score, players, final = false }: TeamColumnPr
         </span>
       </header>
 
-      <div className={cn("grid gap-2 border-b border-line-soft px-3 py-1.5", SCOREBOARD_COLUMNS)}>
+      <div className={cn("relative z-10 grid gap-2 border-b border-line-soft px-3 py-1.5", SCOREBOARD_COLUMNS)}>
         <span />
         <span className="t-eyebrow text-[8.5px]">Jogador</span>
         <span className="t-eyebrow text-center text-[8.5px]">K</span>
-        <span className="t-eyebrow hidden text-center text-[8.5px] sm:block">A</span>
         <span className="t-eyebrow text-center text-[8.5px]">D</span>
         <span className="t-eyebrow text-right text-[8.5px]">Score</span>
         <span className="t-eyebrow hidden text-right text-[8.5px] sm:block">Ping</span>
       </div>
 
-      <div className="divide-y divide-line-soft/60">
+      <div className="relative z-10 divide-y divide-line-soft/60">
         {sorted.length === 0 ? (
           <EmptyState title="Sem jogadores neste time" className="py-10" />
         ) : (
