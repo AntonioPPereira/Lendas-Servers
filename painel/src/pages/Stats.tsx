@@ -29,7 +29,7 @@ import { BarColumns, RankedBars } from "@/components/charts/Bars";
 export default function Stats() {
   const scope = usePageEnter<HTMLDivElement>();
   const revealScope = useScrollReveal<HTMLDivElement>();
-  const resource = useResource<NetworkStats>(() => api.stats(), []);
+  const resource = useResource<NetworkStats>(["stats"], () => api.stats());
 
   if (resource.status === "error") {
     return (

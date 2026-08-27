@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Link2, PlayCircle } from "lucide-react";
 import { usePageEnter } from "@/hooks/useGsap";
+import { STALE } from "@/lib/queryClient";
 import { useResource } from "@/hooks/useResource";
 import { api } from "@/api/client";
 import type { Demo } from "@/data/types";
@@ -16,7 +17,7 @@ export default function DemoDetail() {
   const scope = usePageEnter<HTMLDivElement>();
   const actions = useDemoActions();
 
-  const demo = useResource<Demo>(() => api.demo(id), [id]);
+  const demo = useResource<Demo>(["demo", id], () => api.demo(id), { staleTime: STALE.demos });
 
   if (demo.status === "error") {
     return (

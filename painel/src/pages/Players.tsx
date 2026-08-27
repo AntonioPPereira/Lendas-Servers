@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Users } from "lucide-react";
 import { usePageEnter } from "@/hooks/useGsap";
+import { STALE } from "@/lib/queryClient";
 import { useResource } from "@/hooks/useResource";
 import { api, type PlayersPage } from "@/api/client";
 import { formatNumber } from "@/lib/format";
@@ -17,8 +18,9 @@ export default function Players() {
   const [page, setPage] = useState(1);
 
   const resource = useResource<PlayersPage>(
+    ["players", query, page],
     () => api.players({ query, page, pageSize: 24 }),
-    [query, page],
+    { staleTime: STALE.ranking, keepPrevious: true },
   );
 
   const players = resource.data?.items ?? [];

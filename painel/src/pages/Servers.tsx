@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { usePageEnter } from "@/hooks/useGsap";
+import { STALE } from "@/lib/queryClient";
+import { SERVERS_KEY } from "@/hooks/useRealServers";
 import { useResource } from "@/hooks/useResource";
 import { api } from "@/api/client";
 import type { RealServer } from "@/data/types";
@@ -28,7 +30,12 @@ export default function Servers() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
 
-  const resource = useResource<RealServer[]>(() => api.servers(), []);
+  // Mesma chave do useRealServers (topbar e sidebar): esta página entra
+  // aproveitando o cache que já existe, sem uma segunda raspagem do HLstatsX.
+  const resource = useResource<RealServer[]>(SERVERS_KEY, () => api.servers(), {
+    staleTime: STALE.servers,
+    refetchInterval: 15_000,
+  });
   const servers = resource.data ?? EMPTY_SERVERS;
 
   const visible = useMemo(() => {

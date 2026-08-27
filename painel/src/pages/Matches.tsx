@@ -25,8 +25,9 @@ export default function Matches() {
   const [page, setPage] = useState(1);
 
   const resource = useResource<Page<MatchDetail>>(
+    ["matches", map, page],
     () => api.matches({ map, page, pageSize: 12 }),
-    [map, page],
+    { keepPrevious: true },
   );
 
   const matches = resource.data?.items ?? [];

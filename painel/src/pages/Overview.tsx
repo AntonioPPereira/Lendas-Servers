@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight, Trophy } from "lucide-react";
 import { usePageEnter } from "@/hooks/useGsap";
 import { useConnection, useLiveMatch } from "@/realtime/store";
+import { STALE } from "@/lib/queryClient";
 import { useResource } from "@/hooks/useResource";
 import { api, type Page } from "@/api/client";
 import type { RankedPlayer } from "@/data/types";
@@ -29,7 +30,11 @@ export default function Overview() {
   // Top 10 fechado: número redondo que a comunidade entende de cara, e
   // preenche a coluna ao lado da Atividade (que rola bem mais longa) sem
   // deixar o painel oco embaixo.
-  const topRanking = useResource<Page<RankedPlayer>>(() => api.ranking({ page: 1, pageSize: 10 }), []);
+  const topRanking = useResource<Page<RankedPlayer>>(
+    ["ranking", "top10"],
+    () => api.ranking({ page: 1, pageSize: 10 }),
+    { staleTime: STALE.ranking },
+  );
   const topPlayers = topRanking.data?.items ?? EMPTY_TOP;
 
   const booting = connection === "connecting";

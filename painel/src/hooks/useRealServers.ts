@@ -1,25 +1,29 @@
 import { api } from "@/api/client";
 import type { RealServer } from "@/data/types";
-import { createSharedResource, useSharedResource } from "./sharedResource";
-import type { Resource } from "./useResource";
+import { STALE } from "@/lib/queryClient";
+import { useResource, type Resource } from "./useResource";
 
 /** Re-sondagem periódica: status de servidor muda a cada partida, não faz
  *  sentido carregar uma vez e nunca mais atualizar enquanto o app fica aberto. */
 const POLL_MS = 15_000;
 
 /**
- * Compartilhado, não por componente: este hook vive na Sidebar E na
- * SignalBar, as duas presentes em toda página, então uma instância por
- * componente significava raspar o HLstatsX várias vezes em paralelo a cada
- * sondagem. Ver createSharedResource.
+ * Chave compartilhada com a página de Servidores, de propósito: este hook
+ * vive na Sidebar E na SignalBar, as duas presentes em toda página. Com a
+ * mesma `queryKey`, os três consumidores dividem UMA busca e UM cache — antes,
+ * uma instância por componente significava raspar o HLstatsX várias vezes em
+ * paralelo a cada sondagem (medido: 4 requisições por tique onde devia haver 1).
  */
-const serversResource = createSharedResource<RealServer[]>(() => api.servers(), POLL_MS);
+export const SERVERS_KEY = ["servers"] as const;
 
 /** Servidores reais (via HLstatsX), com atualização periódica. Usado na
  *  barra do topo e na sidebar — os únicos lugares que mostram status de
  *  servidor fora da própria página de Servidores. */
 export function useRealServers(): Resource<RealServer[]> {
-  return useSharedResource(serversResource);
+  return useResource<RealServer[]>(SERVERS_KEY, () => api.servers(), {
+    staleTime: STALE.servers,
+    refetchInterval: POLL_MS,
+  });
 }
 
 /** `deriveServerId()` no backend (`server/src/lib/serverId.ts`) — "SERVIDOR 01"

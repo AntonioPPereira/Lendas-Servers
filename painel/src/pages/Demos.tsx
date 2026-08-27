@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FolderOpen, Grid2x2, List } from "lucide-react";
 import { useGsapScope, usePageEnter } from "@/hooks/useGsap";
 import { gsap, prefersReducedMotion } from "@/lib/motion";
+import { STALE } from "@/lib/queryClient";
 import { useResource } from "@/hooks/useResource";
 import { api, type DemoPeriods, type DemosPage } from "@/api/client";
 import { UNIQUE_MAPS } from "@/data/seed";
@@ -34,14 +35,19 @@ export default function Demos() {
   const [page, setPage] = useState(1);
   const [view, setView] = useState<"grid" | "list">("grid");
 
-  const periods = useResource<DemoPeriods>(() => api.demoPeriods(), []);
+  const periods = useResource<DemoPeriods>(["demo-periods"], () => api.demoPeriods(), {
+    staleTime: STALE.demos,
+  });
 
   const resource = useResource<DemosPage>(
+    ["demos", period, query, map, page, view],
     () =>
       period
         ? api.demos({ query, map, period, page, pageSize: view === "grid" ? 9 : 14 })
         : Promise.resolve(NO_PERIOD_CHOSEN),
-    [query, map, period, page, view],
+    // enabled: nada é pedido antes do jogador escolher um mês — o backend
+    // nunca varre o arquivo inteiro só porque alguém abriu a página.
+    { staleTime: STALE.demos, enabled: period !== undefined, keepPrevious: true },
   );
 
   // A entrada da lista, só quando um mês é escolhido pela primeira vez —

@@ -1,5 +1,7 @@
 import { Suspense, lazy } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { LiveProvider } from "@/realtime/LiveProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AppShell } from "@/components/layout/AppShell";
@@ -87,7 +89,8 @@ function PublicApp() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
         <Routes>
           <Route
             path="/admin/*"
@@ -99,7 +102,8 @@ export default function App() {
           />
           <Route path="/*" element={<PublicApp />} />
         </Routes>
-      </ToastProvider>
+        </ToastProvider>
+      </QueryClientProvider>
     </BrowserRouter>
   );
 }

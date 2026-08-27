@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { usePageEnter } from "@/hooks/useGsap";
+import { STALE } from "@/lib/queryClient";
 import { useResource } from "@/hooks/useResource";
 import { api, type RankingPage } from "@/api/client";
 import { Flip, gsap, prefersReducedMotion } from "@/lib/motion";
@@ -17,7 +18,13 @@ export default function Ranking() {
   const [page, setPage] = useState(1);
 
   const flipState = useRef<Flip.FlipState | null>(null);
-  const resource = useResource<RankingPage>(() => api.ranking({ query, page }), [query, page]);
+  const resource = useResource<RankingPage>(
+    ["ranking", query, page],
+    () => api.ranking({ query, page }),
+    // keepPrevious: trocar de página mantém a tabela atual na tela em vez de
+    // piscar esqueleto e sacudir o layout inteiro a cada clique.
+    { staleTime: STALE.ranking, keepPrevious: true },
+  );
 
   /** Capture geometry before the list re-sorts, so rows travel to their new rank. */
   function withReorder(change: () => void) {

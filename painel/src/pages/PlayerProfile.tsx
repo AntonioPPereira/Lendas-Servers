@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Trophy } from "lucide-react";
 import { usePageEnter } from "@/hooks/useGsap";
+import { STALE } from "@/lib/queryClient";
 import { useResource } from "@/hooks/useResource";
 import { api } from "@/api/client";
 import type { RankedPlayer } from "@/data/types";
@@ -16,7 +17,9 @@ import { PlayerAvatar } from "@/components/player/PlayerAvatar";
 export default function PlayerProfile() {
   const { id = "" } = useParams();
   const scope = usePageEnter<HTMLDivElement>();
-  const resource = useResource<RankedPlayer>(() => api.player(id), [id]);
+  const resource = useResource<RankedPlayer>(["player", id], () => api.player(id), {
+    staleTime: STALE.ranking,
+  });
 
   if (resource.status === "error") {
     return (

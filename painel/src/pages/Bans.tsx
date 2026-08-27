@@ -38,8 +38,9 @@ export default function Bans() {
   const query = params.get("q") ?? "";
 
   const resource = useResource<Page<Ban>>(
+    ["bans", query, state, page],
     () => api.bans({ query, state, page, pageSize: 12 }),
-    [query, state, page],
+    { keepPrevious: true },
   );
 
   const bans = resource.data?.items ?? [];

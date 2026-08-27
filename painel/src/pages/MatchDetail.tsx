@@ -19,7 +19,7 @@ import { SplitBar } from "@/components/charts/Bars";
 export default function MatchDetail() {
   const { id = "" } = useParams();
   const scope = usePageEnter<HTMLDivElement>();
-  const resource = useResource<MatchModel>(() => api.match(id), [id]);
+  const resource = useResource<MatchModel>(["match", id], () => api.match(id));
 
   if (resource.status === "error") {
     return (
