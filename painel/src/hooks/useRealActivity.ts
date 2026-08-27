@@ -1,10 +1,17 @@
-import { useEffect } from "react";
 import { api } from "@/api/client";
 import type { ActivityEvent } from "@/data/types";
-import { useResource, type Resource } from "./useResource";
+import { createSharedResource, useSharedResource } from "./sharedResource";
+import type { Resource } from "./useResource";
 
 /** Cadência de re-sondagem — casa com ACTIVITY_CACHE_TTL_MS do backend (10s). */
 const POLL_MS = 10_000;
+
+/**
+ * Compartilhado: a Visão geral e a página de Atividade mostram o mesmo feed,
+ * e cada sondagem abre uma conexão SFTP de verdade no servidor de jogo — não
+ * dá pra duplicar isso por componente. Ver createSharedResource.
+ */
+const activityResource = createSharedResource<ActivityEvent[]>(() => api.activity(), POLL_MS);
 
 /**
  * Feed real de entradas/bloqueios via `lendas_steamfilter` (leia
@@ -12,13 +19,5 @@ const POLL_MS = 10_000;
  * geração de eventos falsos aqui, só a leitura do estado real do plugin.
  */
 export function useRealActivity(): Resource<ActivityEvent[]> {
-  const resource = useResource<ActivityEvent[]>(() => api.activity(), []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => resource.reload(), POLL_MS);
-    return () => window.clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return resource;
+  return useSharedResource(activityResource);
 }

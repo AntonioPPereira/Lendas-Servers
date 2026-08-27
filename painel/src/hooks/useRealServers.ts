@@ -1,25 +1,25 @@
-import { useEffect } from "react";
 import { api } from "@/api/client";
 import type { RealServer } from "@/data/types";
-import { useResource, type Resource } from "./useResource";
+import { createSharedResource, useSharedResource } from "./sharedResource";
+import type { Resource } from "./useResource";
 
 /** Re-sondagem periódica: status de servidor muda a cada partida, não faz
  *  sentido carregar uma vez e nunca mais atualizar enquanto o app fica aberto. */
 const POLL_MS = 15_000;
 
+/**
+ * Compartilhado, não por componente: este hook vive na Sidebar E na
+ * SignalBar, as duas presentes em toda página, então uma instância por
+ * componente significava raspar o HLstatsX várias vezes em paralelo a cada
+ * sondagem. Ver createSharedResource.
+ */
+const serversResource = createSharedResource<RealServer[]>(() => api.servers(), POLL_MS);
+
 /** Servidores reais (via HLstatsX), com atualização periódica. Usado na
  *  barra do topo e na sidebar — os únicos lugares que mostram status de
  *  servidor fora da própria página de Servidores. */
 export function useRealServers(): Resource<RealServer[]> {
-  const resource = useResource<RealServer[]>(() => api.servers(), []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => resource.reload(), POLL_MS);
-    return () => window.clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return resource;
+  return useSharedResource(serversResource);
 }
 
 /** `deriveServerId()` no backend (`server/src/lib/serverId.ts`) — "SERVIDOR 01"
