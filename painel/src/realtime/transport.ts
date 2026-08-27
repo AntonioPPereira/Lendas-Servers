@@ -91,10 +91,27 @@ export class WebSocketTransport implements LiveTransport {
   }
 }
 
-/** Fallback for hosts that terminate long-lived upgrades. */
+/**
+ * Fallback for hosts that terminate long-lived upgrades.
+ *
+ * Reconecta por conta própria, e isso NÃO é redundante com o `EventSource`.
+ * O navegador só reabre sozinho em erro de rede: se a resposta vier com
+ * status fora de 2xx — um 502/503 do backend reiniciando, ou um 429 de
+ * limite de taxa — a especificação manda ele desistir de vez, deixando
+ * `readyState` em CLOSED e sem nunca mais tentar.
+ *
+ * Na prática era isto: o painel ficava minutos sem dado e só voltava quando
+ * algo recriava o transporte por fora (trocar de aba e voltar, ou recarregar
+ * a página). Confirmado em produção 2026-08-27, com o backend de pé o tempo
+ * todo — não era o servidor caindo, era a conexão que não se reerguia.
+ */
 export class SseTransport implements LiveTransport {
   readonly kind = "sse" as const;
   private source: EventSource | null = null;
+  private handler: LiveHandler | null = null;
+  private retry = 0;
+  private retryTimer: number | null = null;
+  private closed = false;
   private readonly url: string;
 
   constructor(url: string) {
@@ -102,22 +119,57 @@ export class SseTransport implements LiveTransport {
   }
 
   connect(handler: LiveHandler) {
-    handler({ type: "connection", payload: "connecting" });
+    this.handler = handler;
+    this.closed = false;
+    this.retry = 0;
+    this.open();
+  }
+
+  private open() {
+    if (this.closed) return;
+
+    this.handler?.({ type: "connection", payload: this.retry ? "reconnecting" : "connecting" });
+
     const source = new EventSource(this.url, { withCredentials: false });
     this.source = source;
 
-    source.onopen = () => handler({ type: "connection", payload: "live" });
-    source.onerror = () => handler({ type: "connection", payload: "reconnecting" });
+    source.onopen = () => {
+      this.retry = 0;
+      this.handler?.({ type: "connection", payload: "live" });
+    };
+
     source.onmessage = (message) => {
       try {
-        handler(JSON.parse(message.data as string) as LiveEvent);
+        this.handler?.(JSON.parse(message.data as string) as LiveEvent);
       } catch {
         /* ignore malformed frame */
       }
     };
+
+    source.onerror = () => {
+      if (this.closed) return;
+      this.handler?.({ type: "connection", payload: "reconnecting" });
+
+      // CLOSED = o navegador desistiu e não vai tentar de novo sozinho.
+      // Qualquer outro estado é ele já se reconectando; entrar no meio só
+      // criaria uma segunda conexão concorrendo com a primeira.
+      if (source.readyState === EventSource.CLOSED) {
+        source.close();
+        this.scheduleRetry();
+      }
+    };
+  }
+
+  private scheduleRetry() {
+    this.retry += 1;
+    const delay = Math.min(15_000, 800 * 2 ** this.retry);
+    this.retryTimer = window.setTimeout(() => this.open(), delay);
   }
 
   disconnect() {
+    this.closed = true;
+    if (this.retryTimer !== null) window.clearTimeout(this.retryTimer);
+    this.retryTimer = null;
     this.source?.close();
     this.source = null;
   }
