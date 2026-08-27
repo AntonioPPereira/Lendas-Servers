@@ -14,10 +14,34 @@ function pingTone(ping: number) {
   return "text-danger";
 }
 
+/**
+ * Ping como barrinhas de sinal, além do número: quatro degraus dizem a
+ * qualidade da conexão de relance, sem obrigar ninguém a saber de cor que
+ * 40ms é bom e 120ms é ruim. O número segue ali pra quem quer o valor.
+ */
+function PingBars({ ping }: { ping: number }) {
+  const level = ping < 40 ? 4 : ping < 80 ? 3 : ping < 120 ? 2 : 1;
+  const tone = ping < 80 ? "bg-live" : ping < 120 ? "bg-warn" : "bg-danger";
+  const heights = ["h-1", "h-1.5", "h-2", "h-2.5"];
+
+  return (
+    <span className="flex items-end gap-px" aria-hidden="true">
+      {heights.map((h, i) => (
+        <span
+          key={h}
+          className={cn("w-[2px] rounded-[1px]", h, i < level ? tone : "bg-line-soft")}
+        />
+      ))}
+    </span>
+  );
+}
+
 interface ScoreboardRowProps {
   player: LivePlayer;
   rank: number;
   final?: boolean;
+  /** Primeiro do time por score — ganha a linha mais forte da coluna. */
+  leader?: boolean;
 }
 
 /**
@@ -32,6 +56,7 @@ export const ScoreboardRow = memo(function ScoreboardRow({
   player,
   rank,
   final = false,
+  leader = false,
 }: ScoreboardRowProps) {
   const row = useRef<HTMLDivElement>(null);
   const wasAlive = useRef(player.alive);
@@ -62,10 +87,21 @@ export const ScoreboardRow = memo(function ScoreboardRow({
       className={cn(
         "row-interactive relative grid items-center gap-2 px-3 py-1.5",
         SCOREBOARD_COLUMNS,
+        // Aresta acesa na cor do time só no primeiro: marca quem está
+        // carregando o lado sem precisar de mais um selo na linha.
+        leader && "border-l-2",
+        leader && (player.team === "CT" ? "border-ct/70 bg-ct/[0.07]" : "border-t/70 bg-t/[0.07]"),
         !final && !player.alive && "opacity-45",
       )}
     >
-      <span className="t-num text-[10px] text-ink-4">{rank}</span>
+      <span
+        className={cn(
+          "t-num text-[10px] tabular-nums",
+          leader ? (player.team === "CT" ? "text-ct-hi" : "text-t-hi") : "text-ink-4",
+        )}
+      >
+        {rank}
+      </span>
 
       <Link
         to={"/jogadores/" + player.steamId64}
@@ -106,13 +142,11 @@ export const ScoreboardRow = memo(function ScoreboardRow({
       <span ref={scoreRef} className="t-num text-right text-[12px] tabular-nums text-ink-2">
         {player.score}
       </span>
-      <span
-        className={cn(
-          "t-num hidden text-right text-[11px] tabular-nums sm:block",
-          pingTone(player.ping),
-        )}
-      >
-        {player.ping}
+      <span className="hidden items-center justify-end gap-1.5 sm:flex" title={player.ping + " ms"}>
+        <span className={cn("t-num text-[11px] tabular-nums", pingTone(player.ping))}>
+          {player.ping}
+        </span>
+        <PingBars ping={player.ping} />
       </span>
     </div>
   );

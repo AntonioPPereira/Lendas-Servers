@@ -48,6 +48,10 @@ export default function Ranking() {
     ? new Date(resource.data.comparedTo).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : null;
   const showPodium = page === 1 && query.trim() === "" && rows.length >= 3;
+  // Primeira carga: o HLstatsX não tem API, então o backend percorre várias
+  // páginas de HTML e isso leva segundos. Sem um aviso explícito a tela fica
+  // só com esqueletos mudos e ninguém sabe se travou.
+  const firstLoad = resource.status === "loading" && rows.length === 0;
 
   return (
     <div ref={scope} className="space-y-5">
@@ -62,6 +66,14 @@ export default function Ranking() {
       {showPodium ? (
         <div data-enter>
           <Podium players={rows.slice(0, 3)} />
+        </div>
+      ) : firstLoad ? (
+        // Reserva o lugar do pódio enquanto carrega, senão a tabela sobe e
+        // depois é empurrada pra baixo quando os três primeiros chegam.
+        <div data-enter>
+          <Panel hud className="overflow-hidden">
+            <LoadingState label="Montando o pódio" className="py-14" />
+          </Panel>
         </div>
       ) : null}
 
@@ -94,8 +106,11 @@ export default function Ranking() {
             <>
               <RankingHeader />
 
-              {resource.status === "loading" && rows.length === 0 ? (
-                <SkeletonRows rows={8} />
+              {firstLoad ? (
+                <>
+                  <LoadingState label="Consultando o ranking no HLstatsX" className="py-6" />
+                  <SkeletonRows rows={8} />
+                </>
               ) : rows.length === 0 ? (
                 <EmptyState
                   title="Nenhum jogador encontrado"

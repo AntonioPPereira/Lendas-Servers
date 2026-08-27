@@ -67,7 +67,13 @@ function TeamColumn({ team, label, score, players, final = false }: TeamColumnPr
           <EmptyState title="Sem jogadores neste time" className="py-10" />
         ) : (
           sorted.map((player, index) => (
-            <ScoreboardRow key={player.steamId64} player={player} rank={index + 1} final={final} />
+            <ScoreboardRow
+              key={player.steamId64}
+              player={player}
+              rank={index + 1}
+              final={final}
+              leader={index === 0}
+            />
           ))
         )}
       </div>

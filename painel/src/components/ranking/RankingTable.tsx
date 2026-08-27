@@ -7,8 +7,21 @@ import { formatDecimal, formatNumber, formatPercent, formatPlaytime } from "@/li
 import { PlayerAvatar } from "@/components/player/PlayerAvatar";
 import { Meter } from "@/components/ui/Meter";
 
+/**
+ * A sobra de largura vai para as colunas NUMÉRICAS, não para o nome.
+ *
+ * Antes o nome era `1fr` e os números tinham largura fixa, então numa tela
+ * larga o nickname engolia centenas de pixels e abria um vão morto até as
+ * estatísticas. Agora o nome tem teto (18rem, o suficiente pro maior
+ * nickname) e cada coluna de número é flexível com mínimo próprio — elas se
+ * distribuem pela linha inteira em vez de ficarem espremidas na borda.
+ *
+ * O SKILL leva o maior peso (1.3fr) porque é o critério que ordena o ranking
+ * inteiro: era a informação mais escondida da tabela e virou a mais visível.
+ */
 const COLUMNS =
-  "grid-cols-[44px_minmax(0,1fr)_58px_58px] md:grid-cols-[44px_minmax(0,1fr)_62px_62px_62px_92px_74px_78px]";
+  "grid-cols-[44px_minmax(0,1fr)_58px_66px] " +
+  "md:grid-cols-[46px_minmax(0,18rem)_minmax(64px,1fr)_minmax(64px,1fr)_minmax(60px,0.9fr)_minmax(84px,1.2fr)_minmax(72px,1fr)_minmax(96px,1.3fr)]";
 
 export function RankingHeader() {
   return (
@@ -20,7 +33,7 @@ export function RankingHeader() {
       <span className="t-eyebrow text-right text-[8.5px]">K/D</span>
       <span className="t-eyebrow hidden text-right text-[8.5px] md:block">Precisão</span>
       <span className="t-eyebrow hidden text-right text-[8.5px] md:block">Conexão</span>
-      <span className="t-eyebrow text-right text-[8.5px]">Skill</span>
+      <span className="t-eyebrow text-right text-[9px] text-brass/80">Skill</span>
     </div>
   );
 }
@@ -111,7 +124,7 @@ export const RankingRow = memo(function RankingRow({ player }: { player: RankedP
       </span>
 
       <span className="text-right">
-        <span className="t-num block text-[12.5px] tabular-nums text-ink">
+        <span className="t-num block text-[15px] font-medium tabular-nums text-brass">
           {formatNumber(player.skill)}
         </span>
         <Delta value={player.skillDelta} className="mt-0.5" />

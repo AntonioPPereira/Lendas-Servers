@@ -14,7 +14,7 @@ import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
 import { LiveMatch } from "@/components/match/LiveMatch";
 import { Scoreboard } from "@/components/match/Scoreboard";
-import { RoundStrip } from "@/components/match/RoundStrip";
+import { RoundTimeline } from "@/components/match/RoundTimeline";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import { PlayerAvatar } from "@/components/player/PlayerAvatar";
 
@@ -74,8 +74,12 @@ export default function Overview() {
               tScore={match.tScore}
             />
             <div className="border-t border-line-soft px-4 py-3.5 sm:px-5">
-              <p className="t-eyebrow mb-2 text-[8.5px]">Rodadas</p>
-              <RoundStrip rounds={match.rounds} maxRounds={match.maxRounds} />
+              <p className="t-eyebrow mb-2.5 text-[8.5px]">Histórico de rodadas</p>
+              <RoundTimeline
+                rounds={match.rounds}
+                maxRounds={match.maxRounds}
+                currentRound={match.round}
+              />
             </div>
           </Panel>
         </div>

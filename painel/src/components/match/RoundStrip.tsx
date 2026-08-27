@@ -104,7 +104,7 @@ export function RoundStrip({
               className={cn(
                 "grid shrink-0 place-items-center rounded-[2px] border transition-colors",
                 tile,
-                !round && !isCurrent && "border-line-soft/70 bg-transparent",
+                !round && !isCurrent && "border-line-soft/60 bg-panel-2/50",
                 isCurrent && "border-brass/60 bg-brass/10",
                 round?.winner === "CT" && "border-ct/45 bg-ct/20",
                 round?.winner === "T" && "border-t/45 bg-t/20",
@@ -145,7 +145,7 @@ export function RoundStripLegend({ className }: { className?: string }) {
         <span className="t-eyebrow text-[9px]">Bomba decidiu</span>
       </span>
       <span className="flex items-center gap-1.5">
-        <span className="size-4 rounded-[2px] border border-line-soft/70" aria-hidden="true" />
+        <span className="size-4 rounded-[2px] border border-line-soft/60 bg-panel-2/50" aria-hidden="true" />
         <span className="t-eyebrow text-[9px]">Não jogada</span>
       </span>
     </div>
