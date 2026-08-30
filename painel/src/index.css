@@ -1128,3 +1128,104 @@
     .reticle-lock { opacity: 0; }
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Mural "A casa" (components/home/TeamMural.tsx).
+ *
+ * Tratamento de cinema com o que o painel já tem: faixas de enquadramento,
+ * vinheta, uma luz que atravessa devagar e as fotos entrando escalonadas.
+ *
+ * As fotos são pequenas (184px as duas menores), então nada de ampliar: o
+ * quadro é 72px e o zoom no hover é mínimo. Melhor um retrato nítido e
+ * contido que um borrado e grande.
+ * ------------------------------------------------------------------ */
+@layer components {
+  .mural {
+    background-image:
+      radial-gradient(120% 140% at 50% 0%, rgb(58 48 38 / 0.55), transparent 62%),
+      linear-gradient(180deg, rgb(32 28 23 / 0.4), rgb(24 20 17 / 0.75));
+  }
+
+  /* Vinheta: escurece as bordas e joga o olho pro centro. */
+  .mural::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(85% 120% at 50% 50%, transparent 42%, rgb(14 11 9 / 0.5));
+  }
+
+  .mural-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgb(74 64 51 / 0.85) 18%, rgb(74 64 51 / 0.85) 82%, transparent);
+    pointer-events: none;
+  }
+  .mural-bar-top { top: 0; }
+  .mural-bar-bottom { bottom: 0; }
+
+  /* Luz que atravessa: longa e rara, pra ser notada sem incomodar. */
+  .mural-sweep {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 38%;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgb(214 168 92 / 0.09), transparent);
+    animation: mural-sweep 9s ease-in-out infinite;
+  }
+
+  @keyframes mural-sweep {
+    0%, 100% { transform: translateX(-140%); opacity: 0; }
+    35%      { opacity: 1; }
+    70%      { transform: translateX(360%); opacity: 0; }
+  }
+
+  /* Entrada escalonada: um retrato depois do outro, como crédito de filme. */
+  .mural-item {
+    animation: mural-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes mural-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .mural-frame {
+    display: block;
+    padding: 2px;
+    background: linear-gradient(145deg, rgb(214 168 92 / 0.55), rgb(74 64 51 / 0.35) 55%, rgb(74 64 51 / 0.15));
+    border-radius: 3px;
+    transition: background 0.3s ease;
+  }
+  .group:hover .mural-frame {
+    background: linear-gradient(145deg, rgb(214 168 92 / 0.95), rgb(214 168 92 / 0.35) 60%, rgb(74 64 51 / 0.3));
+  }
+
+  .mural-photo {
+    display: block;
+    border-radius: 2px;
+    /* Levemente dessaturado pra casar com a paleta; ganha cor no hover. */
+    filter: grayscale(0.35) contrast(1.05);
+    transition: filter 0.3s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .group:hover .mural-photo {
+    filter: grayscale(0) contrast(1.08);
+    transform: scale(1.04);
+  }
+
+  /* Foco visível pra quem navega por teclado — o hover não basta. */
+  .mural a:focus-visible .mural-frame {
+    background: var(--color-brass);
+    outline: 2px solid var(--color-brass);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mural-sweep { animation: none; opacity: 0; }
+    .mural-item { animation: none; }
+    .mural-photo { transition: filter 0.2s ease; }
+    .group:hover .mural-photo { transform: none; }
+  }
+}
