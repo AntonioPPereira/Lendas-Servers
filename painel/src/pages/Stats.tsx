@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Bomb, Crosshair, Flame, Shield, Skull, Swords } from "lucide-react";
+import { Bomb, Crosshair, Flame, Shield, ShieldCheck, Skull, Swords, Trophy } from "lucide-react";
 import { usePageEnter, useScrollReveal } from "@/hooks/useGsap";
 import { useResource } from "@/hooks/useResource";
 import { api } from "@/api/client";
-import type { ServerStats } from "@/data/types";
-import { formatCompact, formatDecimal, formatNumber, mapLabel, weaponLabel } from "@/lib/format";
+import type { LeaderEntry, Leaderboards, ServerStats } from "@/data/types";
+import { formatCompact, formatDecimal, formatNumber, mapLabel, timeAgo, weaponLabel } from "@/lib/format";
 import { SectionTitle, Panel } from "@/components/ui/Panel";
 import { StatCard } from "@/components/ui/StatCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -24,6 +24,14 @@ export default function Stats() {
   const revealScope = useScrollReveal<HTMLDivElement>();
   const resource = useResource<ServerStats>(["server-stats"], () => api.serverStats(), {
     staleTime: 5 * 60_000,
+  });
+  /**
+   * Chamada à parte de propósito: o pódio vem do plugin e cobre um período
+   * diferente dos totais acima. Se ela falhar, a página inteira não pode
+   * cair — por isso não entra no `if (error)` do recurso principal.
+   */
+  const podios = useResource<Leaderboards>(["leaderboards"], () => api.leaderboards(), {
+    staleTime: 2 * 60_000,
   });
 
   if (resource.status === "error") {
@@ -188,12 +196,14 @@ export default function Stats() {
           </Painel>
         </div>
 
+        <SecaoPodios dados={podios.data} />
+
         <p data-reveal className="px-1 text-[11.5px] leading-relaxed text-ink-3">
-          Os números vêm do HLstatsX desta rede e somam o histórico inteiro do
-          servidor. Não há recorte por jogador nesta tela: o perfil individual
-          do HLstatsX não responde de forma confiável nesta instalação, então
-          um pódio de “quem matou mais com cada arma” teria que ser estimado —
-          preferimos não mostrar a inventar.
+          Os totais acima vêm do HLstatsX desta rede e somam o histórico
+          inteiro do servidor. Os pódios por jogador vêm de outra fonte, com
+          outro alcance: o perfil individual do HLstatsX não responde nesta
+          instalação, então quem conta é um plugin no próprio servidor — e ele
+          só sabe do que aconteceu depois que entrou no ar.
         </p>
       </div>
     </div>
@@ -246,5 +256,83 @@ function Linha({ rotulo, valor }: { rotulo: string; valor: number | null }) {
         {valor === null ? "—" : formatNumber(valor)}
       </dd>
     </div>
+  );
+}
+
+/**
+ * Pódios por arma e por ação. Fonte e período diferentes do bloco de cima,
+ * e a tela diz isso na cara: sem o aviso, o leitor somaria "17 mil abates
+ * com a Deagle" (histórico) com "3 abates do fulano" (desde ontem) e
+ * concluiria que algo quebrou.
+ */
+function SecaoPodios({ dados }: { dados: Leaderboards | null }) {
+  // Ainda carregando, indisponível, ou plugin recém-instalado sem nada
+  // contado: some em vez de mostrar pódio vazio.
+  if (!dados || dados.playersCounted === 0) return null;
+
+  const acoes = [
+    { titulo: "Mais abates", icone: <Trophy />, lista: dados.topKillers },
+    { titulo: "Mais headshots", icone: <Crosshair />, lista: dados.topHeadshots },
+    { titulo: "Mais bombas plantadas", icone: <Bomb />, lista: dados.topPlanters },
+    { titulo: "Mais defuses", icone: <ShieldCheck />, lista: dados.topDefusers },
+  ].filter((a) => a.lista.length > 0);
+
+  return (
+    <>
+      <div data-reveal className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-1 pt-2">
+        <h2 className="t-display text-[15px] text-ink">Quem manda em cada coisa</h2>
+        <p className="text-[11.5px] text-ink-3">
+          {dados.since ? "Contando desde " + timeAgo(dados.since) : "Contagem recém-iniciada"}
+          {" · "}
+          {formatNumber(dados.playersCounted)}{" "}
+          {dados.playersCounted === 1 ? "jogador" : "jogadores"}
+        </p>
+      </div>
+
+      {acoes.length > 0 ? (
+        <div data-reveal className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {acoes.map((a) => (
+            <ChartFrame key={a.titulo} title={a.titulo}>
+              <Podio entradas={a.lista} />
+            </ChartFrame>
+          ))}
+        </div>
+      ) : null}
+
+      {dados.weapons.length > 0 ? (
+        <div data-reveal className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {dados.weapons.slice(0, 9).map((w) => (
+            <ChartFrame
+              key={w.weapon}
+              title={weaponLabel(w.weapon, w.weapon)}
+              caption={formatNumber(w.total) + " abates no período"}
+            >
+              <Podio entradas={w.top} />
+            </ChartFrame>
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function Podio({ entradas }: { entradas: LeaderEntry[] }) {
+  return (
+    <ol className="space-y-1.5">
+      {entradas.map((e, i) => (
+        <li key={e.steamId64} className="flex items-center gap-2.5">
+          <span
+            className={
+              "t-num w-4 shrink-0 text-right text-[11px] tabular-nums " +
+              (i === 0 ? "text-brass" : "text-ink-4")
+            }
+          >
+            {i + 1}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2">{e.nickname}</span>
+          <span className="t-num text-[12.5px] tabular-nums text-ink">{formatNumber(e.value)}</span>
+        </li>
+      ))}
+    </ol>
   );
 }

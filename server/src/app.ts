@@ -6,6 +6,7 @@ import type { HLStatsService } from "./services/HLStatsService.js";
 import type { SteamFilterLogService } from "./services/SteamFilterLogService.js";
 import type { SourceBansService } from "./services/SourceBansService.js";
 import type { PlayerDirectoryService } from "./services/PlayerDirectoryService.js";
+import type { PlayerStatsService } from "./services/PlayerStatsService.js";
 import type { SteamAvatarService } from "./services/SteamAvatarService.js";
 import { LiveMatchState } from "./live/state.js";
 import { LiveBroadcaster } from "./live/broadcaster.js";
@@ -35,6 +36,7 @@ export interface AppServices {
   steamFilter: SteamFilterLogService;
   sourceBans: SourceBansService;
   playerDirectory: PlayerDirectoryService;
+  playerStats: PlayerStatsService;
   avatars: SteamAvatarService;
 }
 
@@ -88,7 +90,7 @@ export function createApp(services: AppServices, options: AppOptions = {}) {
   app.use("/api/players", createPlayersRouter(services.hlstats, nicknames, services.avatars, services.playerDirectory));
   app.use("/api/activity", createActivityRouter(services.steamFilter));
   app.use("/api/bans", createBansRouter(services.sourceBans, services.hlstats));
-  app.use("/api/stats", createStatsRouter(services.hlstats));
+  app.use("/api/stats", createStatsRouter(services.hlstats, services.playerStats));
   app.use(
     "/api/live/events",
     createLiveEventsRouter(liveState, liveBroadcaster, services.avatars, nicknames, options.liveApiToken ?? ""),

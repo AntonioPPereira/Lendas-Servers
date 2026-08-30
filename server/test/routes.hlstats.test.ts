@@ -10,6 +10,7 @@ import { SteamFilterLogService } from "../src/services/SteamFilterLogService.js"
 import { SteamAvatarService } from "../src/services/SteamAvatarService.js";
 import { SourceBansService } from "../src/services/SourceBansService.js";
 import { PlayerDirectoryService } from "../src/services/PlayerDirectoryService.js";
+import { PlayerStatsService } from "../src/services/PlayerStatsService.js";
 import { BASE as SB_BASE, makeFakeSourceBansClient } from "./helpers/fakeSourceBansClient.js";
 import { BASE, SAMPLE_TREE, makeFakeClient } from "./helpers/fakeSftpClient.js";
 
@@ -42,7 +43,7 @@ function buildApp(
   const steamFilter = new SteamFilterLogService(SFTP_CONN, 60_000, 60);
   const avatars = new SteamAvatarService(opts.avatarFetchImpl ? "KEY" : "", 3_600_000, opts.avatarFetchImpl as never);
   return createApp(
-    { demos, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), avatars },
+    { demos, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), avatars },
     { liveApiToken: opts.liveApiToken ?? LIVE_TOKEN },
   );
 }
@@ -59,6 +60,15 @@ function emptySourceBans() {
 /** Índice nick->SteamID64 vazio: avatar não é o assunto destes testes. */
 function emptyPlayerDirectory() {
   return new PlayerDirectoryService(
+    { host: "x", port: 22, username: "u", password: "p", base: SB_BASE },
+    0,
+    () => makeFakeSourceBansClient().client,
+  );
+}
+
+/** Contagem por jogador vazia: pódios não são o assunto destes testes. */
+function emptyPlayerStats() {
+  return new PlayerStatsService(
     { host: "x", port: 22, username: "u", password: "p", base: SB_BASE },
     0,
     () => makeFakeSourceBansClient().client,

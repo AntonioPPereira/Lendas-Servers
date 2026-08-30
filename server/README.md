@@ -430,6 +430,35 @@ As três páginas são buscadas em paralelo e cada uma é opcional: se `actions`
 cair, `weapons` e `maps` ainda respondem. Só quando as três vêm vazias a rota
 falha. Cache longo (4× o do ranking) — são somas históricas, mudam devagar.
 
+### Pódios por jogador — `GET /api/stats/leaderboards`
+
+Quem mata mais com cada arma, quem mais planta, quem mais desarma. **Não sai
+do HLstatsX**: além do `mode=playerinfo` travar, a página `mode=awards` —
+que traria exatamente esses pódios — está vazia nesta instalação porque o
+cron de prêmios não roda. Quem conta é o plugin `lendas_playerstats`
+(`plugins/`), que escuta `player_death`, `bomb_planted` e `bomb_defused` e
+exporta um JSON lido pelo mesmo SFTP.
+
+**`since` é parte do dado, não enfeite.** Estes números começam do zero na
+instalação do plugin — não são o histórico do servidor. A tela mostra "desde
+quando" junto do bloco, senão o leitor compara com os totais do HLstatsX e
+conclui que algo quebrou.
+
+Decisões do plugin que evitam pódio enganoso:
+
+- **Fogo amigo não conta como abate**, senão o pódio de arma infla por
+  acidente num MIX.
+- **Suicídio e morte por queda/mundo** não têm atacante e são ignorados.
+- **Arma com menos de 10 abates no total não vira pódio** (`minKillsPorArma`):
+  com 2 abates o "top 1" é sorte, não habilidade.
+- **Zero não ocupa posição**: quem nunca plantou não aparece como último
+  colocado do pódio de plants.
+- **Empate desempata por nick**, em ordem alfabética — sem isso a ordem
+  dependeria da leitura do arquivo e o pódio "trocaria sozinho" entre dois
+  recarregamentos.
+- Os dois servidores são **somados por SteamID64**: quem joga nos dois
+  aparece uma vez, com o total, em vez de duas com metade.
+
 ## Arquitetura interna
 
 ```

@@ -8,6 +8,7 @@ import type {
   RankedPlayer,
   RealServer,
   ServerStats,
+  Leaderboards,
 } from "@/data/types";
 import { BANS } from "@/data/bans";
 import { MATCHES, MATCHES_BY_ID } from "@/data/matches";
@@ -280,6 +281,15 @@ export const api = {
   async serverStats(): Promise<ServerStats> {
     requireApi("estatísticas");
     return request<ServerStats>("/stats");
+  },
+
+  /**
+   * Pódios por arma/ação. Chamada separada de `serverStats` porque as duas
+   * cobrem períodos diferentes — juntar convidaria a somar o que não soma.
+   */
+  async leaderboards(): Promise<Leaderboards> {
+    requireApi("estatísticas");
+    return request<Leaderboards>("/stats/leaderboards");
   },
 
   async stats(): Promise<NetworkStats> {

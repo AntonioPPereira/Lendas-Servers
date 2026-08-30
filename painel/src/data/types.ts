@@ -382,6 +382,38 @@ export interface ServerStats {
   actions: Array<{ code: string; name: string; count: number }>;
 }
 
+/**
+ * Pódios por arma e por ação, de `GET /api/stats/leaderboards`.
+ *
+ * ATENÇÃO ao `since`: estes números NÃO são o histórico do servidor (esse é
+ * o `ServerStats`), e sim o que o plugin contou desde que subiu. A tela
+ * precisa deixar isso explícito, senão o leitor compara os dois blocos e
+ * conclui que um está errado.
+ */
+export interface LeaderEntry {
+  steamId64: string;
+  nickname: string;
+  value: number;
+}
+
+export interface WeaponLeaderboard {
+  /** Mesmo código do HLstatsX ("ak47"), pra reusar o rótulo curto. */
+  weapon: string;
+  total: number;
+  top: LeaderEntry[];
+}
+
+export interface Leaderboards {
+  /** ISO de quando a contagem começou. `null` = nada exportado ainda. */
+  since: string | null;
+  playersCounted: number;
+  weapons: WeaponLeaderboard[];
+  topKillers: LeaderEntry[];
+  topHeadshots: LeaderEntry[];
+  topPlanters: LeaderEntry[];
+  topDefusers: LeaderEntry[];
+}
+
 export type RankingPeriod = "today" | "week" | "month" | "all";
 
 export interface RankingFilters {
