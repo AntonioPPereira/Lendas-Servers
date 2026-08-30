@@ -38,7 +38,6 @@ export default function Matches() {
         <SectionTitle
           eyebrow="Arquivo"
           title="Histórico de partidas"
-          description="Toda partida encerrada na rede, com placar, histórico de rodadas e link para a gravação quando existir."
         />
       </div>
 

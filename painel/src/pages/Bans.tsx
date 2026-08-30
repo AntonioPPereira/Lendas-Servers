@@ -55,7 +55,6 @@ export default function Bans() {
         <SectionTitle
           eyebrow="Registro público"
           title="Banimentos"
-          description="Todas as punições aplicadas na rede, com motivo, administrador responsável e prazo. Abra um registro para ver os detalhes completos."
         />
       </div>
 

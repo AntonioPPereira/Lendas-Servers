@@ -72,7 +72,6 @@ export default function Demos() {
         <SectionTitle
           eyebrow="Biblioteca"
           title="Demos"
-          description="Todas as partidas gravadas na rede. Baixe o arquivo .dem e reproduza no próprio Counter-Strike: Source com playdemo."
         />
       </div>
 

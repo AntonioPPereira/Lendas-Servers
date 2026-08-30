@@ -84,7 +84,6 @@ export default function Stats() {
         <SectionTitle
           eyebrow="Arquivo"
           title="Estatísticas"
-          description="O que o servidor acumulou desde que começou a registrar: abates, armas, bombas e o equilíbrio entre os lados."
         />
       </div>
 

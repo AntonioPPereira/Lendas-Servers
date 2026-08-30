@@ -62,7 +62,6 @@ export default function Servers() {
         <SectionTitle
           eyebrow="Infraestrutura"
           title="Servidores"
-          description="Status ao vivo via HLstatsX: mapa e lotação atuais. A fonte não fornece ping, tickrate nem uptime do processo."
           actions={
             <Button icon={<RefreshCw />} onClick={resource.reload} disabled={resource.status === "loading"}>
               Atualizar

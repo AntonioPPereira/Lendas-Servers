@@ -48,7 +48,6 @@ export default function Activity() {
         <SectionTitle
           eyebrow="Feed do servidor"
           title="Atividade ao vivo"
-          description="Quem entrou e quem o gate de requisitos (lendas_steamfilter) barrou na porta, com o motivo real — na ordem em que acontece."
           actions={
             <Button
               icon={paused ? <Play /> : <Pause />}

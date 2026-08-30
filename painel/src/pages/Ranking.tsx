@@ -66,7 +66,6 @@ export default function Ranking() {
         <SectionTitle
           eyebrow="Ladder da comunidade"
           title="Ranking"
-          description="Classificação por skill do HLstatsX, acumulado desde o primeiro registro — a fonte não separa por período ou temporada."
         />
       </div>
 

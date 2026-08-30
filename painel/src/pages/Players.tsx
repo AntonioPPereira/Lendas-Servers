@@ -31,7 +31,6 @@ export default function Players() {
         <SectionTitle
           eyebrow="Diretório"
           title="Jogadores"
-          description="Ranking real do HLstatsX. Busque por nickname para abrir o perfil — o identificador é o ID interno do HLstatsX, não o Steam ID."
         />
       </div>
 
