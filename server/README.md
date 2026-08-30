@@ -331,6 +331,63 @@ Efeito colateral bom: o banco nunca fica exposto à internet.
 - Ban por IP não tem `SteamID` — `steamId64` fica vazio e o painel
   simplesmente não oferece link de perfil.
 
+## Avatares reais no ranking — índice `nick -> SteamID64`
+
+O ranking vem do HLstatsX, que expõe **só o nick** — nunca o SteamID
+(auditado, não é falta de tentar). Sem SteamID não há como pedir a foto à
+Steam, e o painel inteiro fica com o emblema gerado.
+
+Quem conhece o SteamID de cada jogador é o **servidor de jogo**. Então o
+plugin `lendas_players` registra o par `nick -> SteamID64` num JSON
+(`addons/sourcemod/data/lendas_players.json`), e `PlayerDirectoryService` lê
+esse arquivo pela mesma conexão SFTP de sempre.
+
+O índice é **cumulativo**: o plugin carrega o arquivo ao subir e só
+acrescenta. Quem não joga há meses continua listado — que é exatamente o
+caso que interessa, já que ele segue aparecendo no ranking histórico.
+
+### Duas fontes de SteamID, nesta ordem
+
+1. `NicknameDirectory` — quem o `lendas_live` acabou de reportar. Em memória
+   (some no restart), mas é o vínculo mais recente entre nick e conta.
+2. `PlayerDirectoryService` — o índice histórico acima. Persistente.
+
+A primeira ganha em caso de conflito: se a pessoa está jogando agora, aquele
+é o vínculo atual.
+
+### Uma requisição por página, não uma por jogador
+
+`resolveAvatarsByNickname` resolve a página inteira de uma vez.
+`GetPlayerSummaries` aceita 100 IDs por chamada e uma página tem no máximo
+100 linhas — então isso custa **uma** requisição à Steam. Há teste
+justamente pra isso.
+
+Antes as rotas usavam `avatars.peek()` (só cache, sem rede), o que na prática
+resolvia **zero** avatares: nada populava o cache por outro caminho. Agora
+usam `resolve()`.
+
+### Cobertura é parcial por natureza
+
+Medido em 2026-08-30: **63 dos 100** primeiros do ranking. Os outros são
+jogadores do ranking histórico que não aparecem nos logs recentes. Eles
+seguem com o emblema gerado — que é honesto, porque é visivelmente gerado, e
+não uma foto de outra pessoa.
+
+O índice nasceu com 454 jogadores, semeados a partir de 100 dias de log
+(`nick<uid><[U:1:N]>`, o formato `%L` do SourceMod). Daqui pra frente cresce
+sozinho, a cada jogador que entra.
+
+### Limitações conhecidas
+
+- **Nick é a chave**, porque é só isso que o HLstatsX dá. Dois jogadores
+  diferentes com exatamente o mesmo nick colidem — o último a entrar vence.
+  Não há como desambiguar sem SteamID no ranking, que é justamente o que
+  falta.
+- Conta com perfil privado ou sem avatar público não entra no resultado;
+  nunca é substituída por um placeholder remoto.
+- `STEAM_API_KEY` vazia desliga tudo isso silenciosamente (por design) — o
+  frontend cai pro emblema gerado.
+
 ## Arquitetura interna
 
 ```

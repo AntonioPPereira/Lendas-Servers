@@ -4,6 +4,7 @@ import { HLStatsService } from "./services/HLStatsService.js";
 import { SteamFilterLogService } from "./services/SteamFilterLogService.js";
 import { SteamAvatarService } from "./services/SteamAvatarService.js";
 import { SourceBansService } from "./services/SourceBansService.js";
+import { PlayerDirectoryService } from "./services/PlayerDirectoryService.js";
 import { createApp } from "./app.js";
 
 const demos = new SftpDemoService(config.sftp, config.demosCacheTtlMs);
@@ -16,10 +17,12 @@ const hlstats = new HLStatsService(
 const steamFilter = new SteamFilterLogService(config.sftp, config.activityCacheTtlMs, config.activityLimit);
 // Bans do SourceBans++ via o JSON que o plugin exporta — mesma conexão SFTP.
 const sourceBans = new SourceBansService(config.sftp, config.bansCacheTtlMs);
+// Índice nick->SteamID64 do servidor de jogo: é o que permite avatar real no ranking.
+const playerDirectory = new PlayerDirectoryService(config.sftp, config.playerDirectoryCacheTtlMs);
 const avatars = new SteamAvatarService(config.steam.apiKey, config.steam.avatarCacheTtlMs);
 
 const app = createApp(
-  { demos, hlstats, steamFilter, sourceBans, avatars },
+  { demos, hlstats, steamFilter, sourceBans, playerDirectory, avatars },
   {
     corsOrigin: config.corsOrigin,
     liveApiToken: config.live.apiToken,

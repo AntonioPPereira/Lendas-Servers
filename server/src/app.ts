@@ -5,6 +5,7 @@ import type { SftpDemoService } from "./services/SftpDemoService.js";
 import type { HLStatsService } from "./services/HLStatsService.js";
 import type { SteamFilterLogService } from "./services/SteamFilterLogService.js";
 import type { SourceBansService } from "./services/SourceBansService.js";
+import type { PlayerDirectoryService } from "./services/PlayerDirectoryService.js";
 import type { SteamAvatarService } from "./services/SteamAvatarService.js";
 import { LiveMatchState } from "./live/state.js";
 import { LiveBroadcaster } from "./live/broadcaster.js";
@@ -32,6 +33,7 @@ export interface AppServices {
   hlstats: HLStatsService;
   steamFilter: SteamFilterLogService;
   sourceBans: SourceBansService;
+  playerDirectory: PlayerDirectoryService;
   avatars: SteamAvatarService;
 }
 
@@ -81,8 +83,8 @@ export function createApp(services: AppServices, options: AppOptions = {}) {
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
   app.use("/api/demos", createDemosRouter(services.demos));
   app.use("/api/servers", createServersRouter(services.hlstats));
-  app.use("/api/ranking", createRankingRouter(services.hlstats, nicknames, services.avatars, rankingBaseline));
-  app.use("/api/players", createPlayersRouter(services.hlstats, nicknames, services.avatars));
+  app.use("/api/ranking", createRankingRouter(services.hlstats, nicknames, services.avatars, rankingBaseline, services.playerDirectory));
+  app.use("/api/players", createPlayersRouter(services.hlstats, nicknames, services.avatars, services.playerDirectory));
   app.use("/api/activity", createActivityRouter(services.steamFilter));
   app.use("/api/bans", createBansRouter(services.sourceBans, services.hlstats));
   app.use(

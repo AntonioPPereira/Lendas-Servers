@@ -4,8 +4,10 @@ import type { HLStatsService } from "../services/HLStatsService.js";
 import type { SteamAvatarService } from "../services/SteamAvatarService.js";
 import type { RankingBaseline } from "../services/RankingBaseline.js";
 import type { NicknameDirectory } from "../live/nicknameDirectory.js";
+import type { PlayerDirectoryService } from "../services/PlayerDirectoryService.js";
 import { paginate } from "../lib/paginate.js";
 import { toPlayerDto } from "../lib/playerDto.js";
+import { resolveAvatarsByNickname } from "../lib/avatarResolver.js";
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -24,13 +26,9 @@ export function createRankingRouter(
   nicknames: NicknameDirectory,
   avatars: SteamAvatarService,
   baseline: RankingBaseline,
+  playerDirectory: PlayerDirectoryService,
 ): Router {
   const router = Router();
-
-  function avatarFor(nickname: string): string | undefined {
-    const steamId64 = nicknames.lookup(nickname);
-    return steamId64 ? avatars.peek(steamId64) : undefined;
-  }
 
   router.get("/", async (req, res, next) => {
     try {
@@ -50,10 +48,16 @@ export function createRankingRouter(
       }
 
       const page = paginate(rows, query.page, query.pageSize);
+      const avatarPorNick = await resolveAvatarsByNickname(
+        page.items.map((row) => row.nickname),
+        nicknames,
+        playerDirectory,
+        avatars,
+      );
       res.json({
         ...page,
         items: page.items.map((row) =>
-          toPlayerDto(row, avatarFor(row.nickname), baseline.deltaFor(row)),
+          toPlayerDto(row, avatarPorNick.get(row.nickname), baseline.deltaFor(row)),
         ),
         /** Desde quando os deltas contam — o painel mostra isso junto, nunca uma variação sem origem. */
         comparedTo: baseline.capturedAt(),

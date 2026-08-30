@@ -3,8 +3,10 @@ import { z } from "zod";
 import type { HLStatsService } from "../services/HLStatsService.js";
 import type { SteamAvatarService } from "../services/SteamAvatarService.js";
 import type { NicknameDirectory } from "../live/nicknameDirectory.js";
+import type { PlayerDirectoryService } from "../services/PlayerDirectoryService.js";
 import { paginate } from "../lib/paginate.js";
 import { toPlayerDto } from "../lib/playerDto.js";
+import { resolveAvatarsByNickname } from "../lib/avatarResolver.js";
 import { NotFoundError } from "../errors.js";
 
 const listQuerySchema = z.object({
@@ -17,13 +19,9 @@ export function createPlayersRouter(
   hlstats: HLStatsService,
   nicknames: NicknameDirectory,
   avatars: SteamAvatarService,
+  playerDirectory: PlayerDirectoryService,
 ): Router {
   const router = Router();
-
-  function avatarFor(nickname: string): string | undefined {
-    const steamId64 = nicknames.lookup(nickname);
-    return steamId64 ? avatars.peek(steamId64) : undefined;
-  }
 
   router.get("/", async (req, res, next) => {
     try {
@@ -38,9 +36,15 @@ export function createPlayersRouter(
       }
 
       const page = paginate(rows, query.page, query.pageSize);
+      const avatarPorNick = await resolveAvatarsByNickname(
+        page.items.map((row) => row.nickname),
+        nicknames,
+        playerDirectory,
+        avatars,
+      );
       res.json({
         ...page,
-        items: page.items.map((row) => toPlayerDto(row, avatarFor(row.nickname))),
+        items: page.items.map((row) => toPlayerDto(row, avatarPorNick.get(row.nickname))),
         // Agregado sobre a lista inteira já cacheada (todas as páginas do
         // HLstatsX), não só a página atual — os cards de resumo da tela de
         // Jogadores usam isso, e não custa nada calcular já que está tudo
@@ -57,7 +61,13 @@ export function createPlayersRouter(
     try {
       const row = await hlstats.getPlayer(req.params.id as string);
       if (!row) throw new NotFoundError(`Jogador não encontrado: "${req.params.id}"`);
-      res.json(toPlayerDto(row, avatarFor(row.nickname)));
+      const avatarPorNick = await resolveAvatarsByNickname(
+        [row.nickname],
+        nicknames,
+        playerDirectory,
+        avatars,
+      );
+      res.json(toPlayerDto(row, avatarPorNick.get(row.nickname)));
     } catch (err) {
       next(err);
     }

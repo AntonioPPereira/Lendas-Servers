@@ -6,6 +6,7 @@ import { SftpDemoService } from "../src/services/SftpDemoService.js";
 import { SteamFilterLogService } from "../src/services/SteamFilterLogService.js";
 import { SteamAvatarService } from "../src/services/SteamAvatarService.js";
 import { SourceBansService } from "../src/services/SourceBansService.js";
+import { PlayerDirectoryService } from "../src/services/PlayerDirectoryService.js";
 import { BASE as SB_BASE, makeFakeSourceBansClient } from "./helpers/fakeSourceBansClient.js";
 import { BASE as DEMO_BASE, SAMPLE_TREE, makeFakeClient } from "./helpers/fakeSftpClient.js";
 import { BASE, SRV1_LOGS, makeFakeLogClient } from "./helpers/fakeSteamFilterLogClient.js";
@@ -18,12 +19,21 @@ function buildApp(steamFilter: SteamFilterLogService) {
   const hlstats = new HLStatsService(HLSTATS_CFG, 60_000, 60_000);
   const demos = new SftpDemoService(SFTP_CONN, 60_000, () => makeFakeClient({ tree: SAMPLE_TREE }).client);
   const avatars = new SteamAvatarService("", 0);
-  return createApp({ demos, hlstats, steamFilter, sourceBans: emptySourceBans(), avatars });
+  return createApp({ demos, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), avatars });
 }
 
 /** Bans não são o assunto destes testes: serviço vazio, sem arquivo exportado. */
 function emptySourceBans() {
   return new SourceBansService(
+    { host: "x", port: 22, username: "u", password: "p", base: SB_BASE },
+    0,
+    () => makeFakeSourceBansClient().client,
+  );
+}
+
+/** Índice nick->SteamID64 vazio: avatar não é o assunto destes testes. */
+function emptyPlayerDirectory() {
+  return new PlayerDirectoryService(
     { host: "x", port: 22, username: "u", password: "p", base: SB_BASE },
     0,
     () => makeFakeSourceBansClient().client,
