@@ -75,3 +75,45 @@ describe("isDailyLogFilename", () => {
     expect(isDailyLogFilename("sourcemod_fatal.log")).toBe(false);
   });
 });
+
+describe("linhas de saída (lendas_steamfilter 1.1.0)", () => {
+  const linha = (corpo: string) =>
+    `L 08/30/2026 - 19:05:12: [lendas_steamfilter.smx] ${corpo}`;
+
+  it("reconhece a saída e guarda quanto tempo a pessoa ficou", () => {
+    const ev = parseSteamFilterLogLine(
+      linha("SAIU: Kangaçeiroz<12><STEAM_0:1:52341><CT> ficou 42 min."),
+    );
+    expect(ev).toEqual({
+      at: "2026-08-30T19:05:12",
+      kind: "leave",
+      actor: "Kangaçeiroz",
+      detail: "42 min",
+    });
+  });
+
+  it("sessão de menos de um minuto não vira \"0 min\", que leria como bug", () => {
+    const ev = parseSteamFilterLogLine(linha("SAIU: fulano<3><STEAM_0:0:1><> ficou 0 min."));
+    expect(ev?.detail).toBe("menos de 1 min");
+  });
+
+  it("passando de uma hora, mostra h em vez de contar centenas de minutos", () => {
+    expect(parseSteamFilterLogLine(linha("SAIU: a<1><STEAM_0:0:1><TERRORIST> ficou 134 min."))?.detail).toBe("2h14");
+    expect(parseSteamFilterLogLine(linha("SAIU: a<1><STEAM_0:0:1><TERRORIST> ficou 120 min."))?.detail).toBe("2h");
+    expect(parseSteamFilterLogLine(linha("SAIU: a<1><STEAM_0:0:1><TERRORIST> ficou 60 min."))?.detail).toBe("1h");
+    expect(parseSteamFilterLogLine(linha("SAIU: a<1><STEAM_0:0:1><TERRORIST> ficou 59 min."))?.detail).toBe("59 min");
+  });
+
+  it("nick com < e espaço não confunde o parser", () => {
+    const ev = parseSteamFilterLogLine(
+      linha("SAIU: Tu_Mami (ºwº)<8><STEAM_0:1:374293539><CT> ficou 7 min."),
+    );
+    expect(ev?.actor).toBe("Tu_Mami (ºwº)");
+    expect(ev?.kind).toBe("leave");
+  });
+
+  it("um servidor na versão antiga do plugin simplesmente não gera saída", () => {
+    // 1.0.0 não escrevia nada no OnClientDisconnect; nada aqui deve inventar.
+    expect(parseSteamFilterLogLine(linha("Dropped fulano from server"))).toBeNull();
+  });
+});

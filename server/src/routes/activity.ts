@@ -3,8 +3,10 @@ import type { ActivityLogEvent, SteamFilterLogService } from "../services/SteamF
 
 /**
  * Mesmo shape de `ActivityEvent` do frontend (`painel/src/data/types.ts`),
- * direto do veredito real do plugin — nunca "leave", porque o
- * `lendas_steamfilter` não loga desconexão (auditado, não existe essa fonte).
+ * direto do veredito real do plugin — incluindo "leave" desde a versão
+ * 1.1.0 do `lendas_steamfilter`, que passou a registrar a desconexão de
+ * quem tinha sido aprovado. Servidor rodando uma versão anterior
+ * simplesmente não produz essas linhas, e o feed segue só com entradas.
  */
 function toActivityDto(event: ActivityLogEvent) {
   return {

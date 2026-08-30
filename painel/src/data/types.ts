@@ -301,7 +301,10 @@ export interface ActivityEvent {
   serverId: string;
   actor: string;
   actorTeam?: Team;
-  /** Motivo do bloqueio — só preenchido quando kind é "blocked". */
+  /**
+   * Contexto do evento: o motivo, quando "blocked"; quanto tempo a pessoa
+   * ficou, quando "leave". Vazio em "join".
+   */
   detail?: string;
 }
 

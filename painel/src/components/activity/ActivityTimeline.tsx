@@ -36,7 +36,11 @@ function EventBody({ event }: { event: ActivityEvent }) {
       return (
         <span>
           <span className="font-medium text-ink-3">{event.actor}</span>{" "}
-          <span className="text-ink-4">saiu do servidor</span>
+          <span className="text-ink-4">saiu do servidor</span>{" "}
+          {/* Quanto tempo ficou: é o que transforma uma saída em informação.
+              Vem do plugin, que guarda o horário da aprovação — não é conta
+              feita aqui em cima do horário do evento. */}
+          {event.detail ? <span className="text-ink-4">— ficou {event.detail}</span> : null}
         </span>
       );
     case "blocked":
