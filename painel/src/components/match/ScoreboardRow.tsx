@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Crown } from "lucide-react";
+import { Crown, X } from "lucide-react";
 import type { LivePlayer } from "@/data/types";
 import { cn } from "@/lib/cn";
 import { gsap, prefersReducedMotion } from "@/lib/motion";
@@ -91,7 +91,6 @@ export const ScoreboardRow = memo(function ScoreboardRow({
         // carregando o lado sem precisar de mais um selo na linha.
         leader && "border-l-2",
         leader && (player.team === "CT" ? "border-ct/70 bg-ct/[0.07]" : "border-t/70 bg-t/[0.07]"),
-        !final && !player.alive && "opacity-45",
       )}
     >
       <span
@@ -107,10 +106,38 @@ export const ScoreboardRow = memo(function ScoreboardRow({
         to={"/jogadores/" + player.steamId64}
         className="flex min-w-0 items-center gap-2 focus-visible:outline-none"
       >
-        <PlayerAvatar seed={player.avatarSeed} avatarUrl={player.avatarUrl} size="xs" team={player.team} />
+        {/* A morte é marcada NO retrato, não apagando a linha inteira. Antes
+            a linha toda ia a 45% de opacidade e levava junto kills, score e
+            ping — justamente os números que se quer ler de quem morreu. */}
+        <span className="relative shrink-0">
+          <span className={cn(!player.alive && !final && "opacity-55")}>
+            <PlayerAvatar
+              seed={player.avatarSeed}
+              avatarUrl={player.avatarUrl}
+              size="xs"
+              team={player.team}
+            />
+          </span>
+          {!final && !player.alive ? (
+            <span
+              aria-hidden
+              className="absolute inset-0 grid place-items-center rounded-[2px] bg-black/45"
+            >
+              <X className="size-3.5 stroke-[3] text-danger" />
+            </span>
+          ) : null}
+        </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
-            <span className="truncate text-[12.5px] text-ink">{player.nickname}</span>
+            <span
+              className={cn(
+                "truncate text-[12.5px]",
+                // Só o nome perde um pouco de peso; os números ficam legíveis.
+                !final && !player.alive ? "text-ink-3" : "text-ink",
+              )}
+            >
+              {player.nickname}
+            </span>
             {player.mvps > 0 ? (
               <span className="flex shrink-0 items-center gap-0.5 text-brass">
                 <Crown className="size-2.5" />
@@ -130,7 +157,7 @@ export const ScoreboardRow = memo(function ScoreboardRow({
               />
             </span>
           ) : (
-            <span className="t-eyebrow mt-0.5 block text-[8.5px] text-ink-4">Eliminado</span>
+            <span className="t-eyebrow mt-0.5 block text-[8.5px] text-danger/75">Eliminado</span>
           )}
         </span>
       </Link>
