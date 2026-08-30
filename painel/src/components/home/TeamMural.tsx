@@ -22,10 +22,16 @@ interface Membro {
   photo: string;
 }
 
+/**
+ * Os cargos seguem o formato de crédito de filme: a função em cima, em
+ * caixa alta pequena, e o nome embaixo em destaque. "Dono" e "Admin Master"
+ * viraram "Proprietário" e "Administrador-chefe" — mesmo significado, sem o
+ * tom de conversa de jogo, que destoava do resto do painel.
+ */
 const TIME: readonly Membro[] = [
-  { role: "Desenvolvedor", name: "Kai", steamId64: "76561198008899939", photo: "/team/kai.jpg" },
-  { role: "Dono", name: "Kangaçeiroz", steamId64: "76561199043273451", photo: "/team/kanga.jpg" },
-  { role: "Admin Master", name: "EzE", steamId64: "76561197970780396", photo: "/team/eze.jpg" },
+  { role: "Desenvolvimento", name: "Kai", steamId64: "76561198008899939", photo: "/team/kai.jpg" },
+  { role: "Proprietário", name: "Kangaçeiroz", steamId64: "76561199043273451", photo: "/team/kanga.jpg" },
+  { role: "Administrador-chefe", name: "EzE", steamId64: "76561197970780396", photo: "/team/eze.jpg" },
 ];
 
 export function TeamMural() {
@@ -38,10 +44,12 @@ export function TeamMural() {
       <span aria-hidden className="mural-sweep" />
 
       <div className="relative px-5 py-6 sm:px-7 sm:py-8">
-        <header className="mb-6 flex items-baseline gap-3">
-          <h2 className="t-display text-[15px] tracking-[0.14em] text-ink">A CASA</h2>
-          <span className="h-px flex-1 bg-gradient-to-r from-line to-transparent" />
-          <p className="t-eyebrow text-[9px] text-ink-4">Lendas Network</p>
+        {/* Cabeçalho centralizado: o bloco inteiro é simétrico, e um título
+            encostado na esquerda brigaria com isso. */}
+        <header className="mb-7 text-center">
+          <h2 className="t-display text-[16px] tracking-[0.16em] text-ink">COMANDO</h2>
+          <p className="t-eyebrow mt-1.5 text-[9px] text-ink-4">Quem mantém a rede no ar</p>
+          <span className="mx-auto mt-3 block h-px w-16 bg-gradient-to-r from-transparent via-brass/60 to-transparent" />
         </header>
 
         {/* Lado a lado, como tríptico: as divisórias verticais fecham o
@@ -55,29 +63,32 @@ export function TeamMural() {
               className="mural-item sm:px-5"
               style={{ animationDelay: i * 140 + "ms" }}
             >
+              {/* Retrato em cima, texto centralizado embaixo — o empilhamento
+                  aqui é DENTRO de cada coluna; as três pessoas seguem lado a
+                  lado, que é o que o mural pede. */}
               <a
                 href={"https://steamcommunity.com/profiles/" + m.steamId64}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="group flex items-center gap-4 outline-none sm:justify-center"
+                className="group flex flex-col items-center gap-3 text-center outline-none"
               >
                 <span className="mural-frame relative shrink-0">
                   <img
                     src={m.photo}
                     alt={m.name}
-                    width={84}
-                    height={84}
+                    width={88}
+                    height={88}
                     loading="lazy"
-                    className="mural-photo size-[84px] object-cover"
+                    className="mural-photo size-[88px] object-cover"
                   />
                 </span>
 
-                <span className="min-w-0">
+                <span className="min-w-0 max-w-full">
                   <span className="t-eyebrow block text-[9px] text-brass">{m.role}</span>
-                  <span className="t-display mt-1 block truncate text-[19px] leading-none text-ink transition-colors group-hover:text-brass">
+                  <span className="t-display mt-1.5 block truncate text-[20px] leading-none text-ink transition-colors group-hover:text-brass">
                     {m.name}
                   </span>
-                  <span className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] text-ink-4 transition-colors group-hover:text-ink-3">
+                  <span className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-ink-4 transition-colors group-hover:text-ink-3">
                     Perfil Steam
                     <ExternalLink className="size-3" />
                   </span>
