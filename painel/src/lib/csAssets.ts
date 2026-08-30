@@ -80,6 +80,7 @@ const MAP_BACKGROUNDS: Record<string, string> = {
   aztec: "aztec.jpg",
   cbble: "cbble.jpg",
   assault: "assault.jpg",
+  vertigo: "vertigo.webp",
 };
 
 export function mapBackground(map: string): string | null {
