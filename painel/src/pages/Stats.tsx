@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Bomb, Crosshair, Flame, Shield, ShieldCheck, Skull, Swords, Trophy } from "lucide-react";
+import { Bomb, Crosshair, Flame, Shield, ShieldCheck, Swords, Trophy } from "lucide-react";
 import { usePageEnter, useScrollReveal } from "@/hooks/useGsap";
 import { useResource } from "@/hooks/useResource";
 import { api } from "@/api/client";
@@ -12,6 +12,9 @@ import { ErrorState, LoadingState } from "@/components/ui/States";
 import { ChartFrame } from "@/components/charts/ChartFrame";
 import { PlayerAvatar } from "@/components/player/PlayerAvatar";
 import { FlameIcon } from "@/components/ui/FlameIcon";
+import { SkullIcon } from "@/components/ui/SkullIcon";
+import { ReticleIcon } from "@/components/ui/ReticleIcon";
+import { C4Icon } from "@/components/ui/C4Icon";
 import { RankedBars, SplitBar } from "@/components/charts/Bars";
 
 /**
@@ -86,11 +89,11 @@ export default function Stats() {
       </div>
 
       <div data-enter className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Mortes registradas" value={stats.totalKills} icon={<span className="icon-live icon-live-skull"><Skull /></span>} />
+        <StatCard label="Mortes registradas" value={stats.totalKills} icon={<SkullIcon className="size-5" />} />
         <StatCard
           label="Headshots"
           value={stats.totalHeadshots}
-          icon={<span className="icon-live icon-live-aim"><Crosshair /></span>}
+          icon={<ReticleIcon className="size-5" />}
           tone="brass"
           hint={
             stats.headshotRate === null
@@ -102,7 +105,7 @@ export default function Stats() {
           <StatCard
             label="Bombas plantadas"
             value={stats.bomb.planted}
-            icon={<span className="icon-live icon-live-bomb"><Bomb /></span>}
+            icon={<C4Icon className="size-5" />}
             hint={
               stats.bomb.defused === null
                 ? undefined

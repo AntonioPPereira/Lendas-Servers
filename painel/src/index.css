@@ -934,64 +934,19 @@
 }
 
 /* ------------------------------------------------------------------ *
- * Ícones vivos dos cartões de estatística.
+ * Ícones dos cartões de estatística.
  *
- * O ícone cinza parado não dizia nada — cada um agora tem um movimento
- * que combina com o que ele representa: o fogo tremula, a mira respira,
- * a bomba pulsa como contagem. É sutil de propósito: a página é de dado,
- * não de enfeite, e movimento demais cansa em tela cheia de número.
+ * Cada um é um SVG próprio em camadas (ver components/ui/*Icon.tsx), não
+ * um ícone estático com `scale` pulsando — aquilo lia como logo piscando,
+ * não como a coisa que representa.
  *
- * Duração longa e fora de sincronia (delays diferentes) pra não virar
- * um "pisca-pisca" coletivo. Nada disso roda pra quem pede menos
- * movimento — a regra no fim do bloco desliga tudo.
+ * Regra geral: períodos que NÃO são múltiplos entre si, pra combinação não
+ * repetir num ciclo curto. A exceção é a mira, onde a sincronia entre os
+ * traços e o ponto é justamente o gesto de travar o alvo.
+ *
+ * Tudo em transform/opacity: a GPU compõe sem recalcular layout.
  * ------------------------------------------------------------------ */
 @layer components {
-  .icon-live {
-    display: inline-grid;
-    place-items: center;
-    transform-origin: center;
-    will-change: transform, opacity;
-  }
-
-  /* Mira: respira devagar, como quem estabiliza a arma. */
-  .icon-live-aim {
-    color: var(--color-brass);
-    animation: icon-aim-breathe 3.6s ease-in-out infinite;
-  }
-
-  /* Bomba: pulso curto e seco, com pausa — contagem, não batimento. */
-  .icon-live-bomb {
-    color: var(--color-danger);
-    animation: icon-bomb-tick 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  }
-
-  /* Caveira: leve balanço e tom de osso — cinza puro sumia no cartão. */
-  .icon-live-skull {
-    color: #cbbba4;
-    animation: icon-skull-sway 5s ease-in-out infinite;
-  }
-
-  @keyframes icon-aim-breathe {
-    0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.85; }
-    50%      { transform: scale(1.12) rotate(45deg); opacity: 1; }
-  }
-  @keyframes icon-bomb-tick {
-    0%, 62%, 100% { transform: scale(1); opacity: 0.8; }
-    70%           { transform: scale(1.18); opacity: 1; }
-    78%           { transform: scale(1); opacity: 0.85; }
-  }
-  @keyframes icon-skull-sway {
-    0%, 100% { transform: rotate(-3deg); }
-    50%      { transform: rotate(3deg); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .icon-live,
-    .icon-live::after {
-      animation: none !important;
-    }
-  }
-
   /* ---------------------------------------------------------------- *
    * Chama de verdade (ver components/ui/FlameIcon.tsx).
    *
@@ -1059,15 +1014,117 @@
     100%     { transform: translateY(-9px) scale(0.2); opacity: 0; }
   }
 
+  /* ---------------------------------------------------------------- *
+   * Caveira: o crânio quase não se mexe; quem vive são as brasas.
+   * ---------------------------------------------------------------- */
+  .skull { color: #cbbba4; }
+  .skull-sway {
+    transform-origin: 50% 90%;
+    transform-box: fill-box;
+    animation: skull-sway 6.3s ease-in-out infinite;
+  }
+  .skull-ember { transform-box: fill-box; transform-origin: 50% 50%; }
+  .skull-ember-l { animation: skull-ember 2.1s ease-in-out infinite; }
+  .skull-ember-r { animation: skull-ember 2.7s ease-in-out infinite 0.4s; }
+
+  @keyframes skull-sway {
+    0%, 100% { transform: rotate(-2.5deg); }
+    50%      { transform: rotate(2.5deg); }
+  }
+  @keyframes skull-ember {
+    0%, 100% { opacity: 0.55; transform: scale(0.85); }
+    45%      { opacity: 1; transform: scale(1.15); }
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Mira: varre, fecha, trava, reabre.
+   * ---------------------------------------------------------------- */
+  .reticle { color: var(--color-brass); }
+  .reticle-ring {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation: reticle-scan 5.5s linear infinite;
+  }
+  /* Traços e ponto compartilham o período de propósito: é o mesmo gesto. */
+  .reticle-ticks {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation: reticle-close 2.4s ease-in-out infinite;
+  }
+  .reticle-lock {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation: reticle-lock 2.4s ease-in-out infinite;
+  }
+  .reticle-dot {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation: reticle-dot 2.4s ease-in-out infinite;
+  }
+
+  @keyframes reticle-scan {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes reticle-close {
+    0%, 100% { transform: scale(1); }
+    38%, 58% { transform: scale(0.76); }
+  }
+  @keyframes reticle-lock {
+    0%, 30%, 100% { opacity: 0; transform: scale(0.7); }
+    44%, 56%      { opacity: 1; transform: scale(1); }
+  }
+  @keyframes reticle-dot {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    46%      { opacity: 1; transform: scale(1.35); }
+  }
+
+  /* ---------------------------------------------------------------- *
+   * C4: pulso seco com espera, como o LED no jogo.
+   * ---------------------------------------------------------------- */
+    /* Tom de massa cinza-esverdeada da C4; cinza puro sumia no cartão. */
+  .c4 { color: #a89e8c; }
+  .c4-led {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation: c4-led 1.6s steps(1, end) infinite;
+  }
+  .c4-glow {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation: c4-glow 1.9s ease-out infinite;
+  }
+
+  /* steps() de propósito: LED acende e apaga, não faz fade.
+     Nunca vai a zero — pego no vale, um LED preto pareceria quebrado. */
+  @keyframes c4-led {
+    0%, 10%   { opacity: 1; }
+    11%, 100% { opacity: 0.4; }
+  }
+  @keyframes c4-glow {
+    0%   { opacity: 0.55; transform: scale(0.75); }
+    20%  { opacity: 0.2; transform: scale(1.25); }
+    100% { opacity: 0; transform: scale(1.5); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .flame-outer,
     .flame-inner,
     .flame-core,
     .flame-halo,
-    .flame-ember {
+    .flame-ember,
+    .skull-sway,
+    .skull-ember,
+    .reticle-ring,
+    .reticle-ticks,
+    .reticle-lock,
+    .reticle-dot,
+    .c4-led,
+    .c4-glow {
       animation: none !important;
     }
     /* Sem movimento a brasa some, senão fica um ponto solto no ar. */
     .flame-ember { opacity: 0; }
+    /* O halo da mira só existe no instante da trava — parado, seria sujeira. */
+    .reticle-lock { opacity: 0; }
   }
 }
