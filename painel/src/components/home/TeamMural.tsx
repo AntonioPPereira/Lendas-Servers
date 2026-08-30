@@ -42,7 +42,10 @@ const TIME: readonly Membro[] = [
 
 export function TeamMural() {
   return (
-    <section className="mural relative overflow-hidden rounded-md border border-line-soft bg-panel">
+    /* A caixa acompanha o conteúdo, não a página: esticada até a largura
+       total sobrava vazio nas laterais e o bloco lia como buraco. Centrada
+       e contida, a sobra vira respiro da própria página. */
+    <section className="mural relative mx-auto max-w-4xl overflow-hidden rounded-md border border-line-soft bg-panel">
       {/* Faixas finas em cima e embaixo: o enquadramento de tela de cinema. */}
       <span aria-hidden className="mural-bar mural-bar-top" />
       <span aria-hidden className="mural-bar mural-bar-bottom" />
@@ -62,10 +65,7 @@ export function TeamMural() {
             espaço que sobrava à direita de cada nome e amarram os três num
             bloco só. Só empilha no celular, onde três colunas ficariam
             ilegíveis — e aí as divisórias somem. */}
-        {/* Largura limitada e centralizada: sem isso os três retratos ficam
-            perdidos numa faixa de 1600px, e o bloco lê como vazio em vez de
-            arejado. A sobra nas laterais vira margem intencional. */}
-        <ul className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-line-soft">
+        <ul className="grid gap-6 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-line-soft">
           {TIME.map((m, i) => (
             <li
               key={m.steamId64}
@@ -98,9 +98,9 @@ export function TeamMural() {
                   />
                 </span>
 
-                <span className="min-w-0 max-w-full">
+                <span className="w-full min-w-0">
                   <span className="t-eyebrow block text-[10px] tracking-[0.18em] text-brass">{m.role}</span>
-                  <span className="t-display mt-2 block truncate text-[27px] leading-none text-ink transition-colors group-hover:text-brass">
+                  <span className="t-display mt-2 block text-[24px] leading-tight text-ink transition-colors group-hover:text-brass">
                     {m.name}
                   </span>
                   <span className="mt-2.5 inline-flex items-center gap-1.5 text-[11.5px] text-ink-4 transition-colors group-hover:text-brass">
