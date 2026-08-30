@@ -40,7 +40,6 @@ const Maintenance = lazy(() => import("@/pages/Maintenance"));
  * isso está explicado na própria tela em vez de virar uma ausência sem
  * explicação.
  */
-const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
 
 function PublicApp() {
   return (
@@ -85,14 +84,6 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
         <Routes>
-          <Route
-            path="/admin/*"
-            element={
-              <Suspense fallback={<LoadingState label="Abrindo console" />}>
-                <AdminApp />
-              </Suspense>
-            }
-          />
           <Route path="/*" element={<PublicApp />} />
         </Routes>
         </ToastProvider>

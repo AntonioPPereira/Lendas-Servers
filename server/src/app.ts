@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import type { SftpDemoService } from "./services/SftpDemoService.js";
 import type { HLStatsService } from "./services/HLStatsService.js";
@@ -79,6 +80,24 @@ export function createApp(services: AppServices, options: AppOptions = {}) {
   app.set("trust proxy", 1);
 
   app.disable("x-powered-by");
+  /**
+   * Cabeçalhos de segurança. `contentSecurityPolicy` fica desligado porque
+   * esta app só serve JSON e SSE — não há HTML nosso para uma CSP proteger,
+   * e uma política mal ajustada só quebraria clientes sem ganho.
+   *
+   * `crossOriginResourcePolicy` precisa ser cross-origin: o frontend roda em
+   * outro domínio (Vercel) e o padrão do helmet ("same-origin") bloquearia
+   * as respostas no navegador.
+   */
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    }),
+  );
+  /** Não anuncia "Express" pra quem procura alvo por versão de framework. */
+  app.disable("x-powered-by");
+
   app.use(cors({ origin: options.corsOrigin ?? true }));
   app.use(express.json({ limit: "256kb" }));
   app.use("/api", apiLimiter);

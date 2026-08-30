@@ -36,15 +36,11 @@ export function makeRng(seed: number) {
 
 export type Rng = ReturnType<typeof makeRng>;
 
-/** Stable 32-bit hash, used to seed avatars from a nickname. */
-export function hash(str: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i += 1) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
+// `hash` e a lista de mapas saíram daqui para `lib/`: são utilitário e dado
+// real, e ficar neste arquivo fazia o pacote de produção carregar junto os
+// nicknames inventados abaixo.
+export { hash } from "@/lib/hash";
+export { MAPS, UNIQUE_MAPS } from "@/lib/csMaps";
 
 export const NICKNAMES = [
   "n0ck", "Bardo", "zLk", "DEMOLIDOR", "sKz", "vrs4", "Pantera", "Tulipa",
@@ -71,15 +67,7 @@ export const ADMINS = [
 export const COUNTRIES = ["BR", "BR", "BR", "BR", "AR", "PT", "CL", "UY", "US"] as const;
 
 /** The CS:S competitive rotation, weighted toward what actually gets played. */
-export const MAPS = [
-  "de_dust2", "de_dust2", "de_dust2", "de_inferno", "de_inferno",
-  "de_nuke", "de_train", "de_aztec", "de_cbble", "de_chateau",
-  "de_prodigy", "de_port", "de_piranesi", "de_tides", "de_season",
-  "cs_office", "cs_office", "cs_italy", "cs_assault", "cs_militia",
-  "cs_havana", "cs_compound",
-] as const;
 
-export const UNIQUE_MAPS = [...new Set(MAPS)];
 
 export const WEAPONS = [
   "ak47", "m4a1", "awp", "deagle", "mp5navy", "p90", "famas", "galil",

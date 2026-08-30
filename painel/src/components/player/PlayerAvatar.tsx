@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/cn";
-import { hash } from "@/data/seed";
+import { hash } from "@/lib/hash";
 import { initials } from "@/lib/format";
 
 /** Muted metals only — the avatar must never out-shout the accent colour. */

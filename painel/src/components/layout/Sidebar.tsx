@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { PanelLeftClose, PanelLeftOpen, ShieldHalf } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { config } from "@/lib/config";
 import { mapLabel } from "@/lib/format";
@@ -163,22 +163,6 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, className }: 
       </div>
 
       <div className="shrink-0 border-t border-line-soft p-2">
-        <NavLink
-          to="/admin"
-          onClick={onNavigate}
-          title={collapsed ? "Painel administrativo" : undefined}
-          className={({ isActive }) =>
-            cn(
-              "flex h-8 items-center rounded-xs text-[11.5px] transition-colors",
-              collapsed ? "justify-center" : "gap-2.5 px-2.5",
-              isActive ? "text-brass" : "text-ink-4 hover:text-ink-2",
-            )
-          }
-        >
-          <ShieldHalf className="size-4 shrink-0" />
-          {collapsed ? null : <span>Administração</span>}
-        </NavLink>
-
         <button
           type="button"
           onClick={onToggleCollapse}

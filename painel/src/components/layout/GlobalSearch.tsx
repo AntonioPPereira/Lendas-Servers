@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { CornerDownLeft, Gavel, Search, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { gsap, prefersReducedMotion } from "@/lib/motion";
-import { PLAYERS } from "@/data/players";
-import { BANS } from "@/data/bans";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/api/client";
 import { PlayerAvatar } from "@/components/player/PlayerAvatar";
 
 interface Hit {
@@ -15,44 +15,50 @@ interface Hit {
   meta: string;
   to: string;
   seed?: string;
+  avatarUrl?: string;
 }
 
-function search(term: string): Hit[] {
-  const needle = term.trim().toLowerCase();
+/**
+ * A busca consulta o BACKEND, não uma lista em memória.
+ *
+ * Antes ela varria `@/data/players` e `@/data/bans`, que são os mocks de
+ * desenvolvimento — quem digitasse qualquer coisa recebia jogadores e
+ * banimentos inventados, indistinguíveis dos reais. As duas rotas já
+ * aceitam busca por texto (`?q=`), então o certo é perguntar a elas.
+ *
+ * Demos continuam fora: o catálogo é grande e por período, e uma busca
+ * global sem esse recorte devolveria resultado enganoso.
+ */
+async function buscar(term: string): Promise<Hit[]> {
+  const needle = term.trim();
   if (needle.length < 2) return [];
 
-  const players: Hit[] = PLAYERS.filter(
-    (p) =>
-      p.nickname.toLowerCase().includes(needle) ||
-      p.steamId.toLowerCase().includes(needle) ||
-      p.steamId64.includes(needle),
-  )
-    .slice(0, 5)
-    .map((p) => ({
-      id: "p" + p.steamId64,
-      group: "Jogadores",
-      title: p.nickname,
-      meta: "#" + p.rank + " · " + p.steamId,
-      to: "/jogadores/" + p.steamId64,
-      seed: p.avatarSeed,
-    }));
+  // As duas em paralelo, e uma falha não cancela a outra: melhor devolver
+  // só jogadores do que uma tela de erro no meio da digitação.
+  const [jogadores, banimentos] = await Promise.all([
+    api.ranking({ query: needle, page: 1, pageSize: 5 }).catch(() => null),
+    api.bans({ query: needle, page: 1, pageSize: 3 }).catch(() => null),
+  ]);
 
-  // Demos saiu da busca global: o catálogo agora vem de um backend real via
-  // rede (SFTP), não de um array estático em memória — buscar aqui exigiria
-  // uma chamada assíncrona por tecla, fora do escopo desta integração.
-  const bans: Hit[] = BANS.filter(
-    (b) =>
-      b.target.nickname.toLowerCase().includes(needle) ||
-      b.target.steamId.toLowerCase().includes(needle),
-  )
-    .slice(0, 3)
-    .map((b) => ({
-      id: "b" + b.id,
-      group: "Banimentos",
-      title: b.target.nickname,
-      meta: b.reason,
-      to: "/banimentos?q=" + encodeURIComponent(b.target.nickname),
-    }));
+  const players: Hit[] = (jogadores?.items ?? []).map((p) => ({
+    id: "p" + p.id,
+    group: "Jogadores",
+    title: p.nickname,
+    // O HLstatsX não expõe SteamID no ranking (ver server/README.md), então
+    // a linha auxiliar mostra posição e abates, que existem de verdade.
+    meta: "#" + p.rank + " · " + p.kills + " abates",
+    to: "/jogadores/" + p.id,
+    seed: p.id,
+    avatarUrl: p.avatarUrl,
+  }));
+
+  const bans: Hit[] = (banimentos?.items ?? []).map((b) => ({
+    id: "b" + b.id,
+    group: "Banimentos",
+    title: b.target.nickname,
+    meta: b.reason,
+    to: "/banimentos?q=" + encodeURIComponent(b.target.nickname),
+  }));
 
   return [...players, ...bans];
 }
@@ -69,7 +75,24 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
   const panel = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
 
-  const hits = useMemo(() => search(term), [term]);
+  /**
+   * Espera a digitação parar antes de perguntar ao servidor — sem isso cada
+   * tecla viraria duas requisições (ranking + bans).
+   */
+  const [termoDebounced, setTermoDebounced] = useState("");
+  useEffect(() => {
+    const id = window.setTimeout(() => setTermoDebounced(term), 220);
+    return () => window.clearTimeout(id);
+  }, [term]);
+
+  const consulta = useQuery({
+    queryKey: ["busca-global", termoDebounced],
+    queryFn: () => buscar(termoDebounced),
+    enabled: termoDebounced.trim().length >= 2,
+    staleTime: 60_000,
+  });
+
+  const hits = useMemo(() => consulta.data ?? [], [consulta.data]);
 
   useEffect(() => {
     if (!open) return;
@@ -183,7 +206,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
                     )}
                   >
                     {hit.seed ? (
-                      <PlayerAvatar seed={hit.seed} size="xs" />
+                      <PlayerAvatar seed={hit.seed} avatarUrl={hit.avatarUrl} size="xs" />
                     ) : (
                       <span className="grid size-6 shrink-0 place-items-center rounded-xs border border-line-soft text-ink-4">
                         <Icon className="size-3" />

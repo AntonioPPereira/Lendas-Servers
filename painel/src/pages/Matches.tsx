@@ -4,7 +4,7 @@ import { usePageEnter } from "@/hooks/useGsap";
 import { useResource } from "@/hooks/useResource";
 import { api, type Page } from "@/api/client";
 import type { MatchDetail } from "@/data/types";
-import { UNIQUE_MAPS } from "@/data/seed";
+import { UNIQUE_MAPS } from "@/lib/csMaps";
 import { mapLabel } from "@/lib/format";
 import { SectionTitle, Panel } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";

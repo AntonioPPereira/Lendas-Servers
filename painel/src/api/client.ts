@@ -10,10 +10,24 @@ import type {
   ServerStats,
   Leaderboards,
 } from "@/data/types";
-import { BANS } from "@/data/bans";
-import { MATCHES, MATCHES_BY_ID } from "@/data/matches";
-import { NETWORK_STATS } from "@/data/stats";
 import { config, isMockMode } from "@/lib/config";
+
+/**
+ * Os mocks entram por `import()` dinâmico, e não no topo do arquivo.
+ *
+ * Este client é importado por praticamente toda página, então um import
+ * estático colava o conjunto inteiro de dados falsos — partidas, bans e a
+ * lista de nicknames inventados — no pacote principal de produção, mesmo com
+ * o modo mock desligado, onde nada disso chega a ser lido.
+ *
+ * Como só é chamado atrás de `isMockMode`, em produção o módulo nunca é
+ * baixado; em desenvolvimento é buscado uma vez e reaproveitado.
+ */
+function mocks() {
+  return Promise.all([import("@/data/bans"), import("@/data/matches"), import("@/data/stats")]).then(
+    ([bans, matches, stats]) => ({ ...bans, ...matches, ...stats }),
+  );
+}
 
 export interface Page<T> {
   items: T[];
@@ -225,12 +239,14 @@ export const api = {
   ): Promise<Page<MatchDetail>> {
     const { page = 1, pageSize = 14, map = "all" } = params;
     if (!isMockMode) return request<Page<MatchDetail>>("/matches?page=" + page + "&map=" + map);
+    const { MATCHES } = await mocks();
     const rows = map === "all" ? MATCHES : MATCHES.filter((m) => m.map === map);
     return delay(paginate(rows, page, pageSize));
   },
 
   async match(id: string): Promise<MatchDetail> {
     if (!isMockMode) return request<MatchDetail>("/matches/" + id);
+    const { MATCHES_BY_ID } = await mocks();
     const match = MATCHES_BY_ID.get(id);
     if (!match) throw new ApiError("Partida não encontrada", 404);
     return delay(match);
@@ -243,6 +259,7 @@ export const api = {
       return request<Page<Ban>>("/bans?" + search.toString());
     }
 
+    const { BANS } = await mocks();
     const needle = query.trim().toLowerCase();
     const rows = BANS.filter((ban) => {
       if (state !== "all" && ban.state !== state) return false;
@@ -265,6 +282,7 @@ export const api = {
    */
   async bansSummary(): Promise<BansSummary> {
     if (!isMockMode) return request<BansSummary>("/bans/summary");
+    const { BANS } = await mocks();
     return delay({
       generatedAt: null,
       all: BANS.length,
@@ -294,6 +312,7 @@ export const api = {
 
   async stats(): Promise<NetworkStats> {
     if (!isMockMode) return request<NetworkStats>("/stats");
+    const { NETWORK_STATS } = await mocks();
     return delay(NETWORK_STATS, 320);
   },
 };

@@ -5,7 +5,7 @@ import { gsap, prefersReducedMotion } from "@/lib/motion";
 import { STALE } from "@/lib/queryClient";
 import { useResource } from "@/hooks/useResource";
 import { api, type DemoPeriods, type DemosPage } from "@/api/client";
-import { UNIQUE_MAPS } from "@/data/seed";
+import { UNIQUE_MAPS } from "@/lib/csMaps";
 import { formatPeriod, mapLabel } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { SectionTitle, Panel, PanelHeader } from "@/components/ui/Panel";
