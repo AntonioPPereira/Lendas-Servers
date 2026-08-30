@@ -42,11 +42,17 @@ mostra tem uma fonte real identificável, documentada abaixo.
 ```
 painel/   → frontend (React 19, TypeScript, Vite, Tailwind v4)
 server/   → backend próprio (Express, TypeScript, zod)
+plugins/  → fontes dos plugins SourceMod que o site depende
 ```
 
-O plugin SourceMod (`lendas_live`, que alimenta o placar ao vivo) roda nos
-servidores de jogo e não faz parte deste repositório — o backend só recebe
-o que ele manda via HTTP autenticado.
+Os plugins rodam no servidor de jogo, não aqui — mas os fontes moram em
+`plugins/` de propósito: em 29/08/2026 uma cópia de servidor sobrescreveu o
+`lendas_demos.smx` por uma versão antiga e o fonte da versão correta não
+existia em lugar nenhum, deixando o servidor dois dias sem gravar demo.
+Binário compilado não é fonte. Ver `plugins/README.md`.
+
+`lendas_live` (que alimenta o placar ao vivo) ainda tem o fonte fora deste
+repositório — o backend só recebe o que ele manda via HTTP autenticado.
 
 ## Integrações reais
 
@@ -107,4 +113,6 @@ npm run typecheck    # checagem de tipos (server/)
 ## Documentação mais a fundo
 
 - `server/README.md` — endpoints, contratos, modelo de segurança de cada
-  integração (demos, HLstatsX, filtro de requisitos, live).
+  integração (demos, HLstatsX, filtro de requisitos, live, banimentos).
+- `plugins/README.md` — o que cada plugin faz, como compilar e por que a
+  versão do compilador precisa bater com a do servidor.
