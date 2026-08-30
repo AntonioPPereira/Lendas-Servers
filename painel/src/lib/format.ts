@@ -104,3 +104,47 @@ export function initials(nickname: string): string {
 export function steamProfileUrl(steamId64: string): string {
   return `https://steamcommunity.com/profiles/${steamId64}`;
 }
+
+/**
+ * Nome curto de arma, do jeito que jogador fala.
+ *
+ * O HLstatsX devolve o nome comercial completo ("Arctic Warfare Magnum
+ * (Police)", "H&K USP .45 Tactical"), que não cabe num rótulo de gráfico e
+ * é lido por ninguém — todo mundo chama de AWP e USP. A chave é o código
+ * interno do HLstatsX, que é estável; arma fora da lista cai no nome
+ * original, então nada some por não estar mapeado.
+ */
+const WEAPON_LABELS: Record<string, string> = {
+  deagle: "Deagle",
+  ak47: "AK-47",
+  awp: "AWP",
+  m4a1: "M4A1",
+  usp: "USP",
+  glock: "Glock",
+  famas: "Famas",
+  galil: "Galil",
+  p90: "P90",
+  p228: "P228",
+  scout: "Scout",
+  knife: "Faca",
+  hegrenade: "Granada HE",
+  elite: "Elites",
+  mp5navy: "MP5",
+  tmp: "TMP",
+  mac10: "MAC-10",
+  ump45: "UMP-45",
+  m3: "M3",
+  xm1014: "XM1014",
+  fiveseven: "Five-Seven",
+  sg550: "SG550",
+  sg552: "SG552",
+  aug: "AUG",
+  m249: "Para M249",
+  g3sg1: "G3SG1",
+  flashbang: "Flashbang",
+  smokegrenade: "Smoke",
+};
+
+export function weaponLabel(code: string, fallback: string): string {
+  return WEAPON_LABELS[code] ?? fallback;
+}

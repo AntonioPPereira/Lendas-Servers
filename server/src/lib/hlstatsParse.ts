@@ -202,3 +202,115 @@ export function parseRankingPageCount(html: string): number {
   });
   return max;
 }
+
+/* ------------------------------------------------------------------ *
+ * Estatísticas agregadas do servidor (mode=weapons / actions / maps).
+ *
+ * São as três páginas do HLstatsX que respondem de forma confiável e
+ * trazem número somado de TODO o histórico. Diferente de `mode=playerinfo`
+ * (que trava nesta instalação — ver HLStatsService), aqui não há recorte
+ * por jogador: é o total do servidor. Por isso a tela de Estatísticas
+ * mostra "o servidor inteiro", nunca "quem fez o quê".
+ * ------------------------------------------------------------------ */
+
+export interface HLStatsWeaponRow {
+  /** Chave interna do HLstatsX: "ak47", "deagle", "knife". */
+  code: string;
+  /** Nome de exibição que o próprio HLstatsX usa ("Kalashnikov AK-47"). */
+  name: string;
+  kills: number;
+  headshots: number;
+  /** Fração 0..1 dos headshots sobre os kills DESTA arma. */
+  headshotRatio: number | null;
+}
+
+export interface HLStatsActionRow {
+  /** Chave interna ("headshot", "Plant_Bomb"). */
+  code: string;
+  name: string;
+  count: number;
+}
+
+export interface HLStatsMapRow {
+  map: string;
+  kills: number;
+  headshots: number;
+  headshotRatio: number | null;
+}
+
+export function parseWeaponsHtml(html: string): HLStatsWeaponRow[] {
+  const $ = cheerio.load(html);
+  const rows: HLStatsWeaponRow[] = [];
+
+  $('a[href*="mode=weaponinfo"][href*="weapon="]').each((_, anchor) => {
+    const code = /weapon=([^&]+)/.exec($(anchor).attr("href") ?? "")?.[1];
+    if (!code) return;
+
+    const tds = $(anchor).closest("tr").find("> td");
+    if (tds.length < 10) return;
+
+    // O nome legível não é texto: vive no alt do ícone da arma. Sem ele,
+    // cai no código interno em vez de ficar sem rótulo.
+    const name = tds.eq(1).find("img").attr("alt")?.trim() || code;
+    const kills = parseIntLoose(tds.eq(3).text());
+    if (kills === null) return;
+
+    rows.push({
+      code,
+      name,
+      kills,
+      headshots: parseIntLoose(tds.eq(6).text()) ?? 0,
+      headshotRatio: parseFloatLoose(tds.eq(9).text()),
+    });
+  });
+
+  return rows;
+}
+
+export function parseActionsHtml(html: string): HLStatsActionRow[] {
+  const $ = cheerio.load(html);
+  const rows: HLStatsActionRow[] = [];
+
+  $('a[href*="mode=actioninfo"][href*="action="]').each((_, anchor) => {
+    const code = /action=([^&]+)/.exec($(anchor).attr("href") ?? "")?.[1];
+    if (!code) return;
+
+    const tds = $(anchor).closest("tr").find("> td");
+    if (tds.length < 3) return;
+
+    // A célula vem como "28,263 times": o sufixo é rótulo do HLstatsX, não
+    // parte do número, e `parseIntLoose` (com razão) recusa a string
+    // inteira. Por isso o número é recortado antes.
+    const count = parseIntLoose(/^[\d,]+/.exec(tds.eq(2).text().trim())?.[0]);
+    if (count === null) return;
+
+    rows.push({ code, name: tds.eq(1).text().trim() || code, count });
+  });
+
+  return rows;
+}
+
+export function parseMapsHtml(html: string): HLStatsMapRow[] {
+  const $ = cheerio.load(html);
+  const rows: HLStatsMapRow[] = [];
+
+  $('a[href*="mode=mapinfo"][href*="map="]').each((_, anchor) => {
+    const map = /map=([^&]+)/.exec($(anchor).attr("href") ?? "")?.[1];
+    if (!map) return;
+
+    const tds = $(anchor).closest("tr").find("> td");
+    if (tds.length < 9) return;
+
+    const kills = parseIntLoose(tds.eq(2).text());
+    if (kills === null) return;
+
+    rows.push({
+      map,
+      kills,
+      headshots: parseIntLoose(tds.eq(5).text()) ?? 0,
+      headshotRatio: parseFloatLoose(tds.eq(8).text()),
+    });
+  });
+
+  return rows;
+}

@@ -388,6 +388,48 @@ sozinho, a cada jogador que entra.
 - `STEAM_API_KEY` vazia desliga tudo isso silenciosamente (por design) — o
   frontend cai pro emblema gerado.
 
+## Estatísticas do servidor — `GET /api/stats`
+
+Números somados de TODO o histórico, lidos de três páginas do HLstatsX que
+respondem de forma confiável: `mode=weapons`, `mode=actions` e `mode=maps`.
+
+### O que esta rota deliberadamente NÃO tem
+
+Recorte por jogador. Nada de "quem matou mais com a AK". O `mode=playerinfo`
+desta instalação trava pra qualquer jogador com avatar Steam real (auditado,
+ver `HLStatsService`), e a página `mode=awards` — que traria exatamente esses
+pódios — está **vazia** nesta instalação ("No Award Winner, 0 kills"): o cron
+de prêmios do HLstatsX não roda. Sem fonte, não há pódio; estimar seria
+indistinguível de inventar. A própria tela explica isso ao leitor.
+
+Para ter esse dado seria preciso um plugin acumulando `player_death` no
+servidor de jogo — e ele só contaria dali pra frente, sem histórico.
+
+### Cuidados que valeram tempo
+
+- **Os códigos das ações não são os óbvios.** Plantar a bomba é
+  `Planted_The_Bomb` (não `Plant_Bomb`), multi-kill é `kill_streak_N` (não
+  `double_kill`), e MVP é `round_mvp` minúsculo. Há fallback por nome de
+  exibição, mas o código é o caminho principal — conferir no HTML real antes
+  de mudar qualquer constante em `lib/serverStats.ts`.
+- **`Terrorists_Win` significa "os CTs foram eliminados"**: o código nomeia
+  quem venceu, o rótulo nomeia quem morreu. Trocar os dois inverte a leitura
+  de equilíbrio na tela.
+- **"28,263 times"**: a contagem vem com sufixo, e `parseIntLoose` (com
+  razão) recusa a string inteira — o número é recortado antes.
+- **Ausência vira `null`, nunca `0`.** O HLstatsX só lista ação que já
+  aconteceu ao menos uma vez; devolver zero afirmaria "ninguém nunca fez",
+  que é diferente de "a fonte não informa". A tela omite a linha.
+- **O total de kills sai das ARMAS, não dos mapas.** Abate sem arma
+  identificada entra num e não no outro; somar mapas daria número diferente
+  pra mesma pergunta.
+
+### Falha parcial não derruba a tela
+
+As três páginas são buscadas em paralelo e cada uma é opcional: se `actions`
+cair, `weapons` e `maps` ainda respondem. Só quando as três vêm vazias a rota
+falha. Cache longo (4× o do ranking) — são somas históricas, mudam devagar.
+
 ## Arquitetura interna
 
 ```

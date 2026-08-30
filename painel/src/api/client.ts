@@ -7,6 +7,7 @@ import type {
   NetworkStats,
   RankedPlayer,
   RealServer,
+  ServerStats,
 } from "@/data/types";
 import { BANS } from "@/data/bans";
 import { MATCHES, MATCHES_BY_ID } from "@/data/matches";
@@ -270,6 +271,15 @@ export const api = {
       expired: BANS.filter((b) => b.state === "expired").length,
       permanent: BANS.filter((b) => b.state === "permanent").length,
     });
+  },
+
+  /**
+   * Agregados reais do servidor. Sem mock: estes números não existem sem o
+   * HLstatsX, e um valor inventado aqui seria indistinguível de um real.
+   */
+  async serverStats(): Promise<ServerStats> {
+    requireApi("estatísticas");
+    return request<ServerStats>("/stats");
   },
 
   async stats(): Promise<NetworkStats> {

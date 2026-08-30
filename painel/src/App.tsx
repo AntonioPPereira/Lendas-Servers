@@ -18,11 +18,12 @@ const Players = lazy(() => import("@/pages/Players"));
 const PlayerProfile = lazy(() => import("@/pages/PlayerProfile"));
 const Activity = lazy(() => import("@/pages/Activity"));
 const Bans = lazy(() => import("@/pages/Bans"));
+const Stats = lazy(() => import("@/pages/Stats"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Maintenance = lazy(() => import("@/pages/Maintenance"));
 
 /**
- * Partidas e Estatísticas ainda apontam pra Maintenance: foram feitas antes
+ * Partidas ainda aponta pra Maintenance: foram feitas antes
  * de existir fonte real e seguiam exibindo dados gerados, destoando do resto
  * do painel. Os módulos `pages/Matches`, `pages/MatchDetail` e `pages/Stats`
  * continuam no repositório de propósito — a obra é temporária, e apagá-los
@@ -32,6 +33,12 @@ const Maintenance = lazy(() => import("@/pages/Maintenance"));
  * Banimentos saiu da obra em 2026-08-30: passou a ler os bans reais do
  * SourceBans++ via `GET /api/bans` (o servidor de jogo exporta um JSON que o
  * backend lê por SFTP — ver server/src/services/SourceBansService.ts).
+ *
+ * Estatísticas saiu junto: agora mostra os agregados reais do servidor
+ * (`GET /api/stats`, HLstatsX mode=weapons/actions/maps). Note que ela NÃO
+ * tem recorte por jogador — o `mode=playerinfo` desta instalação trava, e
+ * isso está explicado na própria tela em vez de virar uma ausência sem
+ * explicação.
  */
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
 
@@ -62,16 +69,7 @@ function PublicApp() {
                   />
                 }
               />
-              <Route
-                path="/estatisticas"
-                element={
-                  <Maintenance
-                    eyebrow="Arquivo"
-                    title="Estatísticas"
-                    reason="Os agregados desta tela dependem do histórico de partidas, que ainda não tem fonte real ligada."
-                  />
-                }
-              />
+              <Route path="/estatisticas" element={<Stats />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

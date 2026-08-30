@@ -17,6 +17,7 @@ import { createRankingRouter } from "./routes/ranking.js";
 import { createPlayersRouter } from "./routes/players.js";
 import { createActivityRouter } from "./routes/activity.js";
 import { createBansRouter } from "./routes/bans.js";
+import { createStatsRouter } from "./routes/stats.js";
 import { createLiveEventsRouter } from "./routes/liveEvents.js";
 import { createLiveStreamRouter } from "./routes/liveStream.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -87,6 +88,7 @@ export function createApp(services: AppServices, options: AppOptions = {}) {
   app.use("/api/players", createPlayersRouter(services.hlstats, nicknames, services.avatars, services.playerDirectory));
   app.use("/api/activity", createActivityRouter(services.steamFilter));
   app.use("/api/bans", createBansRouter(services.sourceBans, services.hlstats));
+  app.use("/api/stats", createStatsRouter(services.hlstats));
   app.use(
     "/api/live/events",
     createLiveEventsRouter(liveState, liveBroadcaster, services.avatars, nicknames, options.liveApiToken ?? ""),

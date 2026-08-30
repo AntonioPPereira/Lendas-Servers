@@ -325,6 +325,63 @@ export interface NetworkStats {
   weaponShare: TrendPoint[];
 }
 
+/**
+ * Retrato agregado do servidor, vindo de `GET /api/stats` (HLstatsX:
+ * mode=weapons/actions/maps). São somas de TODO o histórico.
+ *
+ * `null` significa "a fonte não publica isso", nunca zero — o painel omite
+ * o bloco em vez de afirmar que nunca aconteceu.
+ *
+ * Não existe recorte por jogador aqui de propósito: o `mode=playerinfo`
+ * desta instalação do HLstatsX trava, então "quem matou mais com a AK" não
+ * é obtenível — ver server/README.md.
+ */
+export interface ServerStats {
+  totalKills: number;
+  totalHeadshots: number;
+  headshotRate: number | null;
+  weapons: Array<{
+    code: string;
+    name: string;
+    kills: number;
+    headshots: number;
+    headshotRatio: number | null;
+    shareOfKills: number;
+  }>;
+  maps: Array<{
+    map: string;
+    kills: number;
+    headshots: number;
+    headshotRatio: number | null;
+    shareOfKills: number;
+  }>;
+  bomb: {
+    planted: number | null;
+    defused: number | null;
+    pickedUp: number | null;
+    dropped: number | null;
+  };
+  multiKills: {
+    double: number | null;
+    triple: number | null;
+    quadruple: number | null;
+    rampage: number | null;
+    megaKill: number | null;
+  };
+  highlights: {
+    mvp: number | null;
+    domination: number | null;
+    revenge: number | null;
+  };
+  roundOutcomes: {
+    tWipedCts: number | null;
+    tBombed: number | null;
+    ctWipedTs: number | null;
+    ctDefused: number | null;
+  };
+  actions: Array<{ code: string; name: string; count: number }>;
+}
+
 export type RankingPeriod = "today" | "week" | "month" | "all";
 
 export interface RankingFilters {

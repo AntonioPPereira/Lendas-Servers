@@ -4,12 +4,18 @@ import { HLStatsParseError, HLStatsUnavailableError } from "../errors.js";
 import {
   parseRankingHtml,
   parseRankingPageCount,
+  parseWeaponsHtml,
+  parseActionsHtml,
+  parseMapsHtml,
   parseServersHtml,
   type HLStatsRankingRow,
   type HLStatsServerRow,
+  type HLStatsWeaponRow,
+  type HLStatsActionRow,
+  type HLStatsMapRow,
 } from "../lib/hlstatsParse.js";
 
-export type { HLStatsRankingRow, HLStatsServerRow };
+export type { HLStatsRankingRow, HLStatsServerRow, HLStatsWeaponRow, HLStatsActionRow, HLStatsMapRow };
 
 export interface HLStatsConfig {
   baseUrl: string;
@@ -70,9 +76,23 @@ const BROWSER_HEADERS: Record<string, string> = {
  * o perfil individual é resolvido a partir do cache de ranking mesmo
  * (`getPlayer`), que é a única fonte que renderiza de forma confiável.
  */
+/** Os três agregados do servidor, buscados e cacheados juntos. */
+export interface ServerStatsRaw {
+  weapons: HLStatsWeaponRow[];
+  actions: HLStatsActionRow[];
+  maps: HLStatsMapRow[];
+}
+
 export class HLStatsService {
   private readonly serversCache: TtlCache<HLStatsServerRow[]>;
   private readonly rankingCache: TtlCache<HLStatsRankingRow[]>;
+  /**
+   * Um cache só pros três agregados: eles vêm de páginas diferentes mas
+   * sempre são consumidos juntos (a tela de Estatísticas mostra os três),
+   * e mudam na mesma cadência lenta — separar renderia três conexões pro
+   * mesmo pageview sem ganho nenhum.
+   */
+  private readonly statsCache: TtlCache<ServerStatsRaw>;
 
   constructor(
     private readonly cfg: HLStatsConfig,
@@ -82,6 +102,45 @@ export class HLStatsService {
   ) {
     this.serversCache = new TtlCache<HLStatsServerRow[]>(serversCacheTtlMs);
     this.rankingCache = new TtlCache<HLStatsRankingRow[]>(rankingCacheTtlMs);
+    // Números somados de todo o histórico: mudam devagar, cache longo.
+    this.statsCache = new TtlCache<ServerStatsRaw>(rankingCacheTtlMs * 4);
+  }
+
+  /**
+   * Agregados do servidor (armas, ações, mapas). Ao contrário do ranking,
+   * uma página que falhe NÃO derruba as outras: cada uma é opcional e cai
+   * pra lista vazia. É melhor a tela mostrar dois blocos reais do que
+   * mostrar erro porque o terceiro não respondeu.
+   */
+  async getServerStats(): Promise<ServerStatsRaw> {
+    try {
+      return await this.statsCache.get(() => this.fetchServerStats());
+    } catch (cause) {
+      const stale = this.statsCache.peekStale();
+      if (stale) return stale;
+      throw cause;
+    }
+  }
+
+  private async fetchServerStats(): Promise<ServerStatsRaw> {
+    const modo = async <T>(mode: string, parse: (html: string) => T[]): Promise<T[]> => {
+      try {
+        return parse(await this.fetchText(`${this.cfg.baseUrl}?mode=${mode}&game=${this.cfg.game}`));
+      } catch {
+        return [];
+      }
+    };
+
+    const [weapons, actions, maps] = await Promise.all([
+      modo("weapons", parseWeaponsHtml),
+      modo("actions", parseActionsHtml),
+      modo("maps", parseMapsHtml),
+    ]);
+
+    if (weapons.length === 0 && actions.length === 0 && maps.length === 0) {
+      throw new HLStatsParseError("nenhuma estatística agregada encontrada (weapons/actions/maps)");
+    }
+    return { weapons, actions, maps };
   }
 
   async getServers(): Promise<HLStatsServerRow[]> {
