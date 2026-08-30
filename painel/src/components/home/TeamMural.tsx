@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { ExternalLink } from "lucide-react";
 
 /**
@@ -48,7 +49,7 @@ export function TeamMural() {
       {/* Luz que atravessa devagar, uma vez a cada ciclo longo. */}
       <span aria-hidden className="mural-sweep" />
 
-      <div className="relative px-5 py-8 sm:px-8 sm:py-10">
+      <div className="relative px-5 py-7 sm:px-8 sm:py-9">
         {/* Cabeçalho centralizado: o bloco inteiro é simétrico, e um título
             encostado na esquerda brigaria com isso. */}
         <header className="mb-8 text-center">
@@ -61,12 +62,21 @@ export function TeamMural() {
             espaço que sobrava à direita de cada nome e amarram os três num
             bloco só. Só empilha no celular, onde três colunas ficariam
             ilegíveis — e aí as divisórias somem. */}
-        <ul className="grid gap-6 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-line-soft">
+        {/* Largura limitada e centralizada: sem isso os três retratos ficam
+            perdidos numa faixa de 1600px, e o bloco lê como vazio em vez de
+            arejado. A sobra nas laterais vira margem intencional. */}
+        <ul className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-line-soft">
           {TIME.map((m, i) => (
             <li
               key={m.steamId64}
               className="mural-item sm:px-6"
-              style={{ animationDelay: i * 140 + "ms" }}
+              style={
+                {
+                  animationDelay: i * 140 + "ms",
+                  // Cada moldura pulsa fora de compasso das outras.
+                  "--neon-delay": i * 0.9 + "s",
+                } as CSSProperties
+              }
             >
               {/* Retrato em cima, texto centralizado embaixo — o empilhamento
                   aqui é DENTRO de cada coluna; as três pessoas seguem lado a

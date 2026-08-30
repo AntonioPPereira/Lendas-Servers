@@ -1192,15 +1192,48 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
+  /* Moldura com halo: a borda é o gradiente, e o brilho vem de fora dela.
+     Duas sombras — uma curta e quente, outra larga e difusa — dão a
+     sensação de luz acesa em vez de contorno pintado. */
   .mural-frame {
     display: block;
     padding: 3px;
-    background: linear-gradient(145deg, rgb(214 168 92 / 0.55), rgb(74 64 51 / 0.35) 55%, rgb(74 64 51 / 0.15));
-    border-radius: 3px;
-    transition: background 0.3s ease;
+    background: linear-gradient(145deg, rgb(224 176 96 / 0.75), rgb(120 96 58 / 0.4) 55%, rgb(74 64 51 / 0.2));
+    border-radius: 4px;
+    box-shadow:
+      0 0 0 1px rgb(224 176 96 / 0.22),
+      0 0 14px -2px rgb(224 176 96 / 0.3),
+      0 0 34px -6px rgb(224 176 96 / 0.18);
+    transition: background 0.35s ease, box-shadow 0.35s ease;
+    /* Pulso lento e desencontrado por retrato (o atraso vem do inline
+       style do componente), pra não piscarem os três em bloco. */
+    animation: mural-neon 4.4s ease-in-out infinite;
+    animation-delay: var(--neon-delay, 0s);
   }
-  .group:hover .mural-frame {
-    background: linear-gradient(145deg, rgb(214 168 92 / 0.95), rgb(214 168 92 / 0.35) 60%, rgb(74 64 51 / 0.3));
+
+  .group:hover .mural-frame,
+  .group:focus-visible .mural-frame {
+    background: linear-gradient(145deg, rgb(240 194 112 / 1), rgb(224 176 96 / 0.5) 60%, rgb(120 96 58 / 0.35));
+    box-shadow:
+      0 0 0 1px rgb(240 194 112 / 0.5),
+      0 0 20px -1px rgb(240 194 112 / 0.55),
+      0 0 52px -4px rgb(240 194 112 / 0.35);
+    animation-play-state: paused;
+  }
+
+  @keyframes mural-neon {
+    0%, 100% {
+      box-shadow:
+        0 0 0 1px rgb(224 176 96 / 0.2),
+        0 0 12px -3px rgb(224 176 96 / 0.24),
+        0 0 30px -8px rgb(224 176 96 / 0.14);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px rgb(224 176 96 / 0.34),
+        0 0 18px -2px rgb(224 176 96 / 0.42),
+        0 0 44px -5px rgb(224 176 96 / 0.26);
+    }
   }
 
   .mural-photo {
@@ -1225,6 +1258,8 @@
   @media (prefers-reduced-motion: reduce) {
     .mural-sweep { animation: none; opacity: 0; }
     .mural-item { animation: none; }
+    /* O halo fica, parado: é identidade visual, não movimento. */
+    .mural-frame { animation: none; }
     .mural-photo { transition: filter 0.2s ease; }
     .group:hover .mural-photo { transform: none; }
   }
