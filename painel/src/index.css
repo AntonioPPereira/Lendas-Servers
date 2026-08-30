@@ -953,21 +953,6 @@
     will-change: transform, opacity;
   }
 
-  /* Fogo: tremula em intensidade e altura, nunca no mesmo compasso. */
-  .icon-live-fire {
-    color: var(--color-brass);
-    animation: icon-fire-flicker 2.6s ease-in-out infinite;
-  }
-  .icon-live-fire::after {
-    content: "";
-    position: absolute;
-    inset: -35%;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgb(214 158 74 / 0.3), transparent 68%);
-    animation: icon-fire-glow 2.6s ease-in-out infinite;
-    pointer-events: none;
-  }
-
   /* Mira: respira devagar, como quem estabiliza a arma. */
   .icon-live-aim {
     color: var(--color-brass);
@@ -980,21 +965,12 @@
     animation: icon-bomb-tick 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 
-  /* Caveira: só um leve balanço, o suficiente pra não parecer congelada. */
+  /* Caveira: leve balanço e tom de osso — cinza puro sumia no cartão. */
   .icon-live-skull {
+    color: #cbbba4;
     animation: icon-skull-sway 5s ease-in-out infinite;
   }
 
-  @keyframes icon-fire-flicker {
-    0%, 100% { transform: scale(1) translateY(0); opacity: 0.92; }
-    30%      { transform: scale(1.1) translateY(-0.5px); opacity: 1; }
-    55%      { transform: scale(0.97) translateY(0.5px); opacity: 0.85; }
-    78%      { transform: scale(1.05); opacity: 1; }
-  }
-  @keyframes icon-fire-glow {
-    0%, 100% { opacity: 0.35; transform: scale(0.9); }
-    35%      { opacity: 0.75; transform: scale(1.12); }
-  }
   @keyframes icon-aim-breathe {
     0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.85; }
     50%      { transform: scale(1.12) rotate(45deg); opacity: 1; }
@@ -1014,5 +990,84 @@
     .icon-live::after {
       animation: none !important;
     }
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Chama de verdade (ver components/ui/FlameIcon.tsx).
+   *
+   * Cada camada tem seu próprio período, e os períodos NÃO são múltiplos
+   * entre si — se fossem, o conjunto repetiria visivelmente a cada ciclo
+   * e o olho pegaria o padrão. Assim a combinação só se repete depois de
+   * muito tempo e lê como fogo, não como loop.
+   *
+   * Tudo em transform/opacity: a GPU compõe sem recalcular layout.
+   * ---------------------------------------------------------------- */
+  .flame {
+    color: #f6b45a;
+    overflow: visible;
+  }
+
+  .flame-outer,
+  .flame-inner,
+  .flame-core,
+  .flame-halo {
+    /* Fogo cresce preso no pé, não infla a partir do meio. */
+    transform-origin: 50% 100%;
+    transform-box: fill-box;
+  }
+
+  .flame-outer { animation: flame-outer 2.3s ease-in-out infinite; }
+  .flame-inner { animation: flame-inner 1.7s ease-in-out infinite; }
+  .flame-core  { animation: flame-core 1.1s ease-in-out infinite; }
+  .flame-halo  { animation: flame-halo 2.9s ease-in-out infinite; }
+
+  .flame-ember {
+    transform-origin: 50% 100%;
+    transform-box: fill-box;
+    opacity: 0;
+  }
+  .flame-ember-a { animation: flame-ember 2.9s ease-out infinite; }
+  .flame-ember-b { animation: flame-ember 3.7s ease-out infinite 0.9s; }
+
+  @keyframes flame-outer {
+    0%, 100% { transform: scaleY(1) scaleX(1) translateX(0); }
+    28%      { transform: scaleY(1.09) scaleX(0.95) translateX(-0.3px); }
+    52%      { transform: scaleY(0.96) scaleX(1.04) translateX(0.35px); }
+    76%      { transform: scaleY(1.05) scaleX(0.98) translateX(-0.15px); }
+  }
+
+  @keyframes flame-inner {
+    0%, 100% { transform: scaleY(1) translateX(0); opacity: 0.95; }
+    33%      { transform: scaleY(1.14) translateX(0.4px); opacity: 1; }
+    61%      { transform: scaleY(0.9) translateX(-0.45px); opacity: 0.82; }
+  }
+
+  @keyframes flame-core {
+    0%, 100% { transform: scaleY(1); opacity: 0.85; }
+    45%      { transform: scaleY(1.25); opacity: 1; }
+  }
+
+  @keyframes flame-halo {
+    0%, 100% { transform: scale(0.92); opacity: 0.5; }
+    40%      { transform: scale(1.12); opacity: 0.85; }
+  }
+
+  /* Brasa: nasce na chama, sobe encolhendo e apaga antes do topo. */
+  @keyframes flame-ember {
+    0%       { transform: translateY(0) scale(1); opacity: 0; }
+    12%      { opacity: 0.9; }
+    100%     { transform: translateY(-9px) scale(0.2); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flame-outer,
+    .flame-inner,
+    .flame-core,
+    .flame-halo,
+    .flame-ember {
+      animation: none !important;
+    }
+    /* Sem movimento a brasa some, senão fica um ponto solto no ar. */
+    .flame-ember { opacity: 0; }
   }
 }

@@ -11,6 +11,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { ChartFrame } from "@/components/charts/ChartFrame";
 import { PlayerAvatar } from "@/components/player/PlayerAvatar";
+import { FlameIcon } from "@/components/ui/FlameIcon";
 import { RankedBars, SplitBar } from "@/components/charts/Bars";
 
 /**
@@ -113,7 +114,7 @@ export default function Stats() {
           <StatCard
             label={"Arma mais letal · " + weaponLabel(maisLetal.code, maisLetal.name)}
             value={maisLetal.kills}
-            icon={<span className="icon-live icon-live-fire relative"><Flame /></span>}
+            icon={<FlameIcon className="size-5" />}
             format={formatCompact}
             hint={formatDecimal(maisLetal.shareOfKills * 100, 1) + "% de todos os abates"}
           />
