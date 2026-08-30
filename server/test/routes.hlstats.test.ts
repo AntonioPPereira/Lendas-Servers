@@ -8,6 +8,8 @@ import { HLStatsService } from "../src/services/HLStatsService.js";
 import { SftpDemoService } from "../src/services/SftpDemoService.js";
 import { SteamFilterLogService } from "../src/services/SteamFilterLogService.js";
 import { SteamAvatarService } from "../src/services/SteamAvatarService.js";
+import { SourceBansService } from "../src/services/SourceBansService.js";
+import { BASE as SB_BASE, makeFakeSourceBansClient } from "./helpers/fakeSourceBansClient.js";
 import { BASE, SAMPLE_TREE, makeFakeClient } from "./helpers/fakeSftpClient.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -39,8 +41,17 @@ function buildApp(
   const steamFilter = new SteamFilterLogService(SFTP_CONN, 60_000, 60);
   const avatars = new SteamAvatarService(opts.avatarFetchImpl ? "KEY" : "", 3_600_000, opts.avatarFetchImpl as never);
   return createApp(
-    { demos, hlstats, steamFilter, avatars },
+    { demos, hlstats, steamFilter, sourceBans: emptySourceBans(), avatars },
     { liveApiToken: opts.liveApiToken ?? LIVE_TOKEN },
+  );
+}
+
+/** Bans não são o assunto destes testes: serviço vazio, sem arquivo exportado. */
+function emptySourceBans() {
+  return new SourceBansService(
+    { host: "x", port: 22, username: "u", password: "p", base: SB_BASE },
+    0,
+    () => makeFakeSourceBansClient().client,
   );
 }
 

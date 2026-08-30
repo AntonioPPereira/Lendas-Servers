@@ -7,6 +7,8 @@ import { HLStatsService } from "../src/services/HLStatsService.js";
 import { SftpDemoService } from "../src/services/SftpDemoService.js";
 import { SteamFilterLogService } from "../src/services/SteamFilterLogService.js";
 import { SteamAvatarService } from "../src/services/SteamAvatarService.js";
+import { SourceBansService } from "../src/services/SourceBansService.js";
+import { BASE as SB_BASE, makeFakeSourceBansClient } from "./helpers/fakeSourceBansClient.js";
 import { BASE, SAMPLE_TREE, makeFakeClient } from "./helpers/fakeSftpClient.js";
 
 const CONN = { host: "x", port: 22, username: "u", password: "p", base: BASE };
@@ -21,7 +23,7 @@ function buildApp(opts: { token?: string; fetchImpl?: typeof fetch } = {}) {
   const demos = new SftpDemoService(CONN, 60_000, () => makeFakeClient({ tree: SAMPLE_TREE }).client);
   const steamFilter = new SteamFilterLogService(CONN, 60_000, 60);
   const avatars = new SteamAvatarService(opts.fetchImpl ? "KEY" : "", 3_600_000, opts.fetchImpl as never);
-  return createApp({ demos, hlstats, steamFilter, avatars }, { liveApiToken: opts.token ?? TOKEN, liveStaleMs: 30_000 });
+  return createApp({ demos, hlstats, steamFilter, sourceBans: emptySourceBans(), avatars }, { liveApiToken: opts.token ?? TOKEN, liveStaleMs: 30_000 });
 }
 
 const servers: http.Server[] = [];
@@ -55,6 +57,15 @@ function readSseChunk(port: number, timeoutMs = 500): Promise<string> {
       if (err.code !== "ECONNRESET") reject(err);
     });
   });
+}
+
+/** Bans não são o assunto destes testes: serviço vazio, sem arquivo exportado. */
+function emptySourceBans() {
+  return new SourceBansService(
+    { host: "x", port: 22, username: "u", password: "p", base: SB_BASE },
+    0,
+    () => makeFakeSourceBansClient().client,
+  );
 }
 
 describe("POST /api/live/events — autenticação", () => {

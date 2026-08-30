@@ -5,6 +5,8 @@ import { SftpDemoService } from "../src/services/SftpDemoService.js";
 import { HLStatsService } from "../src/services/HLStatsService.js";
 import { SteamFilterLogService } from "../src/services/SteamFilterLogService.js";
 import { SteamAvatarService } from "../src/services/SteamAvatarService.js";
+import { SourceBansService } from "../src/services/SourceBansService.js";
+import { BASE as SB_BASE, makeFakeSourceBansClient } from "./helpers/fakeSourceBansClient.js";
 import { BASE, SAMPLE_IDS_BY_RECENCY, SAMPLE_TREE, makeFakeClient } from "./helpers/fakeSftpClient.js";
 
 const CONN = { host: "104.234.65.248", port: 8822, username: "u", password: "p", base: BASE };
@@ -22,7 +24,16 @@ const avatars = new SteamAvatarService("", 0);
 function buildApp(opts: Parameters<typeof makeFakeClient>[0] = { tree: SAMPLE_TREE }) {
   const { client, connectCalls } = makeFakeClient(opts);
   const service = new SftpDemoService(CONN, 60_000, () => client);
-  return { app: createApp({ demos: service, hlstats, steamFilter, avatars }), connectCalls };
+  return { app: createApp({ demos: service, hlstats, steamFilter, sourceBans: emptySourceBans(), avatars }), connectCalls };
+}
+
+/** Bans não são o assunto destes testes: serviço vazio, sem arquivo exportado. */
+function emptySourceBans() {
+  return new SourceBansService(
+    { host: "x", port: 22, username: "u", password: "p", base: SB_BASE },
+    0,
+    () => makeFakeSourceBansClient().client,
+  );
 }
 
 describe("GET /api/demos", () => {

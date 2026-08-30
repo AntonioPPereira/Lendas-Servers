@@ -17,17 +17,21 @@ const DemoDetail = lazy(() => import("@/pages/DemoDetail"));
 const Players = lazy(() => import("@/pages/Players"));
 const PlayerProfile = lazy(() => import("@/pages/PlayerProfile"));
 const Activity = lazy(() => import("@/pages/Activity"));
+const Bans = lazy(() => import("@/pages/Bans"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Maintenance = lazy(() => import("@/pages/Maintenance"));
 
 /**
- * Partidas, Banimentos e Estatísticas apontam pra Maintenance: foram feitas
- * antes de existir fonte real e seguiam exibindo dados gerados, destoando do
- * resto do painel. Os módulos `pages/Matches`, `pages/MatchDetail`,
- * `pages/Bans` e `pages/Stats` continuam no repositório de propósito — a
- * obra é temporária, e apagá-los agora só daria trabalho de reescrever a
- * casca quando a fonte existir. Pra religar, é trocar o element da rota de
- * volta.
+ * Partidas e Estatísticas ainda apontam pra Maintenance: foram feitas antes
+ * de existir fonte real e seguiam exibindo dados gerados, destoando do resto
+ * do painel. Os módulos `pages/Matches`, `pages/MatchDetail` e `pages/Stats`
+ * continuam no repositório de propósito — a obra é temporária, e apagá-los
+ * agora só daria trabalho de reescrever a casca quando a fonte existir. Pra
+ * religar, é trocar o element da rota de volta.
+ *
+ * Banimentos saiu da obra em 2026-08-30: passou a ler os bans reais do
+ * SourceBans++ via `GET /api/bans` (o servidor de jogo exporta um JSON que o
+ * backend lê por SFTP — ver server/src/services/SourceBansService.ts).
  */
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp"));
 
@@ -47,16 +51,7 @@ function PublicApp() {
               <Route path="/jogadores/:id" element={<PlayerProfile />} />
               <Route path="/atividade" element={<Activity />} />
 
-              <Route
-                path="/banimentos"
-                element={
-                  <Maintenance
-                    eyebrow="Moderação"
-                    title="Banimentos"
-                    reason="A lista de banimentos ainda não tem fonte real ligada — o registro do SourceBans desta rede não é exposto pelo painel hoje."
-                  />
-                }
-              />
+              <Route path="/banimentos" element={<Bans />} />
               <Route
                 path="/partidas/*"
                 element={

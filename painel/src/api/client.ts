@@ -135,6 +135,19 @@ export interface BanQuery {
   pageSize?: number;
 }
 
+export interface BansSummary {
+  /**
+   * Quando o servidor de jogo exportou os bans (o plugin roda a cada 5 min).
+   * `null` quando ainda não houve nenhum export — nunca a hora da leitura,
+   * que daria a impressão falsa de dado fresco.
+   */
+  generatedAt: string | null;
+  all: number;
+  active: number;
+  expired: number;
+  permanent: number;
+}
+
 export const api = {
   /** Sem mock: status/mapa/jogadores só existem de verdade via HLstatsX (server/). */
   async servers(): Promise<RealServer[]> {
@@ -241,6 +254,22 @@ export const api = {
     });
 
     return delay(paginate(rows, page, pageSize));
+  },
+
+  /**
+   * Contadores por estado, calculados no backend em cima de TODOS os
+   * registros — a lista paginada não serviria pra isso (só traz a página
+   * atual), e contar em cima do mock daria número que não existe.
+   */
+  async bansSummary(): Promise<BansSummary> {
+    if (!isMockMode) return request<BansSummary>("/bans/summary");
+    return delay({
+      generatedAt: null,
+      all: BANS.length,
+      active: BANS.filter((b) => b.state === "active").length,
+      expired: BANS.filter((b) => b.state === "expired").length,
+      permanent: BANS.filter((b) => b.state === "permanent").length,
+    });
   },
 
   async stats(): Promise<NetworkStats> {

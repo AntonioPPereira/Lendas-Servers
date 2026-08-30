@@ -272,6 +272,65 @@ remoção de assinante com pipe quebrado), `SteamAvatarService.test.ts`
 validação HTTP, ingestão → stream fim a fim com um servidor real ouvindo
 numa porta efêmera — supertest não é confiável pra stream longo).
 
+## Banimentos (SourceBans++) — `GET /api/bans`
+
+A lista de punições vem do banco do **SourceBans++**, mas o backend **não**
+fala com esse MySQL. Motivo, verificado em produção em 2026-08-30: o usuário
+do banco só aceita conexão vinda do próprio servidor de jogo — de qualquer
+outro lugar a resposta é `Access denied for user ...@<ip>`, mesmo com a senha
+correta — e o painel da hospedagem (ClanServers) não expõe "Remote MySQL"
+pra liberar o IP do backend.
+
+Em vez de depender de um pedido ao suporte, o caminho é o mesmo já usado por
+demos e atividade: **o servidor de jogo escreve, o backend lê por SFTP**.
+
+1. O plugin `lendas_bans` (SourceMod, roda no servidor de jogo) consulta o
+   MySQL **localmente** — onde o acesso já funciona — e escreve
+   `addons/sourcemod/data/lendas_bans.json` a cada `lendas_bans_interval`
+   segundos (padrão 300).
+2. `SourceBansService` lê esse JSON pela conexão SFTP já configurada e
+   guarda em cache por `BANS_CACHE_TTL_MS`.
+3. `src/lib/sourceBans.ts` traduz cada linha pro shape do painel.
+
+Efeito colateral bom: o banco nunca fica exposto à internet.
+
+### O que o plugin já resolve na origem
+
+- **IP nunca sai inteiro**: os dois últimos octetos são mascarados no próprio
+  servidor (`189.45.x.x`), então o endereço completo não trafega nem é
+  guardado do lado do site.
+- **Acentos**: a conexão pede `utf8mb4`. Sem isso, nick de admin com cedilha
+  saía como byte inválido e quebrava o JSON (visto na prática).
+- **Escrita atômica**: grava num `.tmp` e só então renomeia — se o backend
+  ler exatamente durante a exportação, pega o arquivo anterior inteiro em vez
+  de um JSON cortado no meio.
+
+### Regras de tradução (todas testadas)
+
+- `SteamID` → `SteamID64` com **BigInt**: o cálculo não cabe em 32 bits, que é
+  justamente por que o plugin não faz essa conta.
+- **Estado**: `removeType` preenchido (punição levantada por admin) vence
+  qualquer outra regra e vira `expired` — inclusive num ban permanente.
+  Depois: `length = 0` é `permanent`; prazo vencido é `expired`; o resto é
+  `active`. Ou seja, `active` são só os **temporários em vigor** — os
+  permanentes são contados à parte, não somem.
+- **Tipo**: `sb_bans` vira `ban`; `sb_comms` vira `mute` (type 1) ou `gag`
+  (type 2). Tipo desconhecido cai em `silence` e **nunca** em `ban`, pra não
+  confundir restrição de fala com banimento.
+- `id` recebe prefixo (`b`/`c`) porque `sb_bans` e `sb_comms` numeram `bid`
+  à parte e colidiriam.
+
+### Limitações conhecidas (auditadas, não é falta de esforço)
+
+- **Atraso de até 5 min** entre o ban ser aplicado e aparecer no site — é o
+  intervalo do plugin. `sm_lendas_bans_export` força na hora.
+- **Sem link de prova**: o SourceBans não guarda esse campo, então `evidence`
+  é sempre `null` em vez de um link inventado.
+- **`country` costuma vir vazio** nesta instância; quando vem, é o código de
+  2 letras que o próprio SourceBans gravou.
+- Ban por IP não tem `SteamID` — `steamId64` fica vazio e o painel
+  simplesmente não oferece link de perfil.
+
 ## Arquitetura interna
 
 ```

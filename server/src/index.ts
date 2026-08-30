@@ -3,6 +3,7 @@ import { SftpDemoService } from "./services/SftpDemoService.js";
 import { HLStatsService } from "./services/HLStatsService.js";
 import { SteamFilterLogService } from "./services/SteamFilterLogService.js";
 import { SteamAvatarService } from "./services/SteamAvatarService.js";
+import { SourceBansService } from "./services/SourceBansService.js";
 import { createApp } from "./app.js";
 
 const demos = new SftpDemoService(config.sftp, config.demosCacheTtlMs);
@@ -13,10 +14,12 @@ const hlstats = new HLStatsService(
 );
 // Mesma conexão SFTP das demos — o veredito do plugin já está nos logs, sem banco.
 const steamFilter = new SteamFilterLogService(config.sftp, config.activityCacheTtlMs, config.activityLimit);
+// Bans do SourceBans++ via o JSON que o plugin exporta — mesma conexão SFTP.
+const sourceBans = new SourceBansService(config.sftp, config.bansCacheTtlMs);
 const avatars = new SteamAvatarService(config.steam.apiKey, config.steam.avatarCacheTtlMs);
 
 const app = createApp(
-  { demos, hlstats, steamFilter, avatars },
+  { demos, hlstats, steamFilter, sourceBans, avatars },
   {
     corsOrigin: config.corsOrigin,
     liveApiToken: config.live.apiToken,

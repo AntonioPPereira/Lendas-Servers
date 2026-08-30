@@ -3,9 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { ShieldAlert } from "lucide-react";
 import { usePageEnter } from "@/hooks/useGsap";
 import { useResource } from "@/hooks/useResource";
-import { api, type Page } from "@/api/client";
+import { api, type BansSummary, type Page } from "@/api/client";
 import type { Ban, BanState } from "@/data/types";
-import { BANS } from "@/data/bans";
 import { formatNumber } from "@/lib/format";
 import { SectionTitle, Panel } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
@@ -15,20 +14,6 @@ import { Pagination } from "@/components/ui/Pagination";
 import { BanRow } from "@/components/ban/BanRow";
 
 type StateFilter = BanState | "all";
-
-const COUNTS = {
-  all: BANS.length,
-  active: BANS.filter((b) => b.state === "active").length,
-  expired: BANS.filter((b) => b.state === "expired").length,
-  permanent: BANS.filter((b) => b.state === "permanent").length,
-};
-
-const FILTERS = [
-  { value: "all" as const, label: "Todos", count: COUNTS.all },
-  { value: "active" as const, label: "Ativos", count: COUNTS.active },
-  { value: "permanent" as const, label: "Permanentes", count: COUNTS.permanent },
-  { value: "expired" as const, label: "Expirados", count: COUNTS.expired },
-];
 
 export default function Bans() {
   const scope = usePageEnter<HTMLDivElement>();
@@ -43,7 +28,21 @@ export default function Bans() {
     { keepPrevious: true },
   );
 
+  /**
+   * Os contadores vêm de uma chamada própria porque a lista é paginada:
+   * contar em cima de `resource` daria só o total da página atual.
+   */
+  const summary = useResource<BansSummary>(["bans-summary"], () => api.bansSummary());
+
   const bans = resource.data?.items ?? [];
+  const counts = summary.data;
+
+  const filters = [
+    { value: "all" as const, label: "Todos", count: counts?.all },
+    { value: "active" as const, label: "Ativos", count: counts?.active },
+    { value: "permanent" as const, label: "Permanentes", count: counts?.permanent },
+    { value: "expired" as const, label: "Expirados", count: counts?.expired },
+  ];
 
   function setQuery(value: string) {
     setPage(1);
@@ -61,15 +60,15 @@ export default function Bans() {
       </div>
 
       <div data-enter className="grid gap-px overflow-hidden rounded-md bg-line-soft/50 sm:grid-cols-3">
-        <Summary label="Registros" value={formatNumber(COUNTS.all)} />
-        <Summary label="Punições ativas" value={formatNumber(COUNTS.active)} tone="danger" />
-        <Summary label="Permanentes" value={formatNumber(COUNTS.permanent)} tone="danger" />
+        <Summary label="Registros" value={counts ? formatNumber(counts.all) : "—"} />
+        <Summary label="Punições ativas" value={counts ? formatNumber(counts.active) : "—"} tone="danger" />
+        <Summary label="Permanentes" value={counts ? formatNumber(counts.permanent) : "—"} tone="danger" />
       </div>
 
       <div data-enter>
         <Panel flush className="overflow-hidden">
           <FilterBar>
-            <Segmented options={FILTERS} value={state} onChange={(next) => { setState(next); setPage(1); }} />
+            <Segmented options={filters} value={state} onChange={(next) => { setState(next); setPage(1); }} />
             <SearchBar
               value={query}
               onValueChange={setQuery}

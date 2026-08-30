@@ -56,6 +56,8 @@ const schema = z.object({
    * server/README.md.
    */
   ACTIVITY_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(10_000),
+  /** O plugin exporta os bans a cada 5 min; reler antes disso não traz nada novo. */
+  BANS_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(120_000),
   /** Quantos eventos recentes o feed de atividade traz por vez. */
   ACTIVITY_LIMIT: z.coerce.number().int().positive().default(60),
 
@@ -123,6 +125,7 @@ export const config = {
   },
   activityCacheTtlMs: env.ACTIVITY_CACHE_TTL_MS,
   activityLimit: env.ACTIVITY_LIMIT,
+  bansCacheTtlMs: env.BANS_CACHE_TTL_MS,
   live: {
     apiToken: env.LIVE_API_TOKEN,
     staleMs: env.LIVE_STALE_MS,
