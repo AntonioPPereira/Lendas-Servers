@@ -40,7 +40,7 @@ function row(over: Record<string, unknown> = {}) {
   };
 }
 
-function buildApp(files: Record<string, string>) {
+function buildApp(files: Record<string, string>, avatars = new SteamAvatarService("", 0)) {
   const hlstats = new HLStatsService(
     { baseUrl: "http://example.invalid/hlstats.php", game: "css", timeoutMs: 500 },
     60_000,
@@ -62,7 +62,6 @@ function buildApp(files: Record<string, string>) {
     0,
     () => makeFakeSourceBansClient({ files }).client,
   );
-  const avatars = new SteamAvatarService("", 0);
   return createApp({ demos, hlstats, steamFilter, sourceBans, playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), avatars });
 }
 
@@ -83,6 +82,94 @@ function emptyPlayerStats() {
     () => makeFakeSourceBansClient().client,
   );
 }
+
+/**
+ * Steam falsa: registra as chamadas pra provarmos que a página inteira sai
+ * numa requisição só, e devolve foto só pra quem a gente mandar.
+ */
+function fakeSteam(comFoto: readonly string[]) {
+  const chamadas: string[][] = [];
+  const fetchImpl = (async (url: string) => {
+    const ids = new URL(url).searchParams.get("steamids")!.split(",");
+    chamadas.push(ids);
+    return {
+      ok: true,
+      json: async () => ({
+        response: {
+          players: ids
+            .filter((id) => comFoto.includes(id))
+            .map((id) => ({ steamid: id, avatarfull: `https://avatars.steam/${id}.jpg` })),
+        },
+      }),
+    };
+  }) as unknown as typeof fetch;
+  return { service: new SteamAvatarService("chave-de-teste", 60_000, fetchImpl), chamadas };
+}
+
+describe("GET /api/bans — foto real da Steam", () => {
+  it("anexa o avatar usando o SteamID do próprio registro, sem adivinhar por nick", async () => {
+    const { service } = fakeSteam(["76561197960370411"]);
+    const app = buildApp({ [SERVER_DIRS[0]!]: makeExport([row()]) }, service);
+
+    const res = await request(app).get("/api/bans");
+
+    expect(res.status).toBe(200);
+    expect(res.body.items[0].target.avatarUrl).toBe(
+      "https://avatars.steam/76561197960370411.jpg",
+    );
+  });
+
+  it("perfil privado fica sem foto em vez de receber uma imagem qualquer", async () => {
+    const { service } = fakeSteam([]); // ninguém tem avatar público
+    const app = buildApp({ [SERVER_DIRS[0]!]: makeExport([row()]) }, service);
+
+    const res = await request(app).get("/api/bans");
+
+    expect(res.body.items[0].target.avatarUrl).toBeUndefined();
+    // O emblema gerado continua tendo de onde nascer.
+    expect(res.body.items[0].target.avatarSeed).toBe("76561197960370411");
+  });
+
+  it("uma página inteira custa UMA chamada à Steam, não uma por punido", async () => {
+    const linhas = Array.from({ length: 12 }, (_, i) =>
+      row({ bid: i + 1, authid: `STEAM_0:1:${52341 + i}` }),
+    );
+    const { service, chamadas } = fakeSteam([]);
+    const app = buildApp({ [SERVER_DIRS[0]!]: makeExport(linhas) }, service);
+
+    await request(app).get("/api/bans?pageSize=12");
+
+    expect(chamadas).toHaveLength(1);
+    expect(chamadas[0]).toHaveLength(12);
+  });
+
+  it("resolve só a página pedida, não os 100+ registros da lista toda", async () => {
+    const linhas = Array.from({ length: 40 }, (_, i) =>
+      row({ bid: i + 1, authid: `STEAM_0:1:${52341 + i}` }),
+    );
+    const { service, chamadas } = fakeSteam([]);
+    const app = buildApp({ [SERVER_DIRS[0]!]: makeExport(linhas) }, service);
+
+    await request(app).get("/api/bans?pageSize=5");
+
+    expect(chamadas[0]).toHaveLength(5);
+  });
+
+  it("Steam fora do ar não derruba a lista de punições", async () => {
+    const fetchImpl = (async () => {
+      throw new Error("rede caiu");
+    }) as unknown as typeof fetch;
+    const app = buildApp(
+      { [SERVER_DIRS[0]!]: makeExport([row()]) },
+      new SteamAvatarService("chave-de-teste", 60_000, fetchImpl),
+    );
+
+    const res = await request(app).get("/api/bans");
+
+    expect(res.status).toBe(200);
+    expect(res.body.items[0].target.avatarUrl).toBeUndefined();
+  });
+});
 
 describe("GET /api/bans", () => {
   it("devolve os bans reais exportados pelo plugin, já traduzidos", async () => {

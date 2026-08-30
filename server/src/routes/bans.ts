@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import type { HLStatsService } from "../services/HLStatsService.js";
 import type { SourceBansService } from "../services/SourceBansService.js";
+import type { SteamAvatarService } from "../services/SteamAvatarService.js";
 import { deriveServerId } from "../lib/serverId.js";
 import { matchesQuery, toBanDto, type BanDto } from "../lib/sourceBans.js";
 
@@ -33,9 +34,43 @@ async function buildServerResolver(hlstats: HLStatsService) {
   return (hostPort: string) => mapa.get(hostPort);
 }
 
+/**
+ * Anexa a foto da Steam nos bans de UMA página.
+ *
+ * Diferente do ranking, aqui não há adivinhação: o SourceBans guarda o
+ * SteamID de quem foi punido, então o vínculo entre linha e conta é o
+ * próprio registro. Só precisamos converter e pedir a foto.
+ *
+ * Depois de paginar, de propósito: a página tem no máximo 100 linhas e o
+ * `GetPlayerSummaries` aceita 100 IDs, então isso custa **uma** requisição à
+ * Steam. Resolver a lista inteira (104 registros e crescendo) gastaria
+ * chamadas em gente que ninguém vai ver.
+ */
+async function attachAvatars(itens: BanDto[], avatars: SteamAvatarService): Promise<void> {
+  const ids = itens.map((b) => b.target.steamId64).filter((id) => id !== "");
+  if (ids.length === 0) return;
+
+  let urlPorId: Map<string, string>;
+  try {
+    urlPorId = await avatars.resolve(ids);
+  } catch {
+    // Steam fora do ar não derruba a lista de punições: a foto é enfeite, e
+    // o painel já sabe desenhar o emblema gerado quando ela falta.
+    return;
+  }
+
+  for (const ban of itens) {
+    const url = urlPorId.get(ban.target.steamId64);
+    // Perfil privado simplesmente não recebe foto — nunca um placeholder
+    // remoto fingindo ser a imagem da pessoa.
+    if (url) ban.target.avatarUrl = url;
+  }
+}
+
 export function createBansRouter(
   sourceBans: SourceBansService,
   hlstats: HLStatsService,
+  avatars: SteamAvatarService,
 ): Router {
   const router = Router();
 
@@ -60,9 +95,11 @@ export function createBansRouter(
 
       const total = itens.length;
       const inicio = (params.page - 1) * params.pageSize;
+      const pagina = itens.slice(inicio, inicio + params.pageSize);
+      await attachAvatars(pagina, avatars);
 
       res.json({
-        items: itens.slice(inicio, inicio + params.pageSize),
+        items: pagina,
         total,
         page: params.page,
         pageSize: params.pageSize,

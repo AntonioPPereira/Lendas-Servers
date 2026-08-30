@@ -44,6 +44,13 @@ export interface BanDto {
     steamId: string;
     nickname: string;
     avatarSeed: string;
+    /**
+     * Foto real da Steam. Preenchida pela rota, não aqui: este módulo é
+     * tradução pura de linha do SourceBans e não fala com a rede. Ausente
+     * quando o perfil é privado ou a chave da Steam não está configurada —
+     * e aí o painel desenha o emblema gerado a partir do `avatarSeed`.
+     */
+    avatarUrl?: string;
     country: string;
   };
   kind: BanKind;

@@ -108,7 +108,7 @@ export function createApp(services: AppServices, options: AppOptions = {}) {
   app.use("/api/ranking", createRankingRouter(services.hlstats, nicknames, services.avatars, rankingBaseline, services.playerDirectory));
   app.use("/api/players", createPlayersRouter(services.hlstats, nicknames, services.avatars, services.playerDirectory));
   app.use("/api/activity", createActivityRouter(services.steamFilter));
-  app.use("/api/bans", createBansRouter(services.sourceBans, services.hlstats));
+  app.use("/api/bans", createBansRouter(services.sourceBans, services.hlstats, services.avatars));
   app.use("/api/stats", createStatsRouter(services.hlstats, services.playerStats, services.avatars));
   app.use(
     "/api/live/events",

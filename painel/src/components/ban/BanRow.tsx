@@ -67,7 +67,12 @@ export function BanRow({ ban }: { ban: Ban }) {
         className="row-interactive grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-3 text-left md:grid-cols-[minmax(0,1fr)_minmax(0,1.9fr)_120px_100px_28px]"
       >
         <span className="flex min-w-0 items-center gap-2.5">
-          <PlayerAvatar seed={ban.target.avatarSeed} nickname={ban.target.nickname} size="sm" />
+          <PlayerAvatar
+            seed={ban.target.avatarSeed}
+            nickname={ban.target.nickname}
+            avatarUrl={ban.target.avatarUrl}
+            size="sm"
+          />
           <span className="min-w-0">
             <span className="block truncate text-[12.5px] text-ink">{ban.target.nickname}</span>
             <span className="t-num block truncate text-[10px] text-ink-4">

@@ -47,6 +47,12 @@ export interface SteamIdentity {
   nickname: string;
   /** Deterministic seed used by the generated avatar, never a remote URL. */
   avatarSeed: string;
+  /**
+   * Foto real da Steam, quando o perfil é público. O SourceBans guarda o
+   * SteamID de quem foi punido, então aqui — ao contrário do ranking — não
+   * há adivinhação por nickname. Ausente vira emblema gerado.
+   */
+  avatarUrl?: string;
   country: string;
 }
 
