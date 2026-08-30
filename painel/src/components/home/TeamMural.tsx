@@ -12,8 +12,13 @@ import { ExternalLink } from "lucide-react";
  *
  * As fotos são arquivos locais, não avatar da Steam: são retratos escolhidos
  * a dedo, e um avatar mudaria sozinho no dia em que a pessoa trocasse o
- * dela. Duas delas são 184×184, então o quadro é propositalmente pequeno —
- * ampliar mais borraria.
+ * dela.
+ *
+ * O QUADRO É 128px POR UM MOTIVO: as fotos do Kai e do Kanga têm 184×184 de
+ * origem. A 128px elas ainda ficam nítidas; acima disso começam a borrar em
+ * tela de alta densidade, porque não há pixel de sobra. Para aumentar mais,
+ * é preciso trocar os arquivos por versões maiores — esticar o que existe
+ * só deixaria embaçado.
  */
 interface Membro {
   role: string;
@@ -43,13 +48,13 @@ export function TeamMural() {
       {/* Luz que atravessa devagar, uma vez a cada ciclo longo. */}
       <span aria-hidden className="mural-sweep" />
 
-      <div className="relative px-5 py-6 sm:px-7 sm:py-8">
+      <div className="relative px-5 py-8 sm:px-8 sm:py-10">
         {/* Cabeçalho centralizado: o bloco inteiro é simétrico, e um título
             encostado na esquerda brigaria com isso. */}
-        <header className="mb-7 text-center">
-          <h2 className="t-display text-[16px] tracking-[0.16em] text-ink">COMANDO</h2>
-          <p className="t-eyebrow mt-1.5 text-[9px] text-ink-4">Quem mantém a rede no ar</p>
-          <span className="mx-auto mt-3 block h-px w-16 bg-gradient-to-r from-transparent via-brass/60 to-transparent" />
+        <header className="mb-8 text-center">
+          <h2 className="t-display text-[21px] tracking-[0.2em] text-ink">COMANDO</h2>
+          <p className="t-eyebrow mt-2 text-[10px] text-ink-3">Quem mantém a rede no ar</p>
+          <span className="mx-auto mt-4 block h-px w-24 bg-gradient-to-r from-transparent via-brass/70 to-transparent" />
         </header>
 
         {/* Lado a lado, como tríptico: as divisórias verticais fecham o
@@ -60,7 +65,7 @@ export function TeamMural() {
           {TIME.map((m, i) => (
             <li
               key={m.steamId64}
-              className="mural-item sm:px-5"
+              className="mural-item sm:px-6"
               style={{ animationDelay: i * 140 + "ms" }}
             >
               {/* Retrato em cima, texto centralizado embaixo — o empilhamento
@@ -70,27 +75,27 @@ export function TeamMural() {
                 href={"https://steamcommunity.com/profiles/" + m.steamId64}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="group flex flex-col items-center gap-3 text-center outline-none"
+                className="group flex flex-col items-center gap-4 text-center outline-none"
               >
                 <span className="mural-frame relative shrink-0">
                   <img
                     src={m.photo}
                     alt={m.name}
-                    width={88}
-                    height={88}
+                    width={128}
+                    height={128}
                     loading="lazy"
-                    className="mural-photo size-[88px] object-cover"
+                    className="mural-photo size-[128px] object-cover"
                   />
                 </span>
 
                 <span className="min-w-0 max-w-full">
-                  <span className="t-eyebrow block text-[9px] text-brass">{m.role}</span>
-                  <span className="t-display mt-1.5 block truncate text-[20px] leading-none text-ink transition-colors group-hover:text-brass">
+                  <span className="t-eyebrow block text-[10px] tracking-[0.18em] text-brass">{m.role}</span>
+                  <span className="t-display mt-2 block truncate text-[27px] leading-none text-ink transition-colors group-hover:text-brass">
                     {m.name}
                   </span>
-                  <span className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-ink-4 transition-colors group-hover:text-ink-3">
+                  <span className="mt-2.5 inline-flex items-center gap-1.5 text-[11.5px] text-ink-4 transition-colors group-hover:text-brass">
                     Perfil Steam
-                    <ExternalLink className="size-3" />
+                    <ExternalLink className="size-3.5" />
                   </span>
                 </span>
               </a>

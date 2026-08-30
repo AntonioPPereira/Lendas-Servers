@@ -1194,7 +1194,7 @@
 
   .mural-frame {
     display: block;
-    padding: 2px;
+    padding: 3px;
     background: linear-gradient(145deg, rgb(214 168 92 / 0.55), rgb(74 64 51 / 0.35) 55%, rgb(74 64 51 / 0.15));
     border-radius: 3px;
     transition: background 0.3s ease;
