@@ -14,6 +14,38 @@ export interface LeaderEntry {
   steamId64: string;
   nickname: string;
   value: number;
+  /** Foto real da Steam. Ausente = a conta é privada ou não resolveu. */
+  avatarUrl?: string;
+}
+
+/** Todos os SteamID64 que aparecem em algum pódio, sem repetir. */
+export function collectSteamIds(boards: Leaderboards): string[] {
+  const ids = new Set<string>();
+  const add = (lista: readonly LeaderEntry[]) => lista.forEach((e) => ids.add(e.steamId64));
+  add(boards.topKillers);
+  add(boards.topHeadshots);
+  add(boards.topPlanters);
+  add(boards.topDefusers);
+  boards.weapons.forEach((w) => add(w.top));
+  return [...ids];
+}
+
+/** Cola a foto em cada entrada; quem não resolveu fica sem, nunca com placeholder. */
+export function attachAvatars(boards: Leaderboards, urls: ReadonlyMap<string, string>): Leaderboards {
+  const enfeitar = (lista: LeaderEntry[]): LeaderEntry[] =>
+    lista.map((e) => {
+      const avatarUrl = urls.get(e.steamId64);
+      return avatarUrl ? { ...e, avatarUrl } : e;
+    });
+
+  return {
+    ...boards,
+    topKillers: enfeitar(boards.topKillers),
+    topHeadshots: enfeitar(boards.topHeadshots),
+    topPlanters: enfeitar(boards.topPlanters),
+    topDefusers: enfeitar(boards.topDefusers),
+    weapons: boards.weapons.map((w) => ({ ...w, top: enfeitar(w.top) })),
+  };
 }
 
 export interface WeaponLeaderboard {

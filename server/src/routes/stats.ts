@@ -1,7 +1,8 @@
 import { Router } from "express";
 import type { HLStatsService } from "../services/HLStatsService.js";
 import type { PlayerStatsService } from "../services/PlayerStatsService.js";
-import { buildLeaderboards } from "../lib/leaderboards.js";
+import { attachAvatars, buildLeaderboards, collectSteamIds } from "../lib/leaderboards.js";
+import type { SteamAvatarService } from "../services/SteamAvatarService.js";
 import { buildServerStats } from "../lib/serverStats.js";
 
 /**
@@ -17,6 +18,7 @@ import { buildServerStats } from "../lib/serverStats.js";
 export function createStatsRouter(
   hlstats: HLStatsService,
   playerStats: PlayerStatsService,
+  avatars: SteamAvatarService,
 ): Router {
   const router = Router();
 
@@ -36,8 +38,15 @@ export function createStatsRouter(
    */
   router.get("/leaderboards", async (_req, res, next) => {
     try {
-      const snapshot = await playerStats.getSnapshot();
-      res.json(buildLeaderboards(snapshot));
+      const boards = buildLeaderboards(await playerStats.getSnapshot());
+
+      /**
+       * O pódio já tem o SteamID64, então dá pra pedir a foto direto — sem
+       * passar pelo cruzamento por nick. Uma requisição só cobre todos os
+       * pódios da tela; falha de rede não derruba nada, só volta sem foto.
+       */
+      const urls = await avatars.resolve(collectSteamIds(boards)).catch(() => new Map<string, string>());
+      res.json(attachAvatars(boards, urls));
     } catch (err) {
       next(err);
     }

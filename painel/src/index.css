@@ -932,3 +932,87 @@
   0% { transform: translateY(-100%); }
   100% { transform: translateY(300%); }
 }
+
+/* ------------------------------------------------------------------ *
+ * Ícones vivos dos cartões de estatística.
+ *
+ * O ícone cinza parado não dizia nada — cada um agora tem um movimento
+ * que combina com o que ele representa: o fogo tremula, a mira respira,
+ * a bomba pulsa como contagem. É sutil de propósito: a página é de dado,
+ * não de enfeite, e movimento demais cansa em tela cheia de número.
+ *
+ * Duração longa e fora de sincronia (delays diferentes) pra não virar
+ * um "pisca-pisca" coletivo. Nada disso roda pra quem pede menos
+ * movimento — a regra no fim do bloco desliga tudo.
+ * ------------------------------------------------------------------ */
+@layer components {
+  .icon-live {
+    display: inline-grid;
+    place-items: center;
+    transform-origin: center;
+    will-change: transform, opacity;
+  }
+
+  /* Fogo: tremula em intensidade e altura, nunca no mesmo compasso. */
+  .icon-live-fire {
+    color: var(--color-brass);
+    animation: icon-fire-flicker 2.6s ease-in-out infinite;
+  }
+  .icon-live-fire::after {
+    content: "";
+    position: absolute;
+    inset: -35%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(214 158 74 / 0.3), transparent 68%);
+    animation: icon-fire-glow 2.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* Mira: respira devagar, como quem estabiliza a arma. */
+  .icon-live-aim {
+    color: var(--color-brass);
+    animation: icon-aim-breathe 3.6s ease-in-out infinite;
+  }
+
+  /* Bomba: pulso curto e seco, com pausa — contagem, não batimento. */
+  .icon-live-bomb {
+    color: var(--color-danger);
+    animation: icon-bomb-tick 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  /* Caveira: só um leve balanço, o suficiente pra não parecer congelada. */
+  .icon-live-skull {
+    animation: icon-skull-sway 5s ease-in-out infinite;
+  }
+
+  @keyframes icon-fire-flicker {
+    0%, 100% { transform: scale(1) translateY(0); opacity: 0.92; }
+    30%      { transform: scale(1.1) translateY(-0.5px); opacity: 1; }
+    55%      { transform: scale(0.97) translateY(0.5px); opacity: 0.85; }
+    78%      { transform: scale(1.05); opacity: 1; }
+  }
+  @keyframes icon-fire-glow {
+    0%, 100% { opacity: 0.35; transform: scale(0.9); }
+    35%      { opacity: 0.75; transform: scale(1.12); }
+  }
+  @keyframes icon-aim-breathe {
+    0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.85; }
+    50%      { transform: scale(1.12) rotate(45deg); opacity: 1; }
+  }
+  @keyframes icon-bomb-tick {
+    0%, 62%, 100% { transform: scale(1); opacity: 0.8; }
+    70%           { transform: scale(1.18); opacity: 1; }
+    78%           { transform: scale(1); opacity: 0.85; }
+  }
+  @keyframes icon-skull-sway {
+    0%, 100% { transform: rotate(-3deg); }
+    50%      { transform: rotate(3deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .icon-live,
+    .icon-live::after {
+      animation: none !important;
+    }
+  }
+}

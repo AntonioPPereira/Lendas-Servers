@@ -20,6 +20,16 @@ export interface ResourceOptions {
   enabled?: boolean;
   /** Mantém a página anterior na tela enquanto a próxima carrega, em vez de piscar esqueleto. */
   keepPrevious?: boolean;
+  /**
+   * Quanto tempo o dado sobrevive em memória DEPOIS que ninguém está mais
+   * olhando pra ele. Diferente de `staleTime`, que decide se rebusca; este
+   * decide se ainda existe algo pra mostrar de imediato ao voltar.
+   *
+   * O padrão do TanStack é 5 min: passou disso, sair da tela e voltar
+   * recarrega do zero. Vale aumentar em tela cara — Estatísticas, por
+   * exemplo, custa raspar o HLstatsX e abrir SFTP.
+   */
+  gcTime?: number;
 }
 
 /**
@@ -52,6 +62,7 @@ export function useResource<T>(
     staleTime: options.staleTime,
     refetchInterval: options.refetchInterval,
     enabled: options.enabled,
+    gcTime: options.gcTime,
     // `keepPreviousData` é o helper da v5 pra isso: a página atual fica na
     // tela enquanto a próxima chega. Escrever a função à mão esbarra no
     // `NonFunctionGuard` — sem restringir T, o TypeScript não consegue provar

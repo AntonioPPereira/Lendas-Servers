@@ -394,6 +394,8 @@ export interface LeaderEntry {
   steamId64: string;
   nickname: string;
   value: number;
+  /** Foto real da Steam. Ausente = conta privada ou não resolvida. */
+  avatarUrl?: string;
 }
 
 export interface WeaponLeaderboard {

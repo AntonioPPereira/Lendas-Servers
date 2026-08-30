@@ -3,12 +3,14 @@ import { Bomb, Crosshair, Flame, Shield, ShieldCheck, Skull, Swords, Trophy } fr
 import { usePageEnter, useScrollReveal } from "@/hooks/useGsap";
 import { useResource } from "@/hooks/useResource";
 import { api } from "@/api/client";
+import { GC, STALE } from "@/lib/queryClient";
 import type { LeaderEntry, Leaderboards, ServerStats } from "@/data/types";
 import { formatCompact, formatDecimal, formatNumber, mapLabel, timeAgo, weaponLabel } from "@/lib/format";
 import { SectionTitle, Panel } from "@/components/ui/Panel";
 import { StatCard } from "@/components/ui/StatCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { ChartFrame } from "@/components/charts/ChartFrame";
+import { PlayerAvatar } from "@/components/player/PlayerAvatar";
 import { RankedBars, SplitBar } from "@/components/charts/Bars";
 
 /**
@@ -23,7 +25,9 @@ export default function Stats() {
   const scope = usePageEnter<HTMLDivElement>();
   const revealScope = useScrollReveal<HTMLDivElement>();
   const resource = useResource<ServerStats>(["server-stats"], () => api.serverStats(), {
-    staleTime: 5 * 60_000,
+    staleTime: STALE.serverStats,
+    // Sai da tela e volta sem recarregar: a busca é cara e o dado é histórico.
+    gcTime: GC.caro,
   });
   /**
    * Chamada à parte de propósito: o pódio vem do plugin e cobre um período
@@ -31,7 +35,8 @@ export default function Stats() {
    * cair — por isso não entra no `if (error)` do recurso principal.
    */
   const podios = useResource<Leaderboards>(["leaderboards"], () => api.leaderboards(), {
-    staleTime: 2 * 60_000,
+    staleTime: STALE.leaderboards,
+    gcTime: GC.caro,
   });
 
   if (resource.status === "error") {
@@ -80,11 +85,11 @@ export default function Stats() {
       </div>
 
       <div data-enter className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Mortes registradas" value={stats.totalKills} icon={<Skull />} />
+        <StatCard label="Mortes registradas" value={stats.totalKills} icon={<span className="icon-live icon-live-skull"><Skull /></span>} />
         <StatCard
           label="Headshots"
           value={stats.totalHeadshots}
-          icon={<Crosshair />}
+          icon={<span className="icon-live icon-live-aim"><Crosshair /></span>}
           tone="brass"
           hint={
             stats.headshotRate === null
@@ -96,7 +101,7 @@ export default function Stats() {
           <StatCard
             label="Bombas plantadas"
             value={stats.bomb.planted}
-            icon={<Bomb />}
+            icon={<span className="icon-live icon-live-bomb"><Bomb /></span>}
             hint={
               stats.bomb.defused === null
                 ? undefined
@@ -108,7 +113,7 @@ export default function Stats() {
           <StatCard
             label={"Arma mais letal · " + weaponLabel(maisLetal.code, maisLetal.name)}
             value={maisLetal.kills}
-            icon={<Flame />}
+            icon={<span className="icon-live icon-live-fire relative"><Flame /></span>}
             format={formatCompact}
             hint={formatDecimal(maisLetal.shareOfKills * 100, 1) + "% de todos os abates"}
           />
@@ -116,6 +121,8 @@ export default function Stats() {
       </div>
 
       <div ref={revealScope} className="space-y-5">
+        <SecaoPodios dados={podios.data} />
+
         <div data-reveal className="grid gap-5 xl:grid-cols-[1.25fr_1fr]">
           <ChartFrame
             title="Abates por arma"
@@ -195,8 +202,6 @@ export default function Stats() {
             <Item rotulo="Bomba largada" valor={stats.bomb.dropped} icone={<Bomb />} />
           </Painel>
         </div>
-
-        <SecaoPodios dados={podios.data} />
 
         <p data-reveal className="px-1 text-[11.5px] leading-relaxed text-ink-3">
           Os totais acima vêm do HLstatsX desta rede e somam o histórico
@@ -318,21 +323,49 @@ function SecaoPodios({ dados }: { dados: Leaderboards | null }) {
 
 function Podio({ entradas }: { entradas: LeaderEntry[] }) {
   return (
-    <ol className="space-y-1.5">
-      {entradas.map((e, i) => (
-        <li key={e.steamId64} className="flex items-center gap-2.5">
-          <span
+    <ol className="space-y-2">
+      {entradas.map((e, i) => {
+        const lider = i === 0;
+        return (
+          <li
+            key={e.steamId64}
             className={
-              "t-num w-4 shrink-0 text-right text-[11px] tabular-nums " +
-              (i === 0 ? "text-brass" : "text-ink-4")
+              "flex items-center gap-2.5 rounded-[3px] px-1.5 py-1 " +
+              (lider ? "bg-brass/10" : "")
             }
           >
-            {i + 1}
-          </span>
-          <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-2">{e.nickname}</span>
-          <span className="t-num text-[12.5px] tabular-nums text-ink">{formatNumber(e.value)}</span>
-        </li>
-      ))}
+            <span
+              className={
+                "t-num w-3.5 shrink-0 text-right text-[11px] tabular-nums " +
+                (lider ? "text-brass" : "text-ink-4")
+              }
+            >
+              {i + 1}
+            </span>
+            <PlayerAvatar
+              seed={e.steamId64}
+              nickname={e.nickname}
+              size={lider ? "sm" : "xs"}
+              avatarUrl={e.avatarUrl}
+            />
+            <span
+              className={
+                "min-w-0 flex-1 truncate " +
+                (lider ? "text-[13px] text-ink" : "text-[12.5px] text-ink-2")
+              }
+            >
+              {e.nickname}
+            </span>
+            <span
+              className={
+                "t-num tabular-nums " + (lider ? "text-[14px] text-brass" : "text-[12.5px] text-ink")
+              }
+            >
+              {formatNumber(e.value)}
+            </span>
+          </li>
+        );
+      })}
     </ol>
   );
 }
