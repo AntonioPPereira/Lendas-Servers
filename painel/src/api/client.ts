@@ -58,6 +58,10 @@ export interface ArchiveEntry {
 export interface ArchivePage extends Page<ArchiveEntry> {
   /** Quantas linhas do recorte têm placar — o painel usa pra explicar a mistura. */
   withScore: number;
+  /** Mês exibido. Sem `period` na chamada, o backend escolhe o mais recente COM conteúdo. */
+  period: string;
+  /** Meses que existem no acervo, mais recente primeiro. */
+  periods: string[];
 }
 
 export interface MatchRound {

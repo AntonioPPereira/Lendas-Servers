@@ -4,7 +4,7 @@ import { Film, Swords } from "lucide-react";
 import { usePageEnter } from "@/hooks/useGsap";
 import { useResource } from "@/hooks/useResource";
 import { api, type ArchiveEntry, type ArchivePage } from "@/api/client";
-import { formatBytes, formatDateTime, mapLabel, timeAgo } from "@/lib/format";
+import { formatBytes, formatDateTime, formatPeriod, mapLabel, timeAgo } from "@/lib/format";
 import { Panel, SectionTitle } from "@/components/ui/Panel";
 import { Badge } from "@/components/ui/Badge";
 import { FilterBar, Select } from "@/components/ui/Field";
@@ -29,10 +29,16 @@ export default function Matches() {
   const scope = usePageEnter<HTMLDivElement>();
   const [map, setMap] = useState("all");
   const [page, setPage] = useState(1);
+  /**
+   * Vazio = deixa o backend escolher o mês mais recente COM conteúdo. Não
+   * assumimos o mês do calendário: virada de mês deixaria o arquivo
+   * aparentemente vazio até alguém jogar.
+   */
+  const [periodo, setPeriodo] = useState("");
 
   const resource = useResource<ArchivePage>(
-    ["arquivo", map, page],
-    () => api.archive({ map, page, pageSize: 12 }),
+    ["arquivo", map, page, periodo],
+    () => api.archive({ map, page, pageSize: 12, ...(periodo ? { period: periodo } : {}) }),
     { keepPrevious: true },
   );
   const mapas = useResource<string[]>(["arquivo-mapas"], () => api.archiveMaps());
@@ -62,6 +68,18 @@ export default function Matches() {
               options={opcoes}
               className="w-full sm:w-64"
             />
+            {resource.data && resource.data.periods.length > 1 ? (
+              <Select
+                label="Mês"
+                value={resource.data.period}
+                onChange={(next: string) => {
+                  setPeriodo(next);
+                  setPage(1);
+                }}
+                options={resource.data.periods.map((p) => ({ value: p, label: formatPeriod(p) }))}
+                className="w-full sm:w-44"
+              />
+            ) : null}
             {resource.data ? (
               /* Diz a composição do que está na tela, em vez de deixar o
                  leitor concluir sozinho que faltam placares. */

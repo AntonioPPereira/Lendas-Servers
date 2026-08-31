@@ -81,19 +81,36 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
     try {
       const query = listQuerySchema.parse(req.query);
 
-      // Nenhuma das duas fontes pode derrubar a página: se o plugin de
-      // partidas ainda não subiu, a lista continua mostrando as gravações;
-      // se o SFTP de demos falhar, as partidas continuam aparecendo.
-      const [linhas, arquivos] = await Promise.all([
-        matches.getMatches().catch(() => [] as MatchRow[]),
-        demos.listDemos(query.period ?? mesCorrente()).catch(() => []),
-      ]);
+      /**
+       * Qual mês mostrar: o mais recente que TEM gravação, não o mês do
+       * calendário. Virou setembro e ninguém jogou ainda? O acervo de
+       * agosto continua sendo o que existe — assumir o mês corrente
+       * apresentaria um arquivo vazio como se fosse a verdade.
+       */
+      const periodos = await demos.listPeriods().catch(() => [] as string[]);
+      const periodo = query.period ?? periodos[0] ?? mesCorrente();
+
+      /**
+       * As duas fontes falham de jeitos DIFERENTES, e a página precisa
+       * distinguir:
+       *
+       * - partidas indisponíveis é situação normal — o plugin pode nem
+       *   estar instalado, e aí de fato não existe partida nenhuma;
+       * - gravações indisponíveis é ERRO. São a maior parte do acervo, e
+       *   engolir essa falha faz a tela dizer "nada no arquivo" quando o
+       *   certo é "não consegui ler". Já aconteceu, e é pior que mostrar
+       *   erro: afirma como fato algo que ninguém verificou.
+       */
+      const linhas = await matches.getMatches().catch(() => [] as MatchRow[]);
+      const arquivos = await demos.listDemos(periodo);
 
       const demoPorId = new Map(arquivos.map((d) => [d.id, d]));
       const usadas = new Set<string>();
 
       const itens: Array<ReturnType<typeof toMatchDto> | ReturnType<typeof toDemoOnlyDto>> = [];
-      for (const linha of linhas) {
+      // Partida entra no mesmo recorte de mês das gravações: misturar agosto
+      // com setembro na mesma tela faria a paginação mentir sobre o total.
+      for (const linha of linhas.filter((l) => l.startedAt.startsWith(periodo))) {
         const demo = demoPorId.get(linha.id);
         if (demo) usadas.add(demo.id);
         itens.push(
@@ -117,6 +134,9 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
         ...paginate(visiveis, query.page, query.pageSize),
         /** Quantas da página inteira têm placar — o painel usa pra explicar a mistura. */
         withScore: visiveis.filter((i) => i.kind === "match").length,
+        /** Qual mês está sendo mostrado e quais existem — o painel monta o seletor com isso. */
+        period: periodo,
+        periods: periodos,
       });
     } catch (err) {
       next(err);
@@ -127,7 +147,8 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
   router.get("/maps", async (_req, res, next) => {
     try {
       const linhas = await matches.getMatches().catch(() => [] as MatchRow[]);
-      const arquivos = await demos.listDemos(mesCorrente()).catch(() => []);
+      const periodos = await demos.listPeriods().catch(() => [] as string[]);
+      const arquivos = await demos.listDemos(periodos[0] ?? mesCorrente()).catch(() => []);
       const mapas = new Set<string>();
       linhas.forEach((l) => mapas.add(l.map));
       arquivos.forEach((d) => mapas.add(d.map));
@@ -168,6 +189,7 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
   return router;
 }
 
+/** Último recurso: nenhum período conhecido (SFTP mudo). */
 function mesCorrente(): string {
   const agora = new Date();
   return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}`;
