@@ -13,6 +13,13 @@ export const STALE = {
   ranking: 45_000,
   /** Demo é arquivo em disco: muda quando uma partida acaba, não a toda hora. */
   demos: 60_000,
+  /**
+   * O arquivo de partidas só muda quando um MAPA TERMINA — o plugin grava
+   * no `OnMapEnd`. Rebuscar durante a partida em andamento não traz nada
+   * novo e paga a ida ao SFTP de novo, que é a leitura mais cara do
+   * backend. 5 minutos, igual ao cache do servidor.
+   */
+  arquivo: 5 * 60_000,
   /** Agregados do HLstatsX: somas de anos, não mudam de minuto a minuto. */
   serverStats: 5 * 60_000,
   /** Pódios: o plugin exporta a cada 2 min, então reler antes disso não traz nada. */

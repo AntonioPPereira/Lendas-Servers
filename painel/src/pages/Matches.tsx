@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Film, Swords } from "lucide-react";
 import { usePageEnter } from "@/hooks/useGsap";
 import { useResource } from "@/hooks/useResource";
+import { STALE } from "@/lib/queryClient";
 import { api, type ArchiveEntry, type ArchivePage } from "@/api/client";
 import { formatBytes, formatDateTime, formatPeriod, mapLabel, timeAgo } from "@/lib/format";
 import { Panel, SectionTitle } from "@/components/ui/Panel";
@@ -39,9 +40,11 @@ export default function Matches() {
   const resource = useResource<ArchivePage>(
     ["arquivo", map, page, periodo],
     () => api.archive({ map, page, pageSize: 12, ...(periodo ? { period: periodo } : {}) }),
-    { keepPrevious: true },
+    { keepPrevious: true, staleTime: STALE.arquivo },
   );
-  const mapas = useResource<string[]>(["arquivo-mapas"], () => api.archiveMaps());
+  const mapas = useResource<string[]>(["arquivo-mapas"], () => api.archiveMaps(), {
+    staleTime: STALE.arquivo,
+  });
 
   const itens = resource.data?.items ?? [];
   const opcoes = [

@@ -100,10 +100,22 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
        *   certo é "não consegui ler". Já aconteceu, e é pior que mostrar
        *   erro: afirma como fato algo que ninguém verificou.
        */
-      const [linhas, acervo] = await Promise.all([
-        matches.getMatches().catch(() => [] as MatchRow[]),
-        demos.listArchive(query.period),
-      ]);
+      /**
+       * UMA conexão SFTP POR VEZ, nunca em paralelo.
+       *
+       * Isto era um `Promise.all` e parecia uma otimização óbvia. Na
+       * prática derrubou a rota em produção: `/api/matches` respondia
+       * `sftp_unavailable` enquanto `/api/demos` — mesma fonte, mas uma
+       * conexão só — funcionava normalmente. O host recusa conexões
+       * simultâneas da mesma origem.
+       *
+       * Serializar custa alguns segundos A MAIS por busca, mas quem lê não
+       * sente: o `getStaleWhileRevalidate` devolve o valor anterior na hora
+       * e esta função roda em segundo plano. Rápido e quebrado é pior que
+       * lento e correto.
+       */
+      const linhas = await matches.getMatches().catch(() => [] as MatchRow[]);
+      const acervo = await demos.listArchive(query.period);
       const periodos = acervo.periods;
       const periodo = acervo.period || mesCorrente();
       const arquivos = acervo.demos;
@@ -150,10 +162,12 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
   /** Mapas que de fato aparecem no acervo — nada de lista fixa inventada. */
   router.get("/maps", async (_req, res, next) => {
     try {
-      const [linhas, acervo] = await Promise.all([
-        matches.getMatches().catch(() => [] as MatchRow[]),
-        demos.listArchive().catch(() => ({ periods: [], period: "", demos: [] })),
-      ]);
+      // Em série pelo mesmo motivo do handler acima: o host recusa
+      // conexões SFTP simultâneas.
+      const linhas = await matches.getMatches().catch(() => [] as MatchRow[]);
+      const acervo = await demos
+        .listArchive()
+        .catch(() => ({ periods: [] as string[], period: "", demos: [] }));
       const mapas = new Set<string>();
       linhas.forEach((l) => mapas.add(l.map));
       acervo.demos.forEach((d) => mapas.add(d.map));
