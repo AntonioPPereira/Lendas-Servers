@@ -75,7 +75,11 @@ function buildApp(matchesJson: string | null, tree = DEMO_TREE) {
   });
 }
 
-const comPartida = JSON.stringify({ version: 1, generatedAt: 1, matches: [partida()] });
+/** JSON Lines: uma partida por linha, sem cabeçalho — o que o plugin grava. */
+const NL = String.fromCharCode(10);
+const jsonl = (...ms: unknown[]) => ms.map((m) => JSON.stringify(m)).join(NL) + NL;
+
+const comPartida = jsonl(partida());
 
 describe("GET /api/matches", () => {
   it("a partida vem com placar e a gravação casada pelo id", async () => {
@@ -125,20 +129,22 @@ describe("GET /api/matches", () => {
   });
 
   it("partida sem round é descartada: é warmup ou troca de mapa, não partida", async () => {
-    const json = JSON.stringify({ matches: [partida({ rounds: [] })] });
+    const json = jsonl(partida({ rounds: [] }));
     const res = await request(buildApp(json)).get("/api/matches?period=2026-08");
     expect(res.body.withScore).toBe(0);
   });
 
   it("partida malformada não derruba a rota nem entra pela metade", async () => {
-    const json = JSON.stringify({ matches: [partida(), { id: "lixo" }, null] });
+    // Linha ilegível no meio: custa UMA partida, não o arquivo inteiro —
+    // é a vantagem do JSON Lines sobre o documento único de antes.
+    const json = jsonl(partida()) + "{isso nao e json" + NL + jsonl({ id: "lixo" });
     const res = await request(buildApp(json)).get("/api/matches?period=2026-08");
     expect(res.status).toBe(200);
     expect(res.body.withScore).toBe(1);
   });
 
   it("JSON corrompido não derruba a rota", async () => {
-    const res = await request(buildApp("{{{ não é json")).get("/api/matches?period=2026-08");
+    const res = await request(buildApp("{{{ nao e json" + NL + "nem isto aqui" + NL)).get("/api/matches?period=2026-08");
     expect(res.status).toBe(200);
     expect(res.body.withScore).toBe(0);
   });

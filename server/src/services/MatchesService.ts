@@ -31,7 +31,19 @@ export interface MatchesClientLike {
 type ClientFactory = () => MatchesClientLike;
 
 const READY_TIMEOUT_MS = 10_000;
-const EXPORT_SUBPATH = ["cstrike", "addons", "sourcemod", "data", "lendas_matches.json"];
+/**
+ * JSON Lines: uma partida completa por linha, sem cabeçalho nem fechamento.
+ *
+ * O formato anterior era um documento JSON único que o plugin reescrevia a
+ * cada partida, relendo o próprio arquivo pra preservar o histórico. Isso
+ * corrompeu o arquivo três vezes: o `File.ReadLine` do SourceMod corta em
+ * 2048 bytes independentemente do buffer, partindo strings ao meio.
+ *
+ * Com JSON Lines o plugin só ACRESCENTA — não lê nada — e o modo de falha
+ * desaparece junto. Uma linha ilegível custa uma partida, nunca o arquivo
+ * inteiro.
+ */
+const EXPORT_SUBPATH = ["cstrike", "addons", "sourcemod", "data", "lendas_matches.jsonl"];
 
 export type RoundWinner = "CT" | "T";
 export type RoundReason = "bomb" | "defuse" | "elimination" | "time" | "hostage";
@@ -167,15 +179,19 @@ export class MatchesService {
       return [];
     }
 
-    try {
-      const parsed = JSON.parse(raw.toString("utf-8")) as { matches?: unknown[] };
-      if (!Array.isArray(parsed.matches)) return [];
-      return parsed.matches
-        .map((item) => this.sanitize(item, port))
-        .filter((m): m is MatchRow => m !== null);
-    } catch {
-      return [];
+    const linhas: MatchRow[] = [];
+    for (const linha of raw.toString("utf-8").split("\n")) {
+      const texto = linha.trim();
+      if (texto.length < 2) continue;
+      try {
+        const row = this.sanitize(JSON.parse(texto), port);
+        if (row) linhas.push(row);
+      } catch {
+        // Linha truncada ou meio escrita: descarta ESTA, segue com o resto.
+        // É a vantagem do formato — o estrago fica contido numa partida.
+      }
     }
+    return linhas;
   }
 
   /**
