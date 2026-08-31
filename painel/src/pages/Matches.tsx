@@ -9,7 +9,7 @@ import { formatBytes, formatDateTime, formatPeriod, mapLabel, timeAgo } from "@/
 import { Panel, SectionTitle } from "@/components/ui/Panel";
 import { Badge } from "@/components/ui/Badge";
 import { FilterBar, Select } from "@/components/ui/Field";
-import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States";
+import { EmptyState, ErrorState, SkeletonRows, SlowLoading } from "@/components/ui/States";
 import { Pagination } from "@/components/ui/Pagination";
 import { MapIcon } from "@/components/match/MapIcon";
 import { cn } from "@/lib/cn";
@@ -96,7 +96,13 @@ export default function Matches() {
           {resource.status === "error" ? (
             <ErrorState onRetry={resource.reload} />
           ) : resource.status === "loading" && itens.length === 0 ? (
-            <SkeletonRows rows={8} />
+            /* Esqueleto pro formato, texto pro motivo: esta leitura pode
+               levar dezenas de segundos e um esqueleto parado tanto tempo
+               lê como travado. */
+            <>
+              <SlowLoading className="border-b border-line-soft" />
+              <SkeletonRows rows={8} />
+            </>
           ) : itens.length === 0 ? (
             <EmptyState
               icon={<Swords />}

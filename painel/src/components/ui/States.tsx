@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { AlertTriangle, RotateCw, SearchX, WifiOff } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { AlertTriangle, Loader2, RotateCw, SearchX, WifiOff } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "./Button";
 
@@ -30,6 +30,54 @@ export function SkeletonRows({ rows = 6, className }: { rows?: number; className
 }
 
 /** The one loading treatment used everywhere: a scan line and a status word. */
+/**
+ * Espera longa que explica a si mesma.
+ *
+ * O esqueleto sozinho serve pra espera de meio segundo. As leituras do
+ * servidor de jogo levam bem mais — cada uma abre uma conexão SFTP (~3s do
+ * Brasil, mais do Render) e, se o backend estava hibernando, ainda soma
+ * 15-20s pra acordar. Um esqueleto parado por 20 segundos lê como travado.
+ *
+ * As frases entram por TEMPO decorrido e são o que está de fato
+ * acontecendo, em ordem de probabilidade: primeiro o normal, depois a
+ * hibernação, depois o aviso de que já passou do esperado. Nenhuma barra de
+ * progresso: não temos como saber a fração concluída, e uma barra que anda
+ * sozinha seria invenção.
+ */
+const ETAPAS: ReadonlyArray<{ apos: number; texto: string }> = [
+  { apos: 0, texto: "Lendo o arquivo do servidor de jogo…" },
+  { apos: 4_000, texto: "Ainda buscando — a primeira leitura abre uma conexão nova." },
+  { apos: 12_000, texto: "O servidor do painel estava dormindo e está acordando." },
+  { apos: 30_000, texto: "Está demorando mais que o normal. Se não carregar, recarregue a página." },
+];
+
+export function SlowLoading({ className }: { className?: string }) {
+  const [decorrido, setDecorrido] = useState(0);
+
+  useEffect(() => {
+    const inicio = Date.now();
+    const id = setInterval(() => setDecorrido(Date.now() - inicio), 500);
+    return () => clearInterval(id);
+  }, []);
+
+  const etapa = [...ETAPAS].reverse().find((e) => decorrido >= e.apos) ?? ETAPAS[0]!;
+  /* O contador só aparece depois de um tempo: mostrar "0s" de cara faria
+     uma espera curta e normal parecer um problema. */
+  const segundos = Math.floor(decorrido / 1000);
+
+  return (
+    <p
+      className={cn("flex items-center justify-center gap-2 px-4 py-3 text-[12.5px] text-ink-3", className)}
+      role="status"
+      aria-live="polite"
+    >
+      <Loader2 className="size-3.5 shrink-0 animate-spin text-ink-4" aria-hidden="true" />
+      <span>{etapa.texto}</span>
+      {segundos >= 4 ? <span className="t-num text-ink-4">{segundos}s</span> : null}
+    </p>
+  );
+}
+
 export function LoadingState({ label = "Consultando servidor", className }: { label?: string; className?: string }) {
   return (
     <div className={cn("flex flex-col items-center justify-center gap-4 px-6 py-16", className)}>
