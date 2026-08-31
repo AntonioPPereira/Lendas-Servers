@@ -20,7 +20,10 @@ export interface ActivityLogEvent extends SteamFilterLogEvent {
 export interface SteamFilterLogClientLike {
   connect(config: { host: string; port: number; username: string; password: string; readyTimeout: number }): Promise<unknown>;
   list(remotePath: string): Promise<Array<{ type: string; name: string }>>;
-  get(remotePath: string): Promise<Buffer>;
+  /** `start` lê só a partir daquele byte — ver `TAIL_BYTES`. */
+  get(remotePath: string, start?: number): Promise<Buffer>;
+  /** Opcional: sem isto, o arquivo é lido inteiro (é o que os testes fazem). */
+  size?(remotePath: string): Promise<number>;
   end(): Promise<unknown>;
 }
 
@@ -32,13 +35,39 @@ const LOG_SUBPATH = ["cstrike", "addons", "sourcemod", "logs"];
 /** Hoje + ontem: cobre a virada de meia-noite sem precisar ler todo o histórico. */
 const RECENT_DAY_FILES = 2;
 
+/**
+ * Quanto do FIM de cada log diário é baixado.
+ *
+ * Medido em 2026-08-31: os dois logs do Servidor 01 somavam 4,72 MB, e o
+ * cache de 10s fazia isso descer até 28 MB por minuto. Do Render, com o
+ * link mais longo, `/api/activity` levava 96 segundos.
+ *
+ * A tela mostra as últimas dezenas de eventos — o começo do arquivo nunca
+ * é usado. 512 KB cobrem alguns milhares de linhas, muito mais que o
+ * limite da rota, e cortam o tráfego em ~10x. Arquivo menor que isso é
+ * lido inteiro.
+ */
+const TAIL_BYTES = 512 * 1024;
+
 function defaultClient(): SteamFilterLogClientLike {
   const client = new SftpClient();
   return {
     connect: (cfg) => client.connect(cfg),
     list: (remotePath) => client.list(remotePath) as unknown as Promise<Array<{ type: string; name: string }>>,
-    async get(remotePath) {
-      const result = await client.get(remotePath);
+    async size(remotePath) {
+      return (await client.stat(remotePath)).size;
+    },
+    async get(remotePath, start) {
+      /**
+       * `start` existe no `createReadStream` do ssh2 (é ele que recebe o
+       * `readStreamOptions`), mas não está declarado nos tipos publicados
+       * do ssh2-sftp-client. O cast é sobre a TIPAGEM incompleta, não sobre
+       * o comportamento — verificado contra o servidor real antes de subir.
+       */
+      const opcoes = start
+        ? ({ readStreamOptions: { start } } as unknown as Parameters<typeof client.get>[2])
+        : undefined;
+      const result = await client.get(remotePath, undefined, opcoes);
       return Buffer.isBuffer(result) ? result : Buffer.from(String(result), "utf-8");
     },
     end: () => client.end(),
@@ -145,10 +174,25 @@ export class SteamFilterLogService {
     }
   }
 
+  /**
+   * Só o fim do arquivo (ver `TAIL_BYTES`). A primeira linha do trecho quase
+   * sempre vem cortada no meio — é descartada, porque meia linha não casa
+   * com nenhum padrão do parser e viraria ruído silencioso.
+   */
   private async getOrEmpty(sftp: SteamFilterLogClientLike, remotePath: string): Promise<string> {
     try {
-      const buf = await sftp.get(remotePath);
-      return buf.toString("utf-8");
+      let inicio = 0;
+      if (sftp.size) {
+        const tamanho = await sftp.size(remotePath).catch(() => 0);
+        if (tamanho > TAIL_BYTES) inicio = tamanho - TAIL_BYTES;
+      }
+
+      const buf = await sftp.get(remotePath, inicio || undefined);
+      const texto = buf.toString("utf-8");
+      if (inicio === 0) return texto;
+
+      const primeiraQuebra = texto.indexOf("\n");
+      return primeiraQuebra === -1 ? "" : texto.slice(primeiraQuebra + 1);
     } catch {
       return "";
     }

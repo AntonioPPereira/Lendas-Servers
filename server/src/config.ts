@@ -62,7 +62,13 @@ const schema = z.object({
    * existe credencial própria, nem banco de dados envolvido. Ver
    * server/README.md.
    */
-  ACTIVITY_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(10_000),
+  /**
+   * 60s, não 10. Cada atualização baixa o fim dos logs diários de todos os
+   * servidores; com 10s isso repetia dezenas de vezes por minuto para
+   * mostrar praticamente a mesma lista. O plugin escreve no log quando o
+   * evento acontece, mas ninguém acompanha um feed com precisão de 10s.
+   */
+  ACTIVITY_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(60_000),
   /** O plugin exporta os bans a cada 5 min; reler antes disso não traz nada novo. */
   BANS_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(120_000),
   /** Índice nick->SteamID64: muda devagar (só quando alguém novo entra). */
