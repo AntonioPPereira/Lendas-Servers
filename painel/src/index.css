@@ -41,8 +41,16 @@
      difícil de ler contra o fundo novo — o contraste relativo caiu. */
   --color-ink: #ece7de;
   --color-ink-2: #bab3a9;
-  --color-ink-3: #948c81;
-  --color-ink-4: #6b6258;
+  /* A escala de tinta foi reespaçada por medida de contraste, não a olho.
+     O #6b6258 antigo dava 2,83:1 sobre o painel — muito abaixo do mínimo
+     legível de 4,5 — e era justamente a cor do SteamID, das datas e da
+     linha "por Fulano · servidor": o texto que mais parecia apagado.
+     Clarear só ele encostaria no ink-3 e achataria a hierarquia, então os
+     dois subiram juntos. Agora os quatro tons passam de 4,5:1 sobre as
+     três superfícies (base, panel, panel-2), com degraus visíveis entre
+     eles: ~13,7 / 8,1 / 7,1 / 5,0 sobre o painel. */
+  --color-ink-3: #b0a79a;
+  --color-ink-4: #938b80;
 
   /* Brass: an oxidised cartridge, not a trophy. Duller and more olive
      than a gold you'd find in a "premium" or "unlocked" badge. */

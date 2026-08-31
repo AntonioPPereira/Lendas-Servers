@@ -67,8 +67,25 @@ const RELATIVE_STEPS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
   ["minute", 60_000],
 ];
 
+/**
+ * Tempo relativo de algo que JÁ ACONTECEU.
+ *
+ * Um evento no futuro é sempre desencontro de relógio, não previsão: os
+ * logs do servidor de jogo não trazem fuso, então são lidos como hora
+ * local, e alguns minutos de diferença entre o relógio do servidor e o de
+ * quem olha faziam a Atividade anunciar "em 2 minutos" pra alguém que já
+ * tinha entrado. Um feed de acontecimentos não fala no futuro — o desvio
+ * vira "agora", que é a leitura honesta.
+ *
+ * Só o desvio pequeno é absorvido. Se a diferença passar de uma hora, o
+ * texto volta a mostrar o valor cru: aí não é drift, é relógio errado de
+ * verdade, e esconder isso atrapalharia quem for investigar.
+ */
+const DRIFT_TOLERAVEL_MS = 3_600_000;
+
 export function timeAgo(iso: string, from: Date = new Date()): string {
   const delta = new Date(iso).getTime() - from.getTime();
+  if (delta > 0 && delta < DRIFT_TOLERAVEL_MS) return "agora";
   for (const [unit, ms] of RELATIVE_STEPS) {
     if (Math.abs(delta) >= ms) return relativeFmt.format(Math.round(delta / ms), unit);
   }

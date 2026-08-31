@@ -99,7 +99,7 @@ export function BanRow({ ban }: { ban: Ban }) {
             <span className="block truncate text-[13.5px] font-medium text-ink">
               {ban.target.nickname}
             </span>
-            <span className="t-num block truncate text-[10.5px] text-ink-4">
+            <span className="t-num block truncate text-[11px] text-ink-4">
               {ban.target.steamId}
             </span>
           </span>
@@ -110,7 +110,7 @@ export function BanRow({ ban }: { ban: Ban }) {
             <kind.icon className={cn("size-[13px] shrink-0", kind.tint)} />
             <span className="truncate text-[13px] text-ink-2">{ban.reason}</span>
           </span>
-          <span className="t-num mt-1 block truncate text-[10.5px] text-ink-4">
+          <span className="t-num mt-1 block truncate text-[11px] text-ink-4">
             por {ban.admin} · {ban.serverName}
           </span>
         </span>
@@ -123,7 +123,7 @@ export function BanRow({ ban }: { ban: Ban }) {
             fim da linha lia como três coisas soltas em vez de um bloco. */}
         <span className="hidden justify-self-end text-right md:block">
           <span className="t-num block text-[11.5px] text-ink-3">{timeAgo(ban.createdAt)}</span>
-          <span className="t-num mt-1 block text-[10px] text-ink-4">
+          <span className="t-num mt-1 block text-[10.5px] text-ink-4">
             {formatDate(ban.createdAt)}
           </span>
         </span>
