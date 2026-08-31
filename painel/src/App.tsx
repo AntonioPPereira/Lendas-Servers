@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { LiveProvider } from "@/realtime/LiveProvider";
@@ -12,23 +12,28 @@ import Overview from "@/pages/Overview";
 // the landing page; everything else loads on demand.
 const Servers = lazy(() => import("@/pages/Servers"));
 const Ranking = lazy(() => import("@/pages/Ranking"));
-const Demos = lazy(() => import("@/pages/Demos"));
 const DemoDetail = lazy(() => import("@/pages/DemoDetail"));
+const Matches = lazy(() => import("@/pages/Matches"));
+const MatchDetail = lazy(() => import("@/pages/MatchDetail"));
 const Players = lazy(() => import("@/pages/Players"));
 const PlayerProfile = lazy(() => import("@/pages/PlayerProfile"));
 const Activity = lazy(() => import("@/pages/Activity"));
 const Bans = lazy(() => import("@/pages/Bans"));
 const Stats = lazy(() => import("@/pages/Stats"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
-const Maintenance = lazy(() => import("@/pages/Maintenance"));
 
 /**
- * Partidas ainda aponta pra Maintenance: foram feitas antes
- * de existir fonte real e seguiam exibindo dados gerados, destoando do resto
- * do painel. Os módulos `pages/Matches`, `pages/MatchDetail` e `pages/Stats`
- * continuam no repositório de propósito — a obra é temporária, e apagá-los
- * agora só daria trabalho de reescrever a casca quando a fonte existir. Pra
- * religar, é trocar o element da rota de volta.
+ * Partidas saiu da obra em 2026-08-31 e absorveu Demos: a lista de
+ * gravações virou parte do arquivo de partidas, no mesmo lugar, porque
+ * quem procura uma partida quer o placar E a demo dela. A fonte é o plugin
+ * `lendas_matches` (placar, rodadas e Tab, gravados no fim de cada mapa) —
+ * ver server/src/services/MatchesService.ts.
+ *
+ * `/demos` continua respondendo, redirecionando pra `/partidas`, pra não
+ * quebrar link antigo. `DemoDetail` segue de pé: é o destino das gravações
+ * que não têm partida registrada, e são a maioria do acervo.
+ *
+ * `pages/Stats` continua no repositório com a mesma lógica de antes.
  *
  * Banimentos saiu da obra em 2026-08-30: passou a ler os bans reais do
  * SourceBans++ via `GET /api/bans` (o servidor de jogo exporta um JSON que o
@@ -51,23 +56,19 @@ function PublicApp() {
               <Route path="/" element={<Overview />} />
               <Route path="/servidores" element={<Servers />} />
               <Route path="/ranking" element={<Ranking />} />
-              <Route path="/demos" element={<Demos />} />
               <Route path="/demos/:id" element={<DemoDetail />} />
               <Route path="/jogadores" element={<Players />} />
               <Route path="/jogadores/:id" element={<PlayerProfile />} />
               <Route path="/atividade" element={<Activity />} />
 
               <Route path="/banimentos" element={<Bans />} />
-              <Route
-                path="/partidas/*"
-                element={
-                  <Maintenance
-                    eyebrow="Arquivo"
-                    title="Partidas"
-                    reason="O histórico de partidas depende de uma fonte que ainda não existe: o HLstatsX desta instalação não expõe partida por partida."
-                  />
-                }
-              />
+              <Route path="/partidas" element={<Matches />} />
+              <Route path="/partidas/:id" element={<MatchDetail />} />
+              {/* Demos e Partidas viraram um lugar só. A lista mora em
+                  /partidas; /demos continua existindo pra não quebrar link
+                  antigo nem favorito, e manda pra lá. A página de UMA demo
+                  segue de pé: é o destino das gravações sem partida. */}
+              <Route path="/demos" element={<Navigate to="/partidas" replace />} />
               <Route path="/estatisticas" element={<Stats />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

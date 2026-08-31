@@ -1,7 +1,6 @@
 import {
   Activity,
   ChartColumn,
-  Clapperboard,
   Gavel,
   Radar,
   Server,
@@ -50,8 +49,10 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Arquivo",
     items: [
-      { to: "/demos", label: "Demos", icon: Clapperboard },
-      { to: "/partidas", label: "Partidas", icon: Swords, maintenance: true },
+      /* Demos foi absorvida por Partidas em 2026-08-31: as gravações são
+         parte do arquivo de partidas, e duas entradas de menu pro mesmo
+         acervo faziam procurar em dois lugares o que é um só. */
+      { to: "/partidas", label: "Partidas", icon: Swords },
       { to: "/banimentos", label: "Banimentos", icon: Gavel },
       { to: "/estatisticas", label: "Estatísticas", icon: ChartColumn },
     ],

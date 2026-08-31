@@ -1,14 +1,15 @@
 /**
- * Mapas que a rede roda, usados para montar os filtros de Demos e Partidas.
+ * Mapas que a rede roda.
  *
- * São nomes reais de mapa do servidor — não dado de mock — e por isso vivem
- * em `lib/`, longe de `data/seed.ts`. Ficavam lá junto dos nicknames
- * inventados, o que fazia toda tela com filtro de mapa embarcar a lista de
- * jogadores falsos.
+ * Saiu de `data/seed.ts` porque as telas de filtro o usavam e acabavam
+ * arrastando a lista de nicknames inventados junto pro pacote. Hoje só o
+ * gerador de dados falsos consome isto: o filtro de Partidas pergunta ao
+ * backend (`GET /api/matches/maps`) quais mapas EXISTEM no acervo, em vez
+ * de oferecer uma lista fixa que pode não bater com o que foi jogado.
  *
- * Limitação assumida: é uma lista fixa, não o que de fato tem demo gravada.
- * O backend não expõe "mapas com demo" hoje; escolher um sem demo devolve
- * lista vazia, que é honesto, mas não ideal.
+ * Continua aqui, e não de volta no seed, porque são nomes reais de mapa —
+ * não dado inventado — e misturar as duas coisas num arquivo só foi
+ * exatamente o problema que essa separação resolveu.
  */
 export const MAPS = [
   "de_dust2",

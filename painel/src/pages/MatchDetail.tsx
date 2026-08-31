@@ -1,38 +1,34 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Clapperboard } from "lucide-react";
+import { ArrowLeft, Download, Film } from "lucide-react";
 import { usePageEnter } from "@/hooks/useGsap";
 import { useResource } from "@/hooks/useResource";
-import { api } from "@/api/client";
-import type { MatchDetail as MatchModel } from "@/data/types";
-import { cn } from "@/lib/cn";
-import { formatDateTime, formatDuration, mapLabel, mapPrefix } from "@/lib/format";
-import { roundsWonBy } from "@/data/matches";
+import { api, demoDownloadUrl, type MatchDetailReal, type MatchPlayer } from "@/api/client";
+import type { RoundResult } from "@/data/types";
+import { formatBytes, formatDateTime, formatDuration, mapLabel } from "@/lib/format";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
-import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { RoundStrip, RoundStripLegend } from "@/components/match/RoundStrip";
-import { Scoreboard } from "@/components/match/Scoreboard";
+import { MapIcon } from "@/components/match/MapIcon";
+import { RoundTimeline } from "@/components/match/RoundTimeline";
 import { PlayerAvatar } from "@/components/player/PlayerAvatar";
-import { SplitBar } from "@/components/charts/Bars";
+import { cn } from "@/lib/cn";
 
 export default function MatchDetail() {
   const { id = "" } = useParams();
   const scope = usePageEnter<HTMLDivElement>();
-  const resource = useResource<MatchModel>(["match", id], () => api.match(id));
+  const resource = useResource<MatchDetailReal>(["partida", id], () => api.match(id));
 
   if (resource.status === "error") {
     return (
       <Panel>
         <ErrorState
           title="Partida não encontrada"
-          hint="O identificador pode estar incorreto ou a partida saiu do arquivo."
+          hint="O arquivo cobre as partidas registradas pelo servidor. Confira o link."
           onRetry={resource.reload}
         />
       </Panel>
     );
   }
-
   if (!resource.data) {
     return (
       <Panel>
@@ -41,120 +37,189 @@ export default function MatchDetail() {
     );
   }
 
-  const match = resource.data;
-  const ctWon = match.winner === "CT";
-  const bombRounds = match.rounds.filter((r) => r.reason === "bomb").length;
-  const defuseRounds = match.rounds.filter((r) => r.reason === "defuse").length;
+  const partida = resource.data;
+  const ct = partida.players.filter((p) => p.team === "CT");
+  const t = partida.players.filter((p) => p.team === "T");
+  /**
+   * Quem terminou no espectador não pertence a nenhum dos dois lados, mas
+   * jogou — entra numa seção própria em vez de ser jogado num time onde
+   * não estava.
+   */
+  const spec = partida.players.filter((p) => p.team === "SPEC");
 
   return (
     <div ref={scope} className="space-y-5">
-      <div data-enter className="flex flex-wrap items-center gap-3">
+      <div data-enter>
         <Link
           to="/partidas"
-          className="t-eyebrow flex items-center gap-1.5 text-[9px] text-ink-3 transition-colors hover:text-brass"
+          className="t-eyebrow inline-flex items-center gap-1.5 text-[9px] text-ink-3 transition-colors hover:text-brass"
         >
           <ArrowLeft className="size-3.5" />
-          Histórico
+          Partidas
         </Link>
-        <span className="t-num text-[10.5px] text-ink-4">/ {match.id}</span>
       </div>
 
       <div data-enter>
-        <Panel hud className="overflow-hidden">
-          <PanelHeader label="Partida encerrada" accent="brass" hint={mapPrefix(match.map)} />
+        <Panel className="overflow-hidden">
+          <div className="flex flex-col gap-5 p-4 sm:flex-row sm:items-center sm:p-5">
+            <MapIcon map={partida.map} className="size-16 shrink-0 rounded-sm" decorative />
 
-          <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:p-5">
-            <div className="min-w-0">
-              <h1 className="t-display text-[32px] text-ink sm:text-[40px]">{mapLabel(match.map)}</h1>
-              <p className="t-num mt-2 text-[11.5px] text-ink-4">
-                {formatDateTime(match.playedAt)} · {match.serverName} ·{" "}
-                {formatDuration(match.durationSec)} · {match.playersCount} jogadores
+            <div className="min-w-0 flex-1">
+              <h1 className="t-display text-[26px] text-ink sm:text-[30px]">
+                {mapLabel(partida.map)}
+              </h1>
+              <p className="t-num mt-1.5 text-[11.5px] text-ink-3">
+                {formatDateTime(partida.startedAt)}
+                {partida.endedAt ? " · durou " + duracao(partida) : ""}
               </p>
-
-              <div className="mt-5 flex items-baseline gap-3">
-                <span className={cn("t-display text-[42px] tabular-nums", ctWon ? "text-ct" : "text-ct/40")}>
-                  {match.ctScore}
-                </span>
-                <span className="t-display text-[20px] text-ink-4">:</span>
-                <span className={cn("t-display text-[42px] tabular-nums", ctWon ? "text-t/40" : "text-t")}>
-                  {match.tScore}
-                </span>
-                <Badge tone={ctWon ? "ct" : "t"} className="ml-2">
-                  {ctWon ? "CT venceu" : "T venceu"}
-                </Badge>
-              </div>
-
-              <div className="mt-5">
-                <RoundStrip rounds={match.rounds} maxRounds={match.rounds.length} />
-                <RoundStripLegend className="mt-2.5" />
-              </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="rounded-xs border border-line-soft bg-panel-2/50 p-3.5">
-                <p className="t-eyebrow text-brass">MVP</p>
-                <Link
-                  to={"/jogadores/" + match.mvp.steamId64}
-                  className="mt-2.5 flex items-center gap-3 transition-opacity hover:opacity-80"
-                >
-                  <PlayerAvatar seed={match.mvp.avatarSeed} nickname={match.mvp.nickname} size="md" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[13.5px] font-medium text-ink">
-                      {match.mvp.nickname}
-                    </span>
-                    <span className="t-num block truncate text-[10px] text-ink-4">
-                      {match.mvp.steamId}
-                    </span>
-                  </span>
-                </Link>
-              </div>
-
-              <SplitBar
-                left={{ label: "Rodadas CT", value: roundsWonBy(match.rounds, "CT") }}
-                right={{ label: "Rodadas T", value: roundsWonBy(match.rounds, "T") }}
-              />
-
-              {match.demoId ? (
-                <LinkButton to={"/demos/" + match.demoId} icon={<Clapperboard />} block variant="primary">
-                  Abrir demo
-                </LinkButton>
-              ) : (
-                <p className="t-num rounded-xs border border-dashed border-line px-3 py-2.5 text-center text-[11px] text-ink-4">
-                  Sem gravação para esta partida
-                </p>
-              )}
+            {/* O placar é o herói da tela: é o que a pessoa veio ver. */}
+            <div className="flex shrink-0 items-center gap-4">
+              <Lado rotulo="CT" valor={partida.ctScore ?? 0} venceu={(partida.ctScore ?? 0) >= (partida.tScore ?? 0)} tone="ct" />
+              <span className="t-display text-[20px] text-ink-4">×</span>
+              <Lado rotulo="TR" valor={partida.tScore ?? 0} venceu={(partida.tScore ?? 0) >= (partida.ctScore ?? 0)} tone="t" />
             </div>
           </div>
 
-          <dl className="grid gap-px border-t border-line-soft bg-line-soft/50 sm:grid-cols-4">
-            <Meta label="Rodadas jogadas" value={String(match.rounds.length)} />
-            <Meta label="Bombas explodidas" value={String(bombRounds)} />
-            <Meta label="Desarmes" value={String(defuseRounds)} />
-            <Meta label="Duração" value={formatDuration(match.durationSec)} />
-          </dl>
+          {partida.demo ? (
+            <div className="flex flex-wrap items-center gap-3 border-t border-line-soft px-4 py-3 sm:px-5">
+              <Film className="size-4 text-ink-4" />
+              <span className="t-num min-w-0 flex-1 truncate text-[12px] text-ink-3">
+                {partida.demo.filename} · {formatBytes(partida.demo.size)}
+              </span>
+              <LinkButton to={demoDownloadUrl(partida.demo.id)} size="sm">
+                <Download className="size-3.5" />
+                Baixar demo
+              </LinkButton>
+            </div>
+          ) : (
+            <p className="border-t border-line-soft px-4 py-3 text-[12px] text-ink-4 sm:px-5">
+              Sem gravação para esta partida — o SourceTV pode não ter gravado, ou o arquivo já
+              foi removido. O placar acima continua valendo.
+            </p>
+          )}
         </Panel>
       </div>
 
       <div data-enter>
         <Panel className="overflow-hidden">
-          <PanelHeader label="Placar final" accent="ct" />
-          <Scoreboard
-            players={match.scoreboard}
-            ctScore={match.ctScore}
-            tScore={match.tScore}
-            final
-          />
+          <PanelHeader label="Rodadas" accent="brass" />
+          <div className="p-4">
+            <RoundTimeline rounds={partida.rounds.map(toRoundResult)} maxRounds={partida.rounds.length} />
+          </div>
         </Panel>
       </div>
+
+      <div data-enter className="grid gap-5 lg:grid-cols-2">
+        <Time titulo="Counter-Terrorists" jogadores={ct} tone="ct" />
+        <Time titulo="Terrorists" jogadores={t} tone="t" />
+      </div>
+
+      {spec.length > 0 ? (
+        <div data-enter>
+          <Time titulo="Terminaram no espectador" jogadores={spec} tone="neutral" />
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function Meta({ label, value }: { label: string; value: string }) {
+/** O `RoundTimeline` já existe e fala o vocabulário do painel — só traduzir. */
+function toRoundResult(round: MatchDetailReal["rounds"][number]): RoundResult {
+  return { round: round.n, winner: round.winner, reason: round.reason };
+}
+
+function duracao(partida: MatchDetailReal): string {
+  if (!partida.endedAt) return "";
+  const segundos = Math.max(
+    0,
+    Math.round((new Date(partida.endedAt).getTime() - new Date(partida.startedAt).getTime()) / 1000),
+  );
+  return formatDuration(segundos);
+}
+
+function Lado({
+  rotulo,
+  valor,
+  venceu,
+  tone,
+}: {
+  rotulo: string;
+  valor: number;
+  venceu: boolean;
+  tone: "ct" | "t";
+}) {
   return (
-    <div className="bg-panel px-4 py-3">
-      <dt className="t-eyebrow text-[8.5px]">{label}</dt>
-      <dd className="t-num mt-1.5 text-[13px] text-ink-2">{value}</dd>
+    <div className="text-center">
+      <p className={cn("t-eyebrow text-[9px]", tone === "ct" ? "text-ct" : "text-t")}>{rotulo}</p>
+      <p
+        className={cn(
+          "t-display mt-1 text-[38px] leading-none",
+          venceu ? (tone === "ct" ? "text-ct-hi" : "text-t-hi") : "text-ink-4",
+        )}
+      >
+        {valor}
+      </p>
     </div>
+  );
+}
+
+/**
+ * O Tab. Só abates e mortes porque é o que o CS:S tem — assistências e MVP
+ * são do CS:GO, e uma coluna de zeros seria dado inventado com outro nome.
+ */
+function Time({
+  titulo,
+  jogadores,
+  tone,
+}: {
+  titulo: string;
+  jogadores: MatchPlayer[];
+  tone: "ct" | "t" | "neutral";
+}) {
+  if (jogadores.length === 0) {
+    return (
+      <Panel className="overflow-hidden">
+        <PanelHeader label={titulo} accent={tone === "neutral" ? "brass" : tone} />
+        <p className="p-5 text-center text-[12.5px] text-ink-3">
+          Ninguém terminou a partida deste lado.
+        </p>
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel className="overflow-hidden">
+      <PanelHeader label={titulo} accent={tone === "neutral" ? "brass" : tone} />
+
+      <div className="grid grid-cols-[minmax(0,1fr)_56px_56px_56px] gap-3 border-b border-line-soft px-4 py-2">
+        <span className="t-eyebrow text-[8.5px]">Jogador</span>
+        <span className="t-eyebrow text-right text-[8.5px]">Abates</span>
+        <span className="t-eyebrow text-right text-[8.5px]">Mortes</span>
+        <span className="t-eyebrow text-right text-[8.5px]">K/D</span>
+      </div>
+
+      <ul>
+        {jogadores.map((jogador) => (
+          <li
+            key={jogador.steamId64}
+            className="grid grid-cols-[minmax(0,1fr)_56px_56px_56px] items-center gap-3 border-b border-line-soft px-4 py-2.5 last:border-b-0"
+          >
+            <span className="flex min-w-0 items-center gap-2.5">
+              <PlayerAvatar seed={jogador.steamId64} nickname={jogador.name} size="sm" />
+              <span className="truncate text-[13px] text-ink">{jogador.name}</span>
+            </span>
+            <span className="t-num text-right text-[13px] text-ink">{jogador.kills}</span>
+            <span className="t-num text-right text-[13px] text-ink-3">{jogador.deaths}</span>
+            {/* Sem morte nenhuma, K/D é o próprio número de abates — dividir
+                por zero daria "Infinity" na tela. */}
+            <span className="t-num text-right text-[13px] text-ink-2">
+              {(jogador.kills / Math.max(1, jogador.deaths)).toFixed(2).replace(".", ",")}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }

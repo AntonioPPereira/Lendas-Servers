@@ -3,7 +3,6 @@ import type {
   Ban,
   BanState,
   Demo,
-  MatchDetail,
   NetworkStats,
   RankedPlayer,
   RealServer,
@@ -36,6 +35,50 @@ export interface PlayerWeapons {
   available: boolean;
   total: number;
   weapons: Array<{ weapon: string; kills: number }>;
+}
+
+/**
+ * Uma linha do arquivo: pode ser uma partida com placar ou só uma
+ * gravação. Os campos de placar são `null` — nunca 0 — quando a linha é só
+ * a demo: zero leria como empate e essas partidas nunca foram registradas.
+ */
+export interface ArchiveEntry {
+  id: string;
+  kind: "match" | "demo";
+  map: string;
+  startedAt: string;
+  endedAt: string | null;
+  ctScore: number | null;
+  tScore: number | null;
+  roundCount: number | null;
+  playerCount: number | null;
+  demo: { id: string; filename: string; size: number } | null;
+}
+
+export interface ArchivePage extends Page<ArchiveEntry> {
+  /** Quantas linhas do recorte têm placar — o painel usa pra explicar a mistura. */
+  withScore: number;
+}
+
+export interface MatchRound {
+  n: number;
+  winner: "CT" | "T";
+  reason: "bomb" | "defuse" | "elimination" | "time" | "hostage";
+  ct: number;
+  t: number;
+}
+
+export interface MatchPlayer {
+  steamId64: string;
+  name: string;
+  team: "CT" | "T" | "SPEC";
+  kills: number;
+  deaths: number;
+}
+
+export interface MatchDetailReal extends ArchiveEntry {
+  rounds: MatchRound[];
+  players: MatchPlayer[];
 }
 
 export interface Page<T> {
@@ -264,22 +307,32 @@ export const api = {
     return toDemo(raw);
   },
 
-  async matches(
-    params: { page?: number; pageSize?: number; map?: string } = {},
-  ): Promise<Page<MatchDetail>> {
-    const { page = 1, pageSize = 14, map = "all" } = params;
-    if (!isMockMode) return request<Page<MatchDetail>>("/matches?page=" + page + "&map=" + map);
-    const { MATCHES } = await mocks();
-    const rows = map === "all" ? MATCHES : MATCHES.filter((m) => m.map === map);
-    return delay(paginate(rows, page, pageSize));
+  /**
+   * Arquivo unificado: partidas e gravações na mesma lista. Sem modo mock —
+   * uma partida inventada aqui seria indistinguível de uma real, e é
+   * exatamente o tipo de coisa que ninguém consegue desmentir depois.
+   */
+  async archive(
+    params: { page?: number; pageSize?: number; map?: string; period?: string } = {},
+  ): Promise<ArchivePage> {
+    requireApi("partidas");
+    const { page = 1, pageSize = 12, map = "all" } = params;
+    const search = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (map !== "all") search.set("map", map);
+    if (params.period) search.set("period", params.period);
+    return request<ArchivePage>("/matches?" + search.toString());
   },
 
-  async match(id: string): Promise<MatchDetail> {
-    if (!isMockMode) return request<MatchDetail>("/matches/" + id);
-    const { MATCHES_BY_ID } = await mocks();
-    const match = MATCHES_BY_ID.get(id);
-    if (!match) throw new ApiError("Partida não encontrada", 404);
-    return delay(match);
+  async match(id: string): Promise<MatchDetailReal> {
+    requireApi("partida");
+    return request<MatchDetailReal>("/matches/" + encodeURIComponent(id));
+  },
+
+  /** Mapas que de fato existem no acervo — nunca uma lista fixa. */
+  async archiveMaps(): Promise<string[]> {
+    requireApi("partidas");
+    const body = await request<{ items: string[] }>("/matches/maps");
+    return body.items;
   },
 
   async bans(params: BanQuery = {}): Promise<Page<Ban>> {
