@@ -60,7 +60,10 @@ export class PlayerDirectoryService {
 
   /** Mapa nick -> SteamID64. Nunca lança por índice ausente: devolve vazio. */
   async getDirectory(): Promise<Map<string, string>> {
-    return this.cache.get(() => this.load());
+    return this.cache.getStaleWhileRevalidate(
+      () => this.load(),
+      (cause) => console.error("[player-directory] atualização de fundo falhou:", cause),
+    );
   }
 
   private async load(): Promise<Map<string, string>> {

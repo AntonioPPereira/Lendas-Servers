@@ -108,7 +108,10 @@ export class MatchesService {
 
   /** Mais recentes primeiro, de todos os servidores que têm o plugin. */
   async getMatches(): Promise<MatchRow[]> {
-    return this.cache.get(() => this.load());
+    return this.cache.getStaleWhileRevalidate(
+      () => this.load(),
+      (cause) => console.error("[matches] atualização de fundo falhou:", cause),
+    );
   }
 
   private async load(): Promise<MatchRow[]> {

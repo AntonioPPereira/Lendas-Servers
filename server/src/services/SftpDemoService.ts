@@ -102,7 +102,10 @@ export class SftpDemoService {
       this.cachesByPeriod.set(period, cache);
     }
     try {
-      return await cache.get(() => this.fetchPeriod(period));
+      return await cache.getStaleWhileRevalidate(
+        () => this.fetchPeriod(period),
+        (cause) => console.error("[demos] atualização de fundo falhou:", cause),
+      );
     } catch (cause) {
       // Fonte fora do ar: uma lista velha ainda é melhor que uma tela quebrada.
       const stale = cache.peekStale();
@@ -162,7 +165,10 @@ export class SftpDemoService {
     }
 
     try {
-      return await cache.get(() => this.fetchArchive(period));
+      return await cache.getStaleWhileRevalidate(
+        () => this.fetchArchive(period),
+        (cause) => console.error("[demos] atualização de fundo falhou:", cause),
+      );
     } catch (cause) {
       /**
        * Fonte fora do ar: devolve o que houver de velho em vez de derrubar

@@ -67,7 +67,10 @@ export class SourceBansService {
   }
 
   async getSnapshot(): Promise<SourceBansSnapshot> {
-    return this.cache.get(() => this.load());
+    return this.cache.getStaleWhileRevalidate(
+      () => this.load(),
+      (cause) => console.error("[sourcebans] atualização de fundo falhou:", cause),
+    );
   }
 
   private async load(): Promise<SourceBansSnapshot> {

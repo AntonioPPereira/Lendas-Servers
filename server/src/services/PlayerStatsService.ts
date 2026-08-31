@@ -76,7 +76,10 @@ export class PlayerStatsService {
   }
 
   async getSnapshot(): Promise<PlayerStatsSnapshot> {
-    return this.cache.get(() => this.load());
+    return this.cache.getStaleWhileRevalidate(
+      () => this.load(),
+      (cause) => console.error("[player-stats] atualização de fundo falhou:", cause),
+    );
   }
 
   private async load(): Promise<PlayerStatsSnapshot> {

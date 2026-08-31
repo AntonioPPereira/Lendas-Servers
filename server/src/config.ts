@@ -70,7 +70,14 @@ const schema = z.object({
    */
   ACTIVITY_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(60_000),
   /** O plugin exporta os bans a cada 5 min; reler antes disso não traz nada novo. */
-  BANS_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(120_000),
+  /**
+   * 5 minutos. Serve os bans E a contagem por arma, e os dois JSONs só são
+   * reescritos pelo plugin no fim do mapa — atualizar de dois em dois
+   * minutos pagava a ida ao SFTP pra receber byte a byte a mesma coisa.
+   * Com o `getStaleWhileRevalidate` do TtlCache, esse vencimento nem é
+   * mais sentido por quem está lendo: o valor anterior sai na hora.
+   */
+  BANS_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(300_000),
   /** Índice nick->SteamID64: muda devagar (só quando alguém novo entra). */
   PLAYER_DIRECTORY_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(300_000),
   /** Quantos eventos recentes o feed de atividade traz por vez. */

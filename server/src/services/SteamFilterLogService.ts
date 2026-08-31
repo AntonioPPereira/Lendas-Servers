@@ -113,7 +113,10 @@ export class SteamFilterLogService {
   async getRecentEvents(options: { limit?: number | undefined; actor?: string | undefined } = {}): Promise<ActivityLogEvent[]> {
     let todos: ActivityLogEvent[];
     try {
-      todos = await this.cache.get(() => this.fetchRecent());
+      todos = await this.cache.getStaleWhileRevalidate(
+        () => this.fetchRecent(),
+        (cause) => console.error("[activity] atualização de fundo falhou:", cause),
+      );
     } catch (cause) {
       const stale = this.cache.peekStale();
       if (!stale) throw cause;
