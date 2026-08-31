@@ -4,6 +4,7 @@ import type { MatchesService, MatchRow } from "../services/MatchesService.js";
 import type { SftpDemoService } from "../services/SftpDemoService.js";
 import { NotFoundError } from "../errors.js";
 import { paginate } from "../lib/paginate.js";
+import { parseDemoId } from "../lib/demoId.js";
 
 /**
  * Partidas e gravações no mesmo lugar.
@@ -37,6 +38,70 @@ interface DemoResumo {
   id: string;
   filename: string;
   size: number;
+}
+
+/**
+ * Quantos minutos de folga entre o começo da partida e o começo da gravação
+ * ainda contam como a mesma coisa.
+ *
+ * O casamento por ID exato NÃO basta, e isso apareceu na primeira partida
+ * real: o plugin gravou `20260831-1738-de_dust2` e a demo se chamava
+ * `20260831-1737-de_dust2`. Um minuto de diferença, e o placar não
+ * encontrava a gravação.
+ *
+ * É estrutural, não acidente: o `lendas_demos` espera ~12s pelo bot do
+ * SourceTV antes de carimbar o nome, enquanto o `lendas_matches` carimba no
+ * `OnMapStart`. Sempre que esses segundos cruzarem a virada do minuto, os
+ * dois nomes divergem.
+ *
+ * 5 minutos é folga larga o bastante pro atraso do SourceTV e curta o
+ * bastante pra não colar a partida na gravação do mapa ANTERIOR — o mapa
+ * mais curto que existe aqui dura bem mais que isso.
+ */
+const TOLERANCIA_MINUTOS = 5;
+
+/** Minutos desde a época, a partir do horário LOCAL embutido no id. */
+function minutosDoId(id: string): number | null {
+  const parsed = parseDemoId(id);
+  if (!parsed) return null;
+  const t = new Date(parsed.recordedAtLocal).getTime();
+  return Number.isNaN(t) ? null : Math.round(t / 60_000);
+}
+
+/**
+ * A gravação desta partida: id igual primeiro, e só então a mais próxima no
+ * tempo, no MESMO servidor e MESMO mapa.
+ *
+ * Compara pelo horário local embutido nos dois ids, nunca pelo `startedAt`
+ * do DTO: aquele já virou UTC, enquanto o nome do arquivo de demo é hora
+ * local sem fuso. Comparar os dois daria três horas de diferença e nenhum
+ * casamento jamais.
+ */
+function acharDemo<T extends { id: string; map: string }>(
+  matchId: string,
+  matchMap: string,
+  demoPorId: Map<string, T>,
+  demos: readonly T[],
+): T | undefined {
+  const exata = demoPorId.get(matchId);
+  if (exata) return exata;
+
+  const alvo = minutosDoId(matchId);
+  const porta = parseDemoId(matchId)?.port;
+  if (alvo === null || !porta) return undefined;
+
+  let melhor: { demo: T; distancia: number } | undefined;
+  for (const demo of demos) {
+    if (demo.map !== matchMap) continue;
+    const info = parseDemoId(demo.id);
+    if (!info || info.port !== porta) continue;
+    const quando = minutosDoId(demo.id);
+    if (quando === null) continue;
+    const distancia = Math.abs(quando - alvo);
+    if (distancia > TOLERANCIA_MINUTOS) continue;
+    if (!melhor || distancia < melhor.distancia) melhor = { demo, distancia };
+  }
+  return melhor?.demo;
 }
 
 function toMatchDto(match: MatchRow, demo: DemoResumo | undefined) {
@@ -127,7 +192,7 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
       // Partida entra no mesmo recorte de mês das gravações: misturar agosto
       // com setembro na mesma tela faria a paginação mentir sobre o total.
       for (const linha of linhas.filter((l) => l.startedAt.startsWith(periodo))) {
-        const demo = demoPorId.get(linha.id);
+        const demo = acharDemo(linha.id, linha.map, demoPorId, arquivos);
         if (demo) usadas.add(demo.id);
         itens.push(
           toMatchDto(
@@ -184,7 +249,20 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
       const partida = linhas.find((m) => m.id === id);
       if (!partida) throw new NotFoundError(`Partida não encontrada: "${id}"`);
 
-      const demo = await demos.getDemo(id).catch(() => null);
+      /**
+       * Aqui a busca é pelo acervo do mês, não por `getDemo(id)`: o id da
+       * gravação pode diferir do da partida em alguns minutos (ver
+       * `TOLERANCIA_MINUTOS`), e uma busca por id exato devolveria nada
+       * justamente nos casos que a lista já sabe casar.
+       */
+      const mes = partida.startedAt.slice(0, 7);
+      const acervo = await demos.listArchive(mes).catch(() => ({ periods: [], period: "", demos: [] }));
+      const demo = acharDemo(
+        partida.id,
+        partida.map,
+        new Map(acervo.demos.map((d) => [d.id, d])),
+        acervo.demos,
+      );
 
       res.json({
         ...toMatchDto(

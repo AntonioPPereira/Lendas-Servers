@@ -166,3 +166,52 @@ describe("GET /api/matches/maps", () => {
     expect(res.body.items).toEqual(["de_dust2", "de_inferno"]);
   });
 });
+
+/**
+ * O caso que aconteceu de verdade em 2026-08-31: o plugin gravou a partida
+ * como `-1738-` e a demo do MESMO mapa se chamava `-1737-`, porque o
+ * lendas_demos espera ~12s pelo bot do SourceTV antes de carimbar o nome.
+ */
+describe("casamento partida <-> gravação quando os minutos não batem", () => {
+  const TREE_DEFASADA: Record<string, Array<{ type: string; name: string; size: number }>> = {
+    [DEMO_BASE]: [{ type: "d", name: SERVER_DIR, size: 0 }],
+    [DEMOS_DIR]: [{ type: "d", name: "2026-08", size: 0 }],
+    [`${DEMOS_DIR}/2026-08`]: [
+      // Um minuto ANTES do id da partida (20260831-1930-de_dust2).
+      { type: "-", name: "20260831-1929-de_dust2.dem", size: 5_000_000 },
+      // Mesmo mapa, mas horas depois: não é esta partida.
+      { type: "-", name: "20260831-2330-de_dust2.dem", size: 9_000_000 },
+    ],
+  };
+
+  it("acha a gravação mesmo com um minuto de diferença", async () => {
+    const res = await request(buildApp(comPartida, TREE_DEFASADA)).get("/api/matches?period=2026-08");
+    const partidaDto = res.body.items.find((i: { kind: string }) => i.kind === "match");
+    expect(partidaDto.demo.filename).toBe("20260831-1929-de_dust2.dem");
+  });
+
+  it("não cola numa gravação distante do mesmo mapa", async () => {
+    const res = await request(buildApp(comPartida, TREE_DEFASADA)).get("/api/matches?period=2026-08");
+    const distante = res.body.items.find((i: { id: string }) => i.id.endsWith("2330-de_dust2"));
+    // Continua na lista como gravação órfã, não engolida pela partida.
+    expect(distante.kind).toBe("demo");
+  });
+
+  it("mapa diferente no mesmo minuto não casa", async () => {
+    const outroMapa: typeof TREE_DEFASADA = {
+      ...TREE_DEFASADA,
+      [`${DEMOS_DIR}/2026-08`]: [{ type: "-", name: "20260831-1929-de_nuke.dem", size: 5_000_000 }],
+    };
+    const res = await request(buildApp(comPartida, outroMapa)).get("/api/matches?period=2026-08");
+    const partidaDto = res.body.items.find((i: { kind: string }) => i.kind === "match");
+    expect(partidaDto.demo).toBeNull();
+  });
+
+  it("o detalhe da partida também acha a gravação defasada", async () => {
+    const res = await request(buildApp(comPartida, TREE_DEFASADA)).get(
+      "/api/matches/27800-20260831-1930-de_dust2",
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.demo.filename).toBe("20260831-1929-de_dust2.dem");
+  });
+});
