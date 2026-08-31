@@ -107,6 +107,17 @@ export default function MatchDetail() {
           <PanelHeader label="Rodadas" accent="brass" />
           <div className="p-4">
             <RoundTimeline rounds={partida.rounds.map(toRoundResult)} maxRounds={partida.rounds.length} />
+            {/* Quando os dois números não fecham, a tela DIZ isso em vez de
+                deixar o leitor comparar sozinho e concluir que o site está
+                errado — foi exatamente o que aconteceu. */}
+            {descasado(partida) ? (
+              <p className="mt-4 border-t border-line-soft pt-3 text-[12.5px] leading-relaxed text-ink-3">
+                O placar soma {(partida.ctScore ?? 0) + (partida.tScore ?? 0)} pontos para{" "}
+                {partida.rounds.length} rodadas listadas. A diferença são rodadas anuladas por
+                restart da partida — knife round, ou reinício pedido pelos times: o servidor
+                descarta o placar delas, e é o placar do servidor que vale.
+              </p>
+            ) : null}
           </div>
         </Panel>
       </div>
@@ -123,6 +134,19 @@ export default function MatchDetail() {
       ) : null}
     </div>
   );
+}
+
+/**
+ * Placar e rodadas não fecham?
+ *
+ * Cada rodada dá um ponto a um lado, então a soma dos dois placares deveria
+ * bater com o número de rodadas. Quando não bate, houve restart no meio da
+ * partida: o servidor zerou o placar e as rodadas anteriores continuam
+ * listadas. Não é erro de leitura — mas quem olha precisa saber, senão os
+ * dois blocos da tela se contradizem em silêncio.
+ */
+function descasado(partida: MatchDetailReal): boolean {
+  return (partida.ctScore ?? 0) + (partida.tScore ?? 0) !== partida.rounds.length;
 }
 
 /** O `RoundTimeline` já existe e fala o vocabulário do painel — só traduzir. */
