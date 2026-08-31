@@ -114,6 +114,7 @@ function toMatchDto(match: MatchRow, demo: DemoResumo | undefined) {
     ctScore: match.ctScore,
     tScore: match.tScore,
     roundCount: match.rounds.length,
+    maxRounds: match.maxRounds,
     playerCount: match.players.length,
     demo: demo ?? null,
   };
@@ -134,6 +135,7 @@ function toDemoOnlyDto(demo: { id: string; filename: string; map: string; record
     ctScore: null,
     tScore: null,
     roundCount: null,
+    maxRounds: null,
     playerCount: null,
     demo: { id: demo.id, filename: demo.filename, size: demo.sizeBytes },
   };

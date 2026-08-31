@@ -73,6 +73,8 @@ export interface MatchRow {
   endedAt: string;
   ctScore: number;
   tScore: number;
+  /** `mp_maxrounds` do servidor: 13 no MR13 de hoje. 0 = cvar ausente. */
+  maxRounds: number;
   rounds: MatchRound[];
   players: MatchPlayer[];
   /** Porta do servidor de origem, pra resolver nome e raiz depois. */
@@ -227,6 +229,7 @@ export class MatchesService {
       endedAt: new Date(endedAt * 1000).toISOString(),
       ctScore,
       tScore,
+      maxRounds: typeof m["maxRounds"] === "number" ? (m["maxRounds"] as number) : 0,
       rounds,
       players,
       port,

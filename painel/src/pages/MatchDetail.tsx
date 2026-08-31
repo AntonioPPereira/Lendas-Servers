@@ -115,9 +115,12 @@ export default function MatchDetail() {
               </p>
             ) : (
               <>
+                {/* O formato vem do servidor (`mp_maxrounds`) — hoje MR13.
+                    Assim a linha do tempo mostra o tamanho real da partida
+                    em vez de deduzir pelo que foi jogado. */}
                 <RoundTimeline
                   rounds={partida.rounds.map(toRoundResult)}
-                  maxRounds={partida.rounds.length}
+                  maxRounds={Math.max(partida.maxRounds ?? 0, partida.rounds.length)}
                 />
                 {anuladas(partida) > 0 ? (
                   <p className="mt-3 text-[12px] text-ink-4">

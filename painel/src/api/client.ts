@@ -51,6 +51,8 @@ export interface ArchiveEntry {
   ctScore: number | null;
   tScore: number | null;
   roundCount: number | null;
+  /** Formato da partida (`mp_maxrounds`): 13 no MR13. 0/null = desconhecido. */
+  maxRounds: number | null;
   playerCount: number | null;
   demo: { id: string; filename: string; size: number } | null;
 }
