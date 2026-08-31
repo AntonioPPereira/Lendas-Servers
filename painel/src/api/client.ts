@@ -176,12 +176,21 @@ export const api = {
    * dos logs do SourceMod via SFTP (aprovado → "join", bloqueado →
    * "blocked" com o motivo real). Sem modo mock: se o backend não
    * responder, a página mostra o estado de indisponível, nunca inventa
-   * atividade. Nunca inclui "leave" — o plugin não loga desconexão, ver
-   * server/README.md.
+   * atividade. Inclui "leave" desde o `lendas_steamfilter` 1.1.0, que
+   * passou a registrar a desconexão de quem foi aprovado.
+   *
+   * `actor` filtra por nick exato — é o que o perfil do jogador usa pra
+   * listar só as passagens dele pelo servidor. O corte acontece no
+   * backend, antes do limite: as passagens de uma pessoa específica quase
+   * nunca estão entre os últimos eventos de um servidor movimentado.
    */
-  async activity(): Promise<ActivityEvent[]> {
+  async activity(params: { actor?: string; limit?: number } = {}): Promise<ActivityEvent[]> {
     requireApi("atividade");
-    return request<ActivityEvent[]>("/activity");
+    const search = new URLSearchParams();
+    if (params.actor) search.set("actor", params.actor);
+    if (params.limit) search.set("limit", String(params.limit));
+    const qs = search.toString();
+    return request<ActivityEvent[]>("/activity" + (qs ? "?" + qs : ""));
   },
 
   async ranking(params: RankingQuery = {}): Promise<RankingPage> {

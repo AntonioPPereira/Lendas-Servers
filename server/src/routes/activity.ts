@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import type { ActivityLogEvent, SteamFilterLogService } from "../services/SteamFilterLogService.js";
 
 /**
@@ -18,12 +19,19 @@ function toActivityDto(event: ActivityLogEvent) {
   };
 }
 
+const querySchema = z.object({
+  /** Nick exato. Serve o perfil do jogador, que lista só as passagens dele. */
+  actor: z.string().max(64).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+
 export function createActivityRouter(steamFilter: SteamFilterLogService): Router {
   const router = Router();
 
-  router.get("/", async (_req, res, next) => {
+  router.get("/", async (req, res, next) => {
     try {
-      const events = await steamFilter.getRecentEvents();
+      const { actor, limit } = querySchema.parse(req.query);
+      const events = await steamFilter.getRecentEvents({ actor, limit });
       res.json(events.map(toActivityDto));
     } catch (err) {
       next(err);

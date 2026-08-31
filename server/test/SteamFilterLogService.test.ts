@@ -125,3 +125,55 @@ describe("SteamFilterLogService.getRecentEvents", () => {
     await expect(service.getRecentEvents()).rejects.toBeInstanceOf(SftpUnavailableError);
   });
 });
+
+describe("recorte por jogador (perfil)", () => {
+  /** Log sintético: dois jogadores, várias passagens, pra provar o filtro. */
+  const LOG = [
+    'L 08/30/2026 - 20:00:00: [lendas_steamfilter.smx] APROVADO: tiro<1><STEAM_0:0:1><> passou em todas as checagens.',
+    'L 08/30/2026 - 20:05:00: [lendas_steamfilter.smx] APROVADO: Gil<2><STEAM_0:0:2><> passou em todas as checagens.',
+    'L 08/30/2026 - 20:30:00: [lendas_steamfilter.smx] SAIU: tiro<1><STEAM_0:0:1><CT> ficou 30 min.',
+    'L 08/30/2026 - 20:40:00: [lendas_steamfilter.smx] SAIU: Gil<2><STEAM_0:0:2><CT> ficou 35 min.',
+    'L 08/30/2026 - 21:00:00: [lendas_steamfilter.smx] APROVADO: tiro<3><STEAM_0:0:1><> passou em todas as checagens.',
+  ].join("\n");
+
+  function servico(limite = 60) {
+    const { client } = makeFakeLogClient({
+      dirs: { [SRV1_LOGS]: [{ type: "-", name: "L20260830.log" }] },
+      files: { [`${SRV1_LOGS}/L20260830.log`]: LOG },
+    });
+    return new SteamFilterLogService(CONN, 0, limite, () => client);
+  }
+
+  it("traz só as passagens do nick pedido", async () => {
+    const eventos = await servico().getRecentEvents({ actor: "tiro" });
+    expect(eventos).toHaveLength(3);
+    expect(eventos.every((e) => e.actor === "tiro")).toBe(true);
+  });
+
+  it("compara o nick inteiro, não por pedaço", async () => {
+    // "ti" não pode arrastar "tiro" junto.
+    expect(await servico().getRecentEvents({ actor: "ti" })).toHaveLength(0);
+  });
+
+  it("ignora caixa, porque o log guarda o nick como a pessoa digitou", async () => {
+    expect(await servico().getRecentEvents({ actor: "TIRO" })).toHaveLength(3);
+  });
+
+  it("o limite do feed geral não corta as passagens de um jogador", async () => {
+    /**
+     * O ponto da mudança: com limite 2, o feed geral mostra os 2 eventos
+     * mais recentes (o de 21:00 do tiro e o de 20:40 do Gil). Antes o corte
+     * acontecia no cache, então filtrar depois devolveria só 1 evento do
+     * tiro — as passagens antigas dele já teriam sido descartadas.
+     */
+    const s = servico(2);
+    expect(await s.getRecentEvents()).toHaveLength(2);
+    expect(await s.getRecentEvents({ actor: "tiro", limit: 40 })).toHaveLength(3);
+  });
+
+  it("sem actor, segue devolvendo o feed geral ordenado do mais novo", async () => {
+    const eventos = await servico().getRecentEvents();
+    expect(eventos).toHaveLength(5);
+    expect(eventos[0]!.at).toBe("2026-08-30T21:00:00");
+  });
+});

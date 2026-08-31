@@ -71,15 +71,31 @@ export class SteamFilterLogService {
     this.cache = new TtlCache<ActivityLogEvent[]>(cacheTtlMs);
   }
 
-  /** Eventos mais recentes primeiro, de todos os servidores descobertos. */
-  async getRecentEvents(): Promise<ActivityLogEvent[]> {
+  /**
+   * Eventos mais recentes primeiro, de todos os servidores descobertos.
+   *
+   * O corte por `limit` acontece AQUI, não no cache: guardar já cortado
+   * servia pro feed geral (que só mostra as últimas dezenas), mas
+   * inviabilizava filtrar por jogador — as passagens de alguém específico
+   * quase nunca estão entre os 60 eventos mais recentes de um servidor
+   * movimentado. O cache passa a guardar a janela inteira lida do disco
+   * (dois dias de log) e cada chamada recorta o que precisa.
+   */
+  async getRecentEvents(options: { limit?: number | undefined; actor?: string | undefined } = {}): Promise<ActivityLogEvent[]> {
+    let todos: ActivityLogEvent[];
     try {
-      return await this.cache.get(() => this.fetchRecent());
+      todos = await this.cache.get(() => this.fetchRecent());
     } catch (cause) {
       const stale = this.cache.peekStale();
-      if (stale) return stale;
-      throw cause;
+      if (!stale) throw cause;
+      todos = stale;
     }
+
+    const alvo = options.actor?.trim().toLowerCase();
+    // Comparação exata (só normalizando caixa): nick é identidade aqui, e
+    // busca por prefixo faria "tiro" trazer as passagens de "tiroteio".
+    const filtrados = alvo ? todos.filter((e) => e.actor.toLowerCase() === alvo) : todos;
+    return filtrados.slice(0, options.limit ?? this.limit);
   }
 
   private async fetchRecent(): Promise<ActivityLogEvent[]> {
@@ -104,7 +120,7 @@ export class SteamFilterLogService {
       }
 
       all.sort((a, b) => b.at.localeCompare(a.at));
-      return all.slice(0, this.limit);
+      return all;
     });
   }
 
