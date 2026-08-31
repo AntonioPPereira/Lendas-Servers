@@ -46,11 +46,11 @@ export default function DemoDetail() {
     <div ref={scope} className="space-y-5">
       <div data-enter className="flex flex-wrap items-center gap-3">
         <Link
-          to="/demos"
+          to="/partidas"
           className="t-eyebrow flex items-center gap-1.5 text-[9px] text-ink-3 transition-colors hover:text-brass"
         >
           <ArrowLeft className="size-3.5" />
-          Biblioteca
+          Partidas
         </Link>
         <span className="t-num text-[10.5px] text-ink-4">/ {file.id}</span>
       </div>
@@ -133,12 +133,21 @@ export default function DemoDetail() {
 
       <div data-enter>
         <Panel className="p-4">
-          <p className="t-eyebrow text-ink-4">Placar, rounds e MVP</p>
-          <p className="mt-2 max-w-[62ch] text-[12px] leading-relaxed text-ink-4">
-            Esta gravação ainda não está associada a um registro de partida — o vínculo depende do
-            plugin SourceMod (que reporta o placar em tempo real) ou de um parser do próprio
-            arquivo .dem, nenhum dos dois implementado ainda. O que este arquivo prova é só o que o
-            filesystem confirma: nome, mapa, data/hora e tamanho, acima.
+          {/* Este texto dizia que o plugin de placar "não estava
+              implementado". Passou a existir em 2026-08-31 (lendas_matches),
+              então a explicação mudou: não é mais uma coisa que falta
+              construir, é uma partida que aconteceu antes de haver quem
+              registrasse. */}
+          <p className="t-eyebrow text-ink-4">Placar e rodadas</p>
+          <p className="mt-2 max-w-[64ch] text-[12.5px] leading-relaxed text-ink-3">
+            Esta gravação não tem partida associada. O placar passou a ser registrado quando o
+            plugin subiu no servidor — o que foi jogado antes disso existe só como arquivo, e não
+            dá pra reconstruir depois: o placar não está dentro do .dem de forma que a gente leia
+            sem um parser.
+          </p>
+          <p className="mt-2 max-w-[64ch] text-[12.5px] leading-relaxed text-ink-4">
+            O que este arquivo prova é o que o filesystem confirma: nome, mapa, data, hora e
+            tamanho, acima. Partidas novas aparecem com placar e Tab completos.
           </p>
         </Panel>
       </div>
