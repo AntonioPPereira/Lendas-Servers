@@ -107,15 +107,13 @@ export default function MatchDetail() {
           <PanelHeader label="Rodadas" accent="brass" />
           <div className="p-4">
             <RoundTimeline rounds={partida.rounds.map(toRoundResult)} maxRounds={partida.rounds.length} />
-            {/* Quando os dois números não fecham, a tela DIZ isso em vez de
-                deixar o leitor comparar sozinho e concluir que o site está
-                errado — foi exatamente o que aconteceu. */}
+            {/* Uma linha, não um parágrafo: o jogador só precisa saber por
+                que há mais rodadas que pontos. O porquê técnico não é
+                assunto dele. */}
             {descasado(partida) ? (
-              <p className="mt-4 border-t border-line-soft pt-3 text-[12.5px] leading-relaxed text-ink-3">
-                O placar soma {(partida.ctScore ?? 0) + (partida.tScore ?? 0)} pontos para{" "}
-                {partida.rounds.length} rodadas listadas. A diferença são rodadas anuladas por
-                restart da partida — knife round, ou reinício pedido pelos times: o servidor
-                descarta o placar delas, e é o placar do servidor que vale.
+              <p className="mt-3 text-[12px] text-ink-4">
+                Inclui {partida.rounds.length - ((partida.ctScore ?? 0) + (partida.tScore ?? 0))}{" "}
+                rodadas anuladas por restart.
               </p>
             ) : null}
           </div>

@@ -206,13 +206,10 @@ export default function Stats() {
           </Painel>
         </div>
 
-        <p data-reveal className="px-1 text-[11.5px] leading-relaxed text-ink-3">
-          Os totais acima vêm do HLstatsX desta rede e somam o histórico
-          inteiro do servidor. Os pódios por jogador vêm de outra fonte, com
-          outro alcance: o perfil individual do HLstatsX não responde nesta
-          instalação, então quem conta é um plugin no próprio servidor — e ele
-          só sabe do que aconteceu depois que entrou no ar.
-        </p>
+        {/* Era um parágrafo explicando as duas fontes de dados e por que
+            elas não somam. Isso é conversa de bastidor: quem abre a página
+            quer os números, e o alcance de cada bloco já é dito no lugar
+            onde ele aparece. */}
       </div>
     </div>
   );

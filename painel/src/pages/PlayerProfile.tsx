@@ -181,10 +181,10 @@ function Weapons({ id }: { id: string }) {
         </div>
       ) : armas.length === 0 ? (
         <Aviso titulo="Nenhum abate contado ainda">
-          A contagem por arma começou{" "}
-          {dados?.since ? "em " + formatDate(dados.since) : "há pouco"} e vale só do servidor
-          para cá. Os abates antigos deste jogador existem no total acima, mas ninguém registrou
-          com qual arma.
+          {dados?.since
+            ? "A contagem por arma começou em " + formatDate(dados.since) + "."
+            : "A contagem por arma começou há pouco."}{" "}
+          Este jogador ainda não apareceu nela.
         </Aviso>
       ) : (
         <>
@@ -210,10 +210,12 @@ function Weapons({ id }: { id: string }) {
 
           <p className="border-t border-line-soft px-4 py-2.5 text-[11.5px] text-ink-3">
             <Crosshair className="mr-1.5 inline size-3.5 text-ink-4" aria-hidden="true" />
-            {formatNumber(dados?.total ?? 0)} abates com {todas.length} armas
-            {restantes > 0 ? " (" + restantes + " fora da lista)" : ""}
-            {dados?.since ? ", contados desde " + formatDate(dados.since) : ""}. O total do perfil
-            vem do HLstatsX e cobre desde sempre — os dois não batem, e não deveriam.
+            {/* O número e a data bastam. Explicar POR QUE ele não bate com o
+                total do perfil é assunto de quem mantém o site, não de quem
+                está olhando o perfil de um jogador. */}
+            {formatNumber(dados?.total ?? 0)} abates
+            {restantes > 0 ? ` · ${restantes} armas fora da lista` : ""}
+            {dados?.since ? ` · desde ${formatDate(dados.since)}` : ""}
           </p>
         </>
       )}
