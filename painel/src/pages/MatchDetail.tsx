@@ -106,16 +106,26 @@ export default function MatchDetail() {
         <Panel className="overflow-hidden">
           <PanelHeader label="Rodadas" accent="brass" />
           <div className="p-4">
-            <RoundTimeline rounds={partida.rounds.map(toRoundResult)} maxRounds={partida.rounds.length} />
-            {/* Uma linha, não um parágrafo: o jogador só precisa saber por
-                que há mais rodadas que pontos. O porquê técnico não é
-                assunto dele. */}
-            {descasado(partida) ? (
-              <p className="mt-3 text-[12px] text-ink-4">
-                Inclui {partida.rounds.length - ((partida.ctScore ?? 0) + (partida.tScore ?? 0))}{" "}
-                rodadas anuladas por restart.
+            {/* Lista MENOR que o placar significa que faltam rodadas — a
+                linha do tempo desenharia 6 ícones pra uma partida de 18
+                pontos, o que é pior que não desenhar nada. */}
+            {faltamRodadas(partida) ? (
+              <p className="text-[12.5px] text-ink-3">
+                As rodadas desta partida não foram registradas por completo.
               </p>
-            ) : null}
+            ) : (
+              <>
+                <RoundTimeline
+                  rounds={partida.rounds.map(toRoundResult)}
+                  maxRounds={partida.rounds.length}
+                />
+                {anuladas(partida) > 0 ? (
+                  <p className="mt-3 text-[12px] text-ink-4">
+                    Inclui {anuladas(partida)} rodadas anuladas por restart.
+                  </p>
+                ) : null}
+              </>
+            )}
           </div>
         </Panel>
       </div>
@@ -135,16 +145,26 @@ export default function MatchDetail() {
 }
 
 /**
- * Placar e rodadas não fecham?
+ * Cada rodada dá um ponto a um lado, então a soma dos placares deveria bater
+ * com o número de rodadas. As duas formas de não bater são DIFERENTES e a
+ * tela precisa tratar cada uma:
  *
- * Cada rodada dá um ponto a um lado, então a soma dos dois placares deveria
- * bater com o número de rodadas. Quando não bate, houve restart no meio da
- * partida: o servidor zerou o placar e as rodadas anteriores continuam
- * listadas. Não é erro de leitura — mas quem olha precisa saber, senão os
- * dois blocos da tela se contradizem em silêncio.
+ * - rodadas a MAIS que pontos: houve restart, e as rodadas descartadas pelo
+ *   servidor continuam na lista. A linha do tempo vale, com a ressalva;
+ * - rodadas de MENOS: o registro está incompleto. Desenhar a linha do tempo
+ *   aí é pior que não desenhar — ela mostraria 6 rodadas pra uma partida de
+ *   18 pontos.
+ *
+ * Uma versão anterior tratava os dois casos com a mesma conta e imprimia
+ * "Inclui -12 rodadas anuladas". Número negativo é código quebrado
+ * aparecendo como se fosse informação.
  */
-function descasado(partida: MatchDetailReal): boolean {
-  return (partida.ctScore ?? 0) + (partida.tScore ?? 0) !== partida.rounds.length;
+function anuladas(partida: MatchDetailReal): number {
+  return Math.max(0, partida.rounds.length - ((partida.ctScore ?? 0) + (partida.tScore ?? 0)));
+}
+
+function faltamRodadas(partida: MatchDetailReal): boolean {
+  return (partida.ctScore ?? 0) + (partida.tScore ?? 0) > partida.rounds.length;
 }
 
 /** O `RoundTimeline` já existe e fala o vocabulário do painel — só traduzir. */
