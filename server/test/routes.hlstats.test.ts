@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
+import { MatchesService } from "../src/services/MatchesService.js";
 import { HLStatsService } from "../src/services/HLStatsService.js";
 import { SftpDemoService } from "../src/services/SftpDemoService.js";
 import { SteamFilterLogService } from "../src/services/SteamFilterLogService.js";
@@ -43,7 +44,7 @@ function buildApp(
   const steamFilter = new SteamFilterLogService(SFTP_CONN, 60_000, 60);
   const avatars = new SteamAvatarService(opts.avatarFetchImpl ? "KEY" : "", 3_600_000, opts.avatarFetchImpl as never);
   return createApp(
-    { demos, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), avatars },
+    { demos, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), avatars, matches: emptyMatches() },
     { liveApiToken: opts.liveApiToken ?? LIVE_TOKEN },
   );
 }
@@ -225,3 +226,17 @@ describe("ordem da lista de servidores", () => {
     expect(res.body.map((s: { id: string }) => s.id)).toEqual(["lendas-01", "lendas-02"]);
   });
 });
+
+/** Sem arquivo de partidas: estas rotas não são o assunto destes testes. */
+function emptyMatches() {
+  return new MatchesService(
+    { host: "x", port: 22, username: "u", password: "p", base: "/" },
+    0,
+    () => ({
+      connect: async () => undefined,
+      list: async () => [],
+      get: async () => Buffer.from(""),
+      end: async () => undefined,
+    }),
+  );
+}

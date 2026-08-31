@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
+import { MatchesService } from "../src/services/MatchesService.js";
 import { HLStatsService } from "../src/services/HLStatsService.js";
 import { SftpDemoService } from "../src/services/SftpDemoService.js";
 import { SteamFilterLogService } from "../src/services/SteamFilterLogService.js";
@@ -62,7 +63,7 @@ function buildApp(files: Record<string, string>, avatars = new SteamAvatarServic
     0,
     () => makeFakeSourceBansClient({ files }).client,
   );
-  return createApp({ demos, hlstats, steamFilter, sourceBans, playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), avatars });
+  return createApp({ demos, hlstats, steamFilter, sourceBans, playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), matches: emptyMatches(), avatars });
 }
 
 /** Índice nick->SteamID64 vazio: avatar não é o assunto destes testes. */
@@ -282,3 +283,17 @@ describe("GET /api/bans/summary", () => {
     expect(res.body.generatedAt).toBe(new Date(1_788_000_000 * 1000).toISOString());
   });
 });
+
+/** Sem arquivo de partidas: estas rotas não são o assunto destes testes. */
+function emptyMatches() {
+  return new MatchesService(
+    { host: "x", port: 22, username: "u", password: "p", base: "/" },
+    0,
+    () => ({
+      connect: async () => undefined,
+      list: async () => [],
+      get: async () => Buffer.from(""),
+      end: async () => undefined,
+    }),
+  );
+}

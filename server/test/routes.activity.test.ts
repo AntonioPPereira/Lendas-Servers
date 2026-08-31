@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
+import { MatchesService } from "../src/services/MatchesService.js";
 import { HLStatsService } from "../src/services/HLStatsService.js";
 import { SftpDemoService } from "../src/services/SftpDemoService.js";
 import { SteamFilterLogService } from "../src/services/SteamFilterLogService.js";
@@ -20,7 +21,7 @@ function buildApp(steamFilter: SteamFilterLogService) {
   const hlstats = new HLStatsService(HLSTATS_CFG, 60_000, 60_000);
   const demos = new SftpDemoService(SFTP_CONN, 60_000, () => makeFakeClient({ tree: SAMPLE_TREE }).client);
   const avatars = new SteamAvatarService("", 0);
-  return createApp({ demos, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), avatars });
+  return createApp({ demos, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), matches: emptyMatches(), avatars });
 }
 
 /** Bans não são o assunto destes testes: serviço vazio, sem arquivo exportado. */
@@ -106,3 +107,17 @@ describe("GET /api/activity", () => {
     expect(res.body.error).toBe("sftp_unavailable");
   });
 });
+
+/** Sem arquivo de partidas: estas rotas não são o assunto destes testes. */
+function emptyMatches() {
+  return new MatchesService(
+    { host: "x", port: 22, username: "u", password: "p", base: "/" },
+    0,
+    () => ({
+      connect: async () => undefined,
+      list: async () => [],
+      get: async () => Buffer.from(""),
+      end: async () => undefined,
+    }),
+  );
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
+import { MatchesService } from "../src/services/MatchesService.js";
 import { SftpDemoService } from "../src/services/SftpDemoService.js";
 import { HLStatsService } from "../src/services/HLStatsService.js";
 import { SteamFilterLogService } from "../src/services/SteamFilterLogService.js";
@@ -26,7 +27,7 @@ const avatars = new SteamAvatarService("", 0);
 function buildApp(opts: Parameters<typeof makeFakeClient>[0] = { tree: SAMPLE_TREE }) {
   const { client, connectCalls } = makeFakeClient(opts);
   const service = new SftpDemoService(CONN, 60_000, () => client);
-  return { app: createApp({ demos: service, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), avatars }), connectCalls };
+  return { app: createApp({ demos: service, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), matches: emptyMatches(), avatars }), connectCalls };
 }
 
 /** Bans não são o assunto destes testes: serviço vazio, sem arquivo exportado. */
@@ -232,3 +233,17 @@ describe("resiliência a SFTP indisponível", () => {
     expect(res.body.error).toBe("sftp_auth_failed");
   });
 });
+
+/** Sem arquivo de partidas: estas rotas não são o assunto destes testes. */
+function emptyMatches() {
+  return new MatchesService(
+    { host: "x", port: 22, username: "u", password: "p", base: "/" },
+    0,
+    () => ({
+      connect: async () => undefined,
+      list: async () => [],
+      get: async () => Buffer.from(""),
+      end: async () => undefined,
+    }),
+  );
+}

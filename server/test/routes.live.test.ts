@@ -3,6 +3,7 @@ import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
+import { MatchesService } from "../src/services/MatchesService.js";
 import { HLStatsService } from "../src/services/HLStatsService.js";
 import { SftpDemoService } from "../src/services/SftpDemoService.js";
 import { SteamFilterLogService } from "../src/services/SteamFilterLogService.js";
@@ -25,7 +26,7 @@ function buildApp(opts: { token?: string; fetchImpl?: typeof fetch } = {}) {
   const demos = new SftpDemoService(CONN, 60_000, () => makeFakeClient({ tree: SAMPLE_TREE }).client);
   const steamFilter = new SteamFilterLogService(CONN, 60_000, 60);
   const avatars = new SteamAvatarService(opts.fetchImpl ? "KEY" : "", 3_600_000, opts.fetchImpl as never);
-  return createApp({ demos, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), avatars }, { liveApiToken: opts.token ?? TOKEN, liveStaleMs: 30_000 });
+  return createApp({ demos, hlstats, steamFilter, sourceBans: emptySourceBans(), playerDirectory: emptyPlayerDirectory(), playerStats: emptyPlayerStats(), matches: emptyMatches(), avatars }, { liveApiToken: opts.token ?? TOKEN, liveStaleMs: 30_000 });
 }
 
 const servers: http.Server[] = [];
@@ -212,3 +213,17 @@ describe("GET /api/live/stream", () => {
     expect(chunk).not.toContain('"type":"match"');
   });
 });
+
+/** Sem arquivo de partidas: estas rotas não são o assunto destes testes. */
+function emptyMatches() {
+  return new MatchesService(
+    { host: "x", port: 22, username: "u", password: "p", base: "/" },
+    0,
+    () => ({
+      connect: async () => undefined,
+      list: async () => [],
+      get: async () => Buffer.from(""),
+      end: async () => undefined,
+    }),
+  );
+}
