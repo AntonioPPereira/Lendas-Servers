@@ -1,17 +1,17 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, LogIn, LogOut, ShieldX, Trophy } from "lucide-react";
+import { ArrowLeft, Crosshair, Trophy } from "lucide-react";
 import { usePageEnter } from "@/hooks/useGsap";
 import { STALE } from "@/lib/queryClient";
 import { useResource } from "@/hooks/useResource";
-import { api } from "@/api/client";
-import type { ActivityEvent, RankedPlayer } from "@/data/types";
+import { api, type PlayerWeapons } from "@/api/client";
+import type { RankedPlayer } from "@/data/types";
 import {
-  formatDateTime,
+  formatDate,
   formatDecimal,
   formatNumber,
   formatPercent,
   formatPlaytime,
-  timeAgo,
+  weaponLabel,
 } from "@/lib/format";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { Badge } from "@/components/ui/Badge";
@@ -110,7 +110,7 @@ export default function PlayerProfile() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div data-enter className="min-w-0">
-          <Sessions nickname={player.nickname} />
+          <Weapons id={player.id} />
         </div>
 
         <div data-enter className="min-w-0 space-y-5">
@@ -144,112 +144,91 @@ export default function PlayerProfile() {
 }
 
 /**
- * Passagens reais pelo servidor, lidas do log do `lendas_steamfilter`.
+ * Armas com que este jogador mais mata.
  *
- * NÃO é histórico de partidas, e por isso não se chama assim: partida com
- * placar e rodadas não existe como dado nesta rede — o HLstatsX só guarda
- * acumulados, e nada registra o resultado de cada partida. O que existe de
- * verdade é quando a pessoa entrou, quando saiu e quanto tempo ficou.
- *
- * O casamento é por nickname porque o HLstatsX desta instalação não expõe
- * Steam ID (auditado; ver server/README.md) — mesmo caminho que o ranking
- * usa pra achar os avatares. Dois jogadores com o mesmo nick apareceriam
- * juntos: é limitação da fonte, não escolha.
+ * Fonte diferente do resto da página, e a tela precisa dizer isso: skill,
+ * abates e precisão vêm do HLstatsX, que nesta instalação NÃO entrega
+ * recorte por arma por jogador. Quem conta arma é o plugin
+ * `lendas_playerstats`, e ele só conta desde que subiu — daí a linha de
+ * "desde". Sem ela, alguém compara estes números com os 4.140 abates do
+ * cartão acima e conclui que o site está errado.
  */
-function Sessions({ nickname }: { nickname: string }) {
-  const resource = useResource<ActivityEvent[]>(
-    ["sessoes", nickname],
-    () => api.activity({ actor: nickname, limit: 40 }),
-  );
-
-  const eventos = resource.data ?? [];
+function Weapons({ id }: { id: string }) {
+  const resource = useResource<PlayerWeapons>(["armas-jogador", id], () => api.playerWeapons(id));
+  const dados = resource.data;
+  const todas = dados?.weapons ?? [];
+  /**
+   * Só as dez primeiras. A cauda de um jogador antigo tem umas vinte armas
+   * com 1 ou 2 abates cada — ruído que empurra o resto da página pra baixo
+   * sem dizer nada sobre o jeito dele jogar. O rodapé conta as que sobraram
+   * pra ninguém achar que o painel escondeu abate.
+   */
+  const armas = todas.slice(0, 10);
+  const restantes = todas.length - armas.length;
+  const maior = armas[0]?.kills ?? 0;
 
   return (
     <Panel className="overflow-hidden">
-      <PanelHeader label="Passagens pelo servidor" accent="ct" />
+      <PanelHeader label="Armas" accent="brass" />
 
-      {resource.status === "error" ? (
-        <div className="p-5 text-center">
-          <p className="t-title text-[13px] text-ink-2">Não foi possível ler o registro</p>
-          <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-3">
-            O log do servidor não respondeu. Nada aqui é estimado — sem ele, a lista fica vazia.
-          </p>
+      {resource.status === "error" || dados?.available === false ? (
+        <Aviso titulo="Contagem indisponível">
+          O plugin que conta abates por arma não respondeu. Nada aqui é estimado.
+        </Aviso>
+      ) : resource.status === "loading" && !dados ? (
+        <div className="p-5">
+          <LoadingState label="Carregando armas" />
         </div>
-      ) : eventos.length === 0 ? (
-        <div className="p-5 text-center">
-          <p className="t-title text-[13px] text-ink-2">Nenhuma passagem registrada</p>
-          <p className="mx-auto mt-1.5 max-w-[54ch] text-[12.5px] leading-relaxed text-ink-3">
-            O registro cobre os últimos dois dias de log do servidor. Quem não entrou nesse
-            período não aparece aqui — e isso nada diz sobre o histórico completo, que a fonte
-            não guarda.
-          </p>
-        </div>
+      ) : armas.length === 0 ? (
+        <Aviso titulo="Nenhum abate contado ainda">
+          A contagem por arma começou{" "}
+          {dados?.since ? "em " + formatDate(dados.since) : "há pouco"} e vale só do servidor
+          para cá. Os abates antigos deste jogador existem no total acima, mas ninguém registrou
+          com qual arma.
+        </Aviso>
       ) : (
-        <ul>
-          {toSessions(eventos).map((evento) => (
-            <SessionRow key={evento.id} event={evento} online={evento === eventos[0]} />
-          ))}
-        </ul>
+        <>
+          <ul className="divide-y divide-line-soft">
+            {armas.map((arma) => (
+              <li key={arma.weapon} className="px-4 py-2.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="truncate text-[13px] text-ink">
+                    {weaponLabel(arma.weapon, arma.weapon)}
+                  </span>
+                  <span className="t-num shrink-0 text-[13px] text-ink">
+                    {formatNumber(arma.kills)}{" "}
+                    <span className="text-ink-4">{arma.kills === 1 ? "abate" : "abates"}</span>
+                  </span>
+                </div>
+                {/* A barra compara com a arma MAIS usada deste jogador, não
+                    com um teto inventado: o que interessa é o quanto ele
+                    prefere uma sobre as outras. */}
+                <Meter value={arma.kills} max={maior} height={5} tone="brass" className="mt-1.5" />
+              </li>
+            ))}
+          </ul>
+
+          <p className="border-t border-line-soft px-4 py-2.5 text-[11.5px] text-ink-3">
+            <Crosshair className="mr-1.5 inline size-3.5 text-ink-4" aria-hidden="true" />
+            {formatNumber(dados?.total ?? 0)} abates com {todas.length} armas
+            {restantes > 0 ? " (" + restantes + " fora da lista)" : ""}
+            {dados?.since ? ", contados desde " + formatDate(dados.since) : ""}. O total do perfil
+            vem do HLstatsX e cobre desde sempre — os dois não batem, e não deveriam.
+          </p>
+        </>
       )}
     </Panel>
   );
 }
 
-/**
- * O log traz entrada e saída como linhas separadas, mas uma passagem pelo
- * servidor é UMA coisa — e a linha de saída já carrega tudo que ela tem a
- * dizer: quando terminou e quanto durou. Mostrar as duas empilhava o mesmo
- * fato duas vezes e dobrava o tamanho da lista sem acrescentar nada.
- *
- * A entrada só sobrevive quando é o evento mais recente do jogador: aí ela
- * não é metade de um par, é uma passagem que ainda não terminou.
- */
-function toSessions(eventos: readonly ActivityEvent[]): ActivityEvent[] {
-  return eventos.filter(
-    (evento, i) => evento.kind !== "join" || i === 0,
-  );
-}
-
-const SESSION_ICON = { join: LogIn, leave: LogOut, blocked: ShieldX };
-const SESSION_TINT = { join: "text-live", leave: "text-ink-3", blocked: "text-danger" };
-const SESSION_LABEL = {
-  join: "Entrou no servidor",
-  leave: "Saiu do servidor",
-  blocked: "Foi barrado ao entrar",
-};
-
-function SessionRow({ event, online }: { event: ActivityEvent; online: boolean }) {
-  const Icon = SESSION_ICON[event.kind];
-  /**
-   * "Ainda no servidor" é leitura do registro, não consulta ao servidor: a
-   * entrada é o último evento dele e nenhuma saída veio depois. Se o
-   * jogador tiver caído sem o plugin registrar, isto fica desatualizado —
-   * daí o texto dizer o que o registro mostra, e não afirmar presença.
-   */
-  const emAndamento = event.kind === "join" && online;
-
+function Aviso({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <li className="flex items-center gap-3 border-b border-line-soft px-4 py-2.5 last:border-b-0">
-      <Icon className={"size-4 shrink-0 " + SESSION_TINT[event.kind]} aria-hidden="true" />
-
-      <span className="min-w-0 flex-1 text-[13px] text-ink-2">
-        {emAndamento ? "Entrou — sem saída registrada" : SESSION_LABEL[event.kind]}
-        {/* A duração vem do plugin, que guarda a hora da aprovação — não é
-            conta feita aqui em cima do horário do evento. */}
-        {event.detail ? (
-          <span className={event.kind === "blocked" ? "text-danger" : "text-ink-3"}>
-            {event.kind === "leave" ? " — ficou " + event.detail : " — " + event.detail}
-          </span>
-        ) : null}
-      </span>
-
-      <span className="shrink-0 text-right">
-        <span className="t-num block text-[11.5px] text-ink-3">{timeAgo(event.at)}</span>
-        <span className="t-num mt-0.5 block text-[10.5px] text-ink-4">
-          {formatDateTime(event.at)}
-        </span>
-      </span>
-    </li>
+    <div className="p-5 text-center">
+      <p className="t-title text-[13px] text-ink-2">{titulo}</p>
+      <p className="mx-auto mt-1.5 max-w-[52ch] text-[12.5px] leading-relaxed text-ink-3">
+        {children}
+      </p>
+    </div>
   );
 }
 

@@ -4,6 +4,7 @@ import type { HLStatsService } from "../services/HLStatsService.js";
 import type { SteamAvatarService } from "../services/SteamAvatarService.js";
 import type { NicknameDirectory } from "../live/nicknameDirectory.js";
 import type { PlayerDirectoryService } from "../services/PlayerDirectoryService.js";
+import type { PlayerStatsService } from "../services/PlayerStatsService.js";
 import { paginate } from "../lib/paginate.js";
 import { toPlayerDto } from "../lib/playerDto.js";
 import { resolveAvatarsByNickname } from "../lib/avatarResolver.js";
@@ -20,6 +21,7 @@ export function createPlayersRouter(
   nicknames: NicknameDirectory,
   avatars: SteamAvatarService,
   playerDirectory: PlayerDirectoryService,
+  playerStats: PlayerStatsService,
 ): Router {
   const router = Router();
 
@@ -72,6 +74,64 @@ export function createPlayersRouter(
       next(err);
     }
   });
+
+  /**
+   * Abates por arma DESTE jogador, contados pelo `lendas_playerstats`.
+   *
+   * Fonte diferente do resto do perfil, e isso importa: o HLstatsX (de onde
+   * vêm skill, kills e precisão) não entrega recorte por arma por jogador
+   * nesta instalação — `mode=playerinfo` trava e a página de prêmios está
+   * vazia. Quem conta arma é o plugin, e ele só conta desde que subiu. Por
+   * isso `since` vai junto na resposta: sem essa data, o leitor compara os
+   * abates por arma com o total do HLstatsX e conclui que falta coisa.
+   *
+   * O jogador é encontrado pelo SteamID quando o índice conhece o nick, e
+   * só então pelo próprio nick. O SteamID é identidade de verdade; o nick é
+   * o que sobra quando ninguém registrou a conta.
+   */
+  router.get("/:id/weapons", async (req, res, next) => {
+    try {
+      const row = await hlstats.getPlayer(req.params.id as string);
+      if (!row) throw new NotFoundError(`Jogador não encontrado: "${req.params.id}"`);
+
+      const snapshot = await playerStats.getSnapshot().catch(() => null);
+      if (!snapshot) {
+        // Plugin fora do ar não derruba o perfil: a tela mostra o estado de
+        // indisponível, nunca uma lista vazia fingindo que ele não matou.
+        res.json({ since: null, available: false, total: 0, weapons: [] });
+        return;
+      }
+
+      const steamId64 = nicknames.lookup(row.nickname) ?? (await directoryLookup(row.nickname));
+      const stats =
+        (steamId64 ? snapshot.rows.find((r) => r.id === steamId64) : undefined) ??
+        snapshot.rows.find((r) => r.name.toLowerCase() === row.nickname.toLowerCase());
+
+      const weapons = Object.entries(stats?.weapons ?? {})
+        .map(([weapon, kills]) => ({ weapon, kills }))
+        // Mais usada primeiro; empate desempata pelo código, pra a ordem não
+        // dançar entre dois carregamentos com os mesmos números.
+        .sort((a, b) => b.kills - a.kills || a.weapon.localeCompare(b.weapon));
+
+      res.json({
+        since: snapshot.since,
+        available: true,
+        total: weapons.reduce((soma, w) => soma + w.kills, 0),
+        weapons,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /** Índice indisponível não é erro: cai no casamento por nick. */
+  async function directoryLookup(nickname: string): Promise<string | undefined> {
+    try {
+      return (await playerDirectory.getDirectory()).get(nickname);
+    } catch {
+      return undefined;
+    }
+  }
 
   return router;
 }

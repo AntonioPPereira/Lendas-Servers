@@ -29,6 +29,15 @@ function mocks() {
   );
 }
 
+export interface PlayerWeapons {
+  /** Desde quando o plugin conta. `null` = nenhum servidor exportou ainda. */
+  since: string | null;
+  /** `false` quando o plugin não respondeu — diferente de "matou zero". */
+  available: boolean;
+  total: number;
+  weapons: Array<{ weapon: string; kills: number }>;
+}
+
 export interface Page<T> {
   items: T[];
   total: number;
@@ -191,6 +200,18 @@ export const api = {
     if (params.limit) search.set("limit", String(params.limit));
     const qs = search.toString();
     return request<ActivityEvent[]>("/activity" + (qs ? "?" + qs : ""));
+  },
+
+  /**
+   * Abates por arma DESTE jogador. Vem do plugin `lendas_playerstats`, não
+   * do HLstatsX — que nesta instalação não entrega recorte por arma por
+   * jogador. Por isso a resposta traz `since`: a contagem começa quando o
+   * plugin sobe, e sem essa data o número não bate com o total de abates do
+   * resto do perfil.
+   */
+  async playerWeapons(id: string): Promise<PlayerWeapons> {
+    requireApi("armas do jogador");
+    return request<PlayerWeapons>("/players/" + encodeURIComponent(id) + "/weapons");
   },
 
   async ranking(params: RankingQuery = {}): Promise<RankingPage> {
