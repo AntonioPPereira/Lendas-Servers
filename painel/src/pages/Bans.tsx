@@ -60,8 +60,19 @@ export default function Bans() {
 
       <div data-enter className="grid gap-px overflow-hidden rounded-md bg-line-soft/50 sm:grid-cols-3">
         <Summary label="Registros" value={counts ? formatNumber(counts.all) : "—"} />
-        <Summary label="Punições ativas" value={counts ? formatNumber(counts.active) : "—"} tone="danger" />
-        <Summary label="Permanentes" value={counts ? formatNumber(counts.permanent) : "—"} tone="danger" />
+        {/* Vermelho só quando há o que temer. Zero punição temporária em
+            curso é boa notícia, e pintado de vermelho lia como erro na
+            tela. */}
+        <Summary
+          label="Punições ativas"
+          value={counts ? formatNumber(counts.active) : "—"}
+          tone={counts && counts.active > 0 ? "danger" : "default"}
+        />
+        <Summary
+          label="Permanentes"
+          value={counts ? formatNumber(counts.permanent) : "—"}
+          tone={counts && counts.permanent > 0 ? "danger" : "default"}
+        />
       </div>
 
       <div data-enter>

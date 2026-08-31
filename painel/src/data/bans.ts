@@ -59,12 +59,6 @@ export const BANS: Ban[] = buildBans().sort(
 
 export const BANS_BY_ID = new Map(BANS.map((b) => [b.id, b]));
 
-export function banTimeLeft(ban: Ban): string {
-  if (ban.expiresAt === null) return "Permanente";
-  const ms = new Date(ban.expiresAt).getTime() - NOW.getTime();
-  if (ms <= 0) return "Expirado";
-  const hours = Math.floor(ms / 3_600_000);
-  if (hours >= 48) return `${Math.floor(hours / 24)}d restantes`;
-  if (hours >= 1) return `${hours}h restantes`;
-  return `${Math.max(1, Math.floor(ms / 60_000))}min restantes`;
-}
+// `banTimeLeft` saiu daqui para `lib/banTime.ts`: a tela de Banimentos a
+// usava e, por morar neste arquivo, puxava junto os nomes inventados.
+export { banTimeLeft } from "@/lib/banTime";
