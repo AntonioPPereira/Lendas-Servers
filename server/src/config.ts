@@ -30,7 +30,14 @@ const schema = z.object({
    */
   SFTP_BASE: z.string().min(1).default("/"),
 
-  DEMOS_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(60_000),
+  /**
+   * 5 minutos, não 1. O acervo só muda quando um mapa TERMINA (a demo é
+   * fechada e o placar gravado), o que leva bem mais que isso. Com 60s,
+   * um visitante a cada minuto pagava ~7s de SFTP pra receber exatamente
+   * a mesma lista — e do Render, com a latência maior, isso chegou a
+   * estourar o tempo limite e devolver 503.
+   */
+  DEMOS_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(300_000),
 
   /** Base do HLstatsX:CE — sem API estruturada, o adapter faz parsing do HTML. */
   HLSTATS_BASE_URL: z

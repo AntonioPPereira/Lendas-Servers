@@ -73,6 +73,11 @@ const DEMOS_SUBPATH = ["cstrike", "demos"];
 export class SftpDemoService {
   /** Um cache por período ("2026-08") — nunca um cache só pro histórico inteiro. */
   private readonly cachesByPeriod = new Map<string, TtlCache<DemoFile[]>>();
+  /** Um por período pedido ("" = o mais recente). Ver `listArchive`. */
+  private readonly archiveCaches = new Map<
+    string,
+    TtlCache<{ periods: string[]; period: string; demos: DemoFile[] }>
+  >();
   private readonly periodsCache: TtlCache<string[]>;
 
   constructor(
@@ -115,6 +120,102 @@ export class SftpDemoService {
       if (stale) return stale;
       throw cause;
     }
+  }
+
+  /**
+   * Períodos E as demos de um deles, numa conexão SFTP SÓ.
+   *
+   * Existe por causa de custo real, medido: abrir a conexão custa ~3s, e
+   * varrer a pasta custa pouco. A tela de Partidas precisava dos dois, e
+   * chamar `listPeriods()` e depois `listDemos()` abria DUAS conexões —
+   * ~7s antes de a página ter qualquer coisa pra mostrar. Do Render, com a
+   * latência maior, isso estourava o tempo limite e a rota devolvia 503.
+   *
+   * `period` ausente = o mais recente que existe. Quem decide isso aqui é
+   * quem já tem a lista de períodos em mãos, sem uma terceira ida ao
+   * servidor.
+   *
+   * Os caches de `listPeriods`/`listDemos` são preenchidos de passagem, pra
+   * uma chamada seguinte a qualquer um dos dois não reabrir nada.
+   */
+  async listArchive(period?: string): Promise<{ periods: string[]; period: string; demos: DemoFile[] }> {
+    // Cache quente dos dois: responde sem abrir conexão nenhuma.
+    const periodosEmCache = this.periodsCache.peekFresh();
+    if (periodosEmCache) {
+      const alvo = period ?? periodosEmCache[0];
+      const demosEmCache = alvo ? this.cachesByPeriod.get(alvo)?.peekFresh() : undefined;
+      if (demosEmCache) return { periods: periodosEmCache, period: alvo!, demos: demosEmCache };
+    }
+
+    /**
+     * Passa por um cache PRÓPRIO, e não direto no fetch, por causa da
+     * deduplicação: a tela de Partidas pede `/matches` e `/matches/maps` ao
+     * mesmo tempo, e sem isso as duas abriam sua própria conexão SFTP — o
+     * dobro do custo pra buscar exatamente a mesma coisa. O `TtlCache` faz
+     * a segunda esperar a promise da primeira.
+     */
+    const chave = period ?? "";
+    let cache = this.archiveCaches.get(chave);
+    if (!cache) {
+      cache = new TtlCache<{ periods: string[]; period: string; demos: DemoFile[] }>(this.cacheTtlMs);
+      this.archiveCaches.set(chave, cache);
+    }
+
+    try {
+      return await cache.get(() => this.fetchArchive(period));
+    } catch (cause) {
+      /**
+       * Fonte fora do ar: devolve o que houver de velho em vez de derrubar
+       * a tela. Só relança quando não há NADA — aí a página precisa dizer
+       * que falhou, não fingir que o acervo está vazio.
+       */
+      const periods = this.periodsCache.peekStale();
+      const alvo = period ?? periods?.[0];
+      const demos = alvo ? this.cachesByPeriod.get(alvo)?.peekStale() : undefined;
+      if (periods && alvo && demos) return { periods, period: alvo, demos };
+      throw cause;
+    }
+  }
+
+  /** Descobre os períodos e lista o escolhido sem fechar a conexão no meio. */
+  private async fetchArchive(period?: string): Promise<{ periods: string[]; period: string; demos: DemoFile[] }> {
+    return this.withConnection(async (sftp) => {
+      const roots = await this.discoverRoots(sftp);
+
+      const months = new Set<string>();
+      for (const root of roots) {
+        for (const entry of await this.listOrEmpty(sftp, root.root)) {
+          if (entry.type === "d" && isYearMonthDir(entry.name)) months.add(entry.name);
+        }
+      }
+      const periods = [...months].sort((a, b) => b.localeCompare(a));
+      this.periodsCache.seed(periods);
+
+      const alvo = period ?? periods[0];
+      if (!alvo) return { periods, period: period ?? "", demos: [] as DemoFile[] };
+
+      const demos: DemoFile[] = [];
+      for (const root of roots) {
+        for (const file of await this.listOrEmpty(sftp, `${root.root}/${alvo}`)) {
+          if (file.type !== "-" || !isDemoFilename(file.name)) continue;
+          const parsed = parseDemoId(buildDemoId(root.port, file.name));
+          if (!parsed) continue;
+          demos.push(this.toDemoFile(parsed, file.size, root));
+        }
+      }
+      demos.sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
+
+      // Alimenta o cache por período: um `listDemos(alvo)` logo depois (o
+      // download, por exemplo) não reabre conexão.
+      let cache = this.cachesByPeriod.get(alvo);
+      if (!cache) {
+        cache = new TtlCache<DemoFile[]>(this.cacheTtlMs);
+        this.cachesByPeriod.set(alvo, cache);
+      }
+      cache.seed(demos);
+
+      return { periods, period: alvo, demos };
+    });
   }
 
   /** Uma demo por ID. `null` = ID válido mas arquivo (ou servidor) não existe. Lança se o ID for mal formado. */

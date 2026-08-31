@@ -87,8 +87,7 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
        * agosto continua sendo o que existe — assumir o mês corrente
        * apresentaria um arquivo vazio como se fosse a verdade.
        */
-      const periodos = await demos.listPeriods().catch(() => [] as string[]);
-      const periodo = query.period ?? periodos[0] ?? mesCorrente();
+
 
       /**
        * As duas fontes falham de jeitos DIFERENTES, e a página precisa
@@ -101,8 +100,13 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
        *   certo é "não consegui ler". Já aconteceu, e é pior que mostrar
        *   erro: afirma como fato algo que ninguém verificou.
        */
-      const linhas = await matches.getMatches().catch(() => [] as MatchRow[]);
-      const arquivos = await demos.listDemos(periodo);
+      const [linhas, acervo] = await Promise.all([
+        matches.getMatches().catch(() => [] as MatchRow[]),
+        demos.listArchive(query.period),
+      ]);
+      const periodos = acervo.periods;
+      const periodo = acervo.period || mesCorrente();
+      const arquivos = acervo.demos;
 
       const demoPorId = new Map(arquivos.map((d) => [d.id, d]));
       const usadas = new Set<string>();
@@ -146,12 +150,13 @@ export function createMatchesRouter(matches: MatchesService, demos: SftpDemoServ
   /** Mapas que de fato aparecem no acervo — nada de lista fixa inventada. */
   router.get("/maps", async (_req, res, next) => {
     try {
-      const linhas = await matches.getMatches().catch(() => [] as MatchRow[]);
-      const periodos = await demos.listPeriods().catch(() => [] as string[]);
-      const arquivos = await demos.listDemos(periodos[0] ?? mesCorrente()).catch(() => []);
+      const [linhas, acervo] = await Promise.all([
+        matches.getMatches().catch(() => [] as MatchRow[]),
+        demos.listArchive().catch(() => ({ periods: [], period: "", demos: [] })),
+      ]);
       const mapas = new Set<string>();
       linhas.forEach((l) => mapas.add(l.map));
-      arquivos.forEach((d) => mapas.add(d.map));
+      acervo.demos.forEach((d) => mapas.add(d.map));
       res.json({ items: [...mapas].sort((a, b) => a.localeCompare(b)) });
     } catch (err) {
       next(err);

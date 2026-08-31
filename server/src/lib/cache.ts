@@ -38,6 +38,21 @@ export class TtlCache<T> {
     return this.value;
   }
 
+  /** Valor ainda DENTRO do prazo, ou `null`. Serve pra decidir se vale a pena abrir I/O. */
+  peekFresh(): T | null {
+    return this.value !== null && Date.now() < this.expiresAt ? this.value : null;
+  }
+
+  /**
+   * Guarda um valor obtido POR FORA do `get` — quando uma chamada já trouxe
+   * de carona o que este cache guardaria. Evita que a próxima leitura abra
+   * uma conexão pra buscar algo que já está em memória.
+   */
+  seed(value: T): void {
+    this.value = value;
+    this.expiresAt = Date.now() + this.ttlMs;
+  }
+
   invalidate(): void {
     this.value = null;
     this.expiresAt = 0;
