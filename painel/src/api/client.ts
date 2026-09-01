@@ -37,56 +37,6 @@ export interface PlayerWeapons {
   weapons: Array<{ weapon: string; kills: number }>;
 }
 
-/**
- * Uma linha do arquivo: pode ser uma partida com placar ou só uma
- * gravação. Os campos de placar são `null` — nunca 0 — quando a linha é só
- * a demo: zero leria como empate e essas partidas nunca foram registradas.
- */
-export interface ArchiveEntry {
-  id: string;
-  kind: "match" | "demo";
-  map: string;
-  startedAt: string;
-  endedAt: string | null;
-  ctScore: number | null;
-  tScore: number | null;
-  roundCount: number | null;
-  /** Formato da partida (`mp_maxrounds`): 13 no MR13. 0/null = desconhecido. */
-  maxRounds: number | null;
-  playerCount: number | null;
-  demo: { id: string; filename: string; size: number } | null;
-}
-
-export interface ArchivePage extends Page<ArchiveEntry> {
-  /** Quantas linhas do recorte têm placar — o painel usa pra explicar a mistura. */
-  withScore: number;
-  /** Mês exibido. Sem `period` na chamada, o backend escolhe o mais recente COM conteúdo. */
-  period: string;
-  /** Meses que existem no acervo, mais recente primeiro. */
-  periods: string[];
-}
-
-export interface MatchRound {
-  n: number;
-  winner: "CT" | "T";
-  reason: "bomb" | "defuse" | "elimination" | "time" | "hostage";
-  ct: number;
-  t: number;
-}
-
-export interface MatchPlayer {
-  steamId64: string;
-  name: string;
-  team: "CT" | "T" | "SPEC";
-  kills: number;
-  deaths: number;
-}
-
-export interface MatchDetailReal extends ArchiveEntry {
-  rounds: MatchRound[];
-  players: MatchPlayer[];
-}
-
 export interface Page<T> {
   items: T[];
   total: number;
@@ -313,33 +263,8 @@ export const api = {
     return toDemo(raw);
   },
 
-  /**
-   * Arquivo unificado: partidas e gravações na mesma lista. Sem modo mock —
-   * uma partida inventada aqui seria indistinguível de uma real, e é
-   * exatamente o tipo de coisa que ninguém consegue desmentir depois.
-   */
-  async archive(
-    params: { page?: number; pageSize?: number; map?: string; period?: string } = {},
-  ): Promise<ArchivePage> {
-    requireApi("partidas");
-    const { page = 1, pageSize = 12, map = "all" } = params;
-    const search = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
-    if (map !== "all") search.set("map", map);
-    if (params.period) search.set("period", params.period);
-    return request<ArchivePage>("/matches?" + search.toString());
-  },
 
-  async match(id: string): Promise<MatchDetailReal> {
-    requireApi("partida");
-    return request<MatchDetailReal>("/matches/" + encodeURIComponent(id));
-  },
 
-  /** Mapas que de fato existem no acervo — nunca uma lista fixa. */
-  async archiveMaps(): Promise<string[]> {
-    requireApi("partidas");
-    const body = await request<{ items: string[] }>("/matches/maps");
-    return body.items;
-  },
 
   async bans(params: BanQuery = {}): Promise<Page<Ban>> {
     const { query = "", state = "all", page = 1, pageSize = 12 } = params;

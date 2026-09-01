@@ -12,9 +12,8 @@ import Overview from "@/pages/Overview";
 // the landing page; everything else loads on demand.
 const Servers = lazy(() => import("@/pages/Servers"));
 const Ranking = lazy(() => import("@/pages/Ranking"));
+const Demos = lazy(() => import("@/pages/Demos"));
 const DemoDetail = lazy(() => import("@/pages/DemoDetail"));
-const Matches = lazy(() => import("@/pages/Matches"));
-const MatchDetail = lazy(() => import("@/pages/MatchDetail"));
 const Players = lazy(() => import("@/pages/Players"));
 const PlayerProfile = lazy(() => import("@/pages/PlayerProfile"));
 const Activity = lazy(() => import("@/pages/Activity"));
@@ -23,17 +22,11 @@ const Stats = lazy(() => import("@/pages/Stats"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 /**
- * Partidas saiu da obra em 2026-08-31 e absorveu Demos: a lista de
- * gravações virou parte do arquivo de partidas, no mesmo lugar, porque
- * quem procura uma partida quer o placar E a demo dela. A fonte é o plugin
- * `lendas_matches` (placar, rodadas e Tab, gravados no fim de cada mapa) —
- * ver server/src/services/MatchesService.ts.
- *
- * `/demos` continua respondendo, redirecionando pra `/partidas`, pra não
- * quebrar link antigo. `DemoDetail` segue de pé: é o destino das gravações
- * que não têm partida registrada, e são a maioria do acervo.
- *
- * `pages/Stats` continua no repositório com a mesma lógica de antes.
+ * Demos voltou a ser uma aba própria em 2026-09-01. A tentativa de fundi-la
+ * com Partidas (placar, rodadas e Tab por partida) foi desfeita a pedido: o
+ * placar não se sustentou na prática e a fusão desorganizou a área. O
+ * backend continua registrando as partidas — se um dia valer a pena, o dado
+ * estará lá; a casca do frontend está no histórico do git.
  *
  * Banimentos saiu da obra em 2026-08-30: passou a ler os bans reais do
  * SourceBans++ via `GET /api/bans` (o servidor de jogo exporta um JSON que o
@@ -56,19 +49,18 @@ function PublicApp() {
               <Route path="/" element={<Overview />} />
               <Route path="/servidores" element={<Servers />} />
               <Route path="/ranking" element={<Ranking />} />
+              <Route path="/demos" element={<Demos />} />
               <Route path="/demos/:id" element={<DemoDetail />} />
               <Route path="/jogadores" element={<Players />} />
               <Route path="/jogadores/:id" element={<PlayerProfile />} />
               <Route path="/atividade" element={<Activity />} />
 
               <Route path="/banimentos" element={<Bans />} />
-              <Route path="/partidas" element={<Matches />} />
-              <Route path="/partidas/:id" element={<MatchDetail />} />
-              {/* Demos e Partidas viraram um lugar só. A lista mora em
-                  /partidas; /demos continua existindo pra não quebrar link
-                  antigo nem favorito, e manda pra lá. A página de UMA demo
-                  segue de pé: é o destino das gravações sem partida. */}
-              <Route path="/demos" element={<Navigate to="/partidas" replace />} />
+              {/* Partidas foi desfeita em 2026-09-01: o placar por partida
+                  não se sustentou na prática e a fusão bagunçou a área.
+                  `/partidas` redireciona pra não quebrar link de quem
+                  navegou por lá enquanto existiu. */}
+              <Route path="/partidas/*" element={<Navigate to="/demos" replace />} />
               <Route path="/estatisticas" element={<Stats />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
