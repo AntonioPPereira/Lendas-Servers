@@ -22,3 +22,6 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Binários compilados dos plugins: o que vale é o .sp, o .smx é gerado.
+plugins/*.smx
