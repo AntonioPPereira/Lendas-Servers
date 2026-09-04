@@ -4,74 +4,84 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_VERSION "1.3.0"
+#define PLUGIN_VERSION "2.0.0"
 
 /**
- * Fecha o atalho de "ir pro spec e voltar limpo".
+ * Fecha os atalhos de "sair e voltar limpo".
  *
- * Dois abusos saem da MESMA jogada, e por isso ficam no mesmo plugin:
+ * Existem DUAS rotas para o mesmo truque, e a 1.x só fechava uma:
  *
- * 1. DOMINÂNCIA. O CS:S guarda quem domina quem em `m_bPlayerDominated` (e o
- *    espelho `m_bPlayerDominatingMe`), e limpa essas relações quando o
- *    jogador troca de time. Uma ida ao espectador apaga a dominância que
- *    alguém levou anos de rodada pra conquistar;
- * 2. DINHEIRO. Ao reentrar num time o jogador recebe o `mp_startmoney`. Para
- *    quem está quebrado isso é dinheiro de graça, toda vez que quiser.
+ * 1. ESPECTADOR. Trocar de time limpa as relações de `m_bPlayerDominated` e
+ *    reentrar num time paga `mp_startmoney`;
+ * 2. DESCONEXÃO. Sair do servidor e voltar zera tudo, inclusive o placar.
  *
- * A correção é a mesma ideia nos dois casos: **a ida e volta não pode mudar
- * nada**. Guarda-se o estado no instante em que ele sai e devolve-se quando
- * ele volta. Não se bloqueia a troca de time — quem precisa sair de verdade
- * continua podendo, e quem só queria trapacear não ganha nada com isso.
+ * A 1.x guardava o estado por SLOT e apagava tudo no disconnect, justamente
+ * para não punir quem caiu. O efeito foi o contrário do pretendido: deixou a
+ * rota da desconexão escancarada, que é a mais fácil das duas.
  *
- * A foto é tirada no `jointeam`, ANTES da troca acontecer. No evento
- * `player_team` já é tarde: o jogo zerou o dinheiro e a dominância antes de
- * avisar.
+ * Agora o estado é guardado por STEAMID e sobrevive à desconexão. E isso
+ * resolve o dilema de "e quem caiu de verdade?" sem precisar adivinhar
+ * intenção: **devolver o estado não pune ninguém**. Quem caiu volta com o que
+ * tinha, que é o que ele quer; quem saiu de propósito volta com o que tinha,
+ * que é o que ele NÃO quer. A mesma regra serve aos dois.
  *
- * NADA é presumido sobre as netprops. Se `m_bPlayerDominated` não existir
- * neste jogo, o plugin diz isso no log e desliga só essa metade — o dinheiro
- * continua protegido. Ver `Lendas_Detectar`.
+ * A dominância também é guardada por par de SteamID, não por slot — no
+ * reconectar o jogador pode receber outro slot, e um índice velho apontaria
+ * para a pessoa errada.
+ *
+ * ZOAÇÃO E MULTA SÓ NA ROTA DO ESPECTADOR. Ir pro espectador é ato
+ * deliberado e observável; cair não é. Punir desconexão puniria quem teve
+ * queda de energia, e não existe jeito de distinguir isso de dentro do jogo.
  */
 
 public Plugin myinfo =
 {
     name = "[LENDAS] Anti-abuso do Spec",
     author = "LENDAS Network",
-    description = "Impede zerar dominância e ganhar dinheiro indo ao espectador e voltando.",
+    description = "Impede resetar dinheiro, frags e dominância pelo espectador ou pela desconexão.",
     version = PLUGIN_VERSION,
     url = "https://www.lendascss.com.br"
 };
 
+#define TIME_NENHUM     0
 #define TIME_ESPECTADOR 1
 #define TIME_TR         2
 #define TIME_CT         3
 
+/** Quantos jogadores cabem na memória. Servidor de 14 slots com folga. */
+#define MAX_GUARDADOS 64
+
+/** Quantas relações de dominância cabem. 14 jogadores dão no máximo 182 pares. */
+#define MAX_PARES 256
+
 ConVar g_CvarDinheiro;
+ConVar g_CvarPlacar;
 ConVar g_CvarDominancia;
+ConVar g_CvarMemoria;
 ConVar g_CvarDebug;
 ConVar g_CvarZoar;
 ConVar g_CvarSom;
 ConVar g_CvarMulta;
-
 ConVar g_CvarTolerancia;
 ConVar g_CvarJanela;
 
-/** Quantas vezes cada um tentou o truque neste mapa. Alimenta a zoação. */
-int g_iTentativas[MAXPLAYERS + 1];
+// ---- memória por SteamID, sobrevive à desconexão -------------------------
+char  g_sDono[MAX_GUARDADOS][32];
+int   g_iDinheiro[MAX_GUARDADOS];
+int   g_iFrags[MAX_GUARDADOS];
+int   g_iMortes[MAX_GUARDADOS];
+float g_fQuando[MAX_GUARDADOS];
+bool  g_bViaSpec[MAX_GUARDADOS];   // saiu pelo menu de times, não por queda
+int   g_iTentativas[MAX_GUARDADOS];
 
-/** Instante em que saiu do time. Mede quanto tempo ficou fora. */
-float g_fSaiuEm[MAXPLAYERS + 1];
+// ---- dominância por PAR de SteamID: A domina B ---------------------------
+char g_sDomina[MAX_PARES][32];
+char g_sDominado[MAX_PARES][32];
+int  g_iPares;
 
-/** Dinheiro no instante em que saiu de um time jogável. -1 = sem foto. */
-int g_iDinheiro[MAXPLAYERS + 1];
-
-/** Quem este jogador dominava, e quem o dominava, quando saiu. */
-bool g_bDominava[MAXPLAYERS + 1][MAXPLAYERS + 1];
-bool g_bDominado[MAXPLAYERS + 1][MAXPLAYERS + 1];
-
-bool g_bTemFoto[MAXPLAYERS + 1];
-
-/** -1 = ainda não olhamos; 0 = não existe neste jogo; 1 = existe. */
-int g_iTemNetprops = -1;
+/** -1 = não olhamos ainda; 0 = netprops não existem; 1 = existem. */
+int g_iTemDominancia = -1;
+int g_iTemPlacar = -1;
 
 public void OnPluginStart()
 {
@@ -79,26 +89,29 @@ public void OnPluginStart()
         FCVAR_NOTIFY | FCVAR_DONTRECORD);
 
     g_CvarDinheiro = CreateConVar("lendas_spec_dinheiro", "1",
-        "Devolve o dinheiro que o jogador tinha ao voltar do espectador.", _, true, 0.0, true, 1.0);
+        "Devolve o dinheiro ao voltar do espectador ou de uma desconexão.", _, true, 0.0, true, 1.0);
+    g_CvarPlacar = CreateConVar("lendas_spec_placar", "1",
+        "Devolve frags e mortes ao voltar.", _, true, 0.0, true, 1.0);
     g_CvarDominancia = CreateConVar("lendas_spec_dominancia", "1",
-        "Devolve as relações de dominância ao voltar do espectador.", _, true, 0.0, true, 1.0);
+        "Devolve as relações de dominância ao voltar.", _, true, 0.0, true, 1.0);
+    g_CvarMemoria = CreateConVar("lendas_spec_memoria", "900",
+        "Por quantos segundos o estado de quem saiu continua guardado. Depois disso ele volta zerado, como qualquer um que chega.",
+        _, true, 30.0, true, 7200.0);
     g_CvarDebug = CreateConVar("lendas_spec_debug", "0",
         "Registra no log cada foto e cada devolução.", _, true, 0.0, true, 1.0);
     g_CvarZoar = CreateConVar("lendas_spec_zoar", "1",
-        "Anuncia no chat quem tentou fugir da dominância indo pro espectador.", _, true, 0.0, true, 1.0);
+        "Anuncia no chat quem foi pro espectador fugir da dominância.", _, true, 0.0, true, 1.0);
     g_CvarSom = CreateConVar("lendas_spec_som", "quake/standard/humiliation.mp3",
         "Som tocado na zoação. Vazio = sem som.");
     g_CvarMulta = CreateConVar("lendas_spec_multa", "1500",
-        "Multa em dólares. Só a partir da tentativa seguinte à tolerância. 0 = sem multa.",
-        _, true, 0.0, true, 16000.0);
+        "Multa em dólares. Só na rota do espectador, nunca na desconexão.", _, true, 0.0, true, 16000.0);
     g_CvarTolerancia = CreateConVar("lendas_spec_tolerancia", "0",
         "Quantas idas ao espectador são perdoadas antes de multar. 0 = pega já na primeira.",
         _, true, 0.0, true, 10.0);
     g_CvarJanela = CreateConVar("lendas_spec_janela", "180",
-        "Segundos no espectador para ainda contar como fuga. Quem fica mais que isso saiu por motivo real e não é cobrado.",
+        "Segundos no espectador para ainda contar como fuga. Quem fica mais que isso não é cobrado.",
         _, true, 5.0, true, 3600.0);
 
-    // O menu de times manda `jointeam <n>`; alguns clientes mandam `spectate`.
     AddCommandListener(Lendas_AntesDeTrocar, "jointeam");
     AddCommandListener(Lendas_AntesDeTrocar, "spectate");
 
@@ -109,9 +122,6 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-    // O som da zoação precisa estar precacheado e na lista de download. O
-    // quakesounds já faz isso pros sons dele, mas repetir não custa e cobre
-    // o caso de alguém trocar o som por outro na cvar.
     char som[PLATFORM_MAX_PATH];
     g_CvarSom.GetString(som, sizeof(som));
     if (som[0] != EOS)
@@ -129,268 +139,403 @@ public void OnMapStart()
         }
     }
 
-    // Mapa novo, partida nova: nenhuma foto sobrevive. Devolver dominância
-    // de um mapa anterior seria inventar história.
-    for (int i = 1; i <= MaxClients; i++)
+    // Mapa novo, partida nova: nada sobrevive. Devolver placar de um mapa
+    // anterior seria inventar história.
+    for (int i = 0; i < MAX_GUARDADOS; i++)
     {
-        Lendas_Esquecer(i);
-        g_iTentativas[i] = 0;
+        g_sDono[i][0] = EOS;
     }
+    g_iPares = 0;
 }
 
-public void OnClientDisconnect(int client)
-{
-    Lendas_Esquecer(client);
+// ==========================================================================
+//  Memória por SteamID
+// ==========================================================================
 
-    // Quem saiu do servidor não domina mais ninguém, e ninguém mais o domina.
-    // Manter isso na foto dos OUTROS faria a dominância reaparecer no slot
-    // reaproveitado por um jogador diferente.
-    for (int i = 1; i <= MaxClients; i++)
-    {
-        g_bDominava[i][client] = false;
-        g_bDominado[i][client] = false;
-    }
-}
-
-void Lendas_Esquecer(int client)
+/** Índice do registro deste SteamID, ou -1. */
+int Lendas_Achar(const char[] steam)
 {
-    g_iDinheiro[client] = -1;
-    g_fSaiuEm[client] = 0.0;
-    g_bTemFoto[client] = false;
-    for (int i = 0; i <= MaxClients; i++)
+    for (int i = 0; i < MAX_GUARDADOS; i++)
     {
-        g_bDominava[client][i] = false;
-        g_bDominado[client][i] = false;
+        if (g_sDono[i][0] != EOS && StrEqual(g_sDono[i], steam))
+        {
+            return i;
+        }
     }
+    return -1;
 }
 
 /**
- * As netprops de dominância existem neste jogo?
+ * Índice para gravar: o do próprio jogador, ou um vago, ou o mais velho.
  *
- * Perguntado uma vez só, com um cliente válido em mãos — `HasEntProp` precisa
- * de uma entidade de verdade. O resultado vai pro log nos dois casos, porque
- * "o plugin não fez nada e não disse por quê" é o pior resultado possível.
+ * Reaproveitar o mais velho quando lota é melhor que recusar a gravação — o
+ * registro antigo já passou da validade de qualquer forma.
  */
+int Lendas_Vaga(const char[] steam)
+{
+    int existente = Lendas_Achar(steam);
+    if (existente != -1)
+    {
+        return existente;
+    }
+
+    int maisVelho = 0;
+    for (int i = 0; i < MAX_GUARDADOS; i++)
+    {
+        if (g_sDono[i][0] == EOS)
+        {
+            return i;
+        }
+        if (g_fQuando[i] < g_fQuando[maisVelho])
+        {
+            maisVelho = i;
+        }
+    }
+    return maisVelho;
+}
+
+bool Lendas_SteamDe(int client, char[] saida, int tamanho)
+{
+    if (!IsClientInGame(client) || IsFakeClient(client))
+    {
+        return false;
+    }
+    return GetClientAuthId(client, AuthId_Steam2, saida, tamanho);
+}
+
+// ==========================================================================
+//  Detecção de netprops — perguntar antes de ler
+// ==========================================================================
+
 void Lendas_Detectar(int client)
 {
-    if (g_iTemNetprops != -1)
+    if (g_iTemDominancia == -1)
+    {
+        bool tem = HasEntProp(client, Prop_Send, "m_bPlayerDominated")
+                && HasEntProp(client, Prop_Send, "m_bPlayerDominatingMe");
+        g_iTemDominancia = tem ? 1 : 0;
+        if (tem)
+        {
+            LogMessage("Dominância disponível. Proteção ligada.");
+        }
+        else
+        {
+            LogError("Netprops de dominância não existem neste jogo — essa parte fica desligada.");
+        }
+    }
+
+    if (g_iTemPlacar == -1)
+    {
+        bool tem = HasEntProp(client, Prop_Send, "m_iFrags")
+                && HasEntProp(client, Prop_Send, "m_iDeaths");
+        g_iTemPlacar = tem ? 1 : 0;
+        if (tem)
+        {
+            LogMessage("Placar disponível (m_iFrags + m_iDeaths). Proteção ligada.");
+        }
+        else
+        {
+            LogError("Netprops de placar não existem neste jogo — frags não serão devolvidos.");
+        }
+    }
+}
+
+// ==========================================================================
+//  Fotografar
+// ==========================================================================
+
+/**
+ * Guarda tudo o que o jogador tem agora.
+ *
+ * `viaSpec` separa as duas rotas: só a do menu de times pode gerar cobrança.
+ * Desconexão é indistinguível de queda de energia vista de dentro do jogo.
+ */
+void Lendas_Fotografar(int client, bool viaSpec)
+{
+    char steam[32];
+    if (!Lendas_SteamDe(client, steam, sizeof(steam)))
     {
         return;
     }
 
-    bool tem = HasEntProp(client, Prop_Send, "m_bPlayerDominated")
-            && HasEntProp(client, Prop_Send, "m_bPlayerDominatingMe");
-
-    g_iTemNetprops = tem ? 1 : 0;
-
-    if (tem)
+    int time = GetClientTeam(client);
+    if (time != TIME_TR && time != TIME_CT)
     {
-        LogMessage("Dominância disponível (m_bPlayerDominated + m_bPlayerDominatingMe). Proteção ligada.");
-    }
-    else
-    {
-        LogError("Netprops de dominância não existem neste jogo. Só o dinheiro será protegido.");
-    }
-}
-
-/**
- * Roda ANTES do jogo processar a troca de time — é a única janela em que o
- * dinheiro e a dominância ainda são os de verdade.
- */
-public Action Lendas_AntesDeTrocar(int client, const char[] comando, int args)
-{
-    if (client <= 0 || !IsClientInGame(client))
-    {
-        return Plugin_Continue;
+        return;
     }
 
     Lendas_Detectar(client);
 
-    int time = GetClientTeam(client);
-    if (time != TIME_TR && time != TIME_CT)
-    {
-        return Plugin_Continue;
-    }
+    int i = Lendas_Vaga(steam);
+    int tentativasAntes = StrEqual(g_sDono[i], steam) ? g_iTentativas[i] : 0;
 
-    // Sair de um time jogável: guarda tudo. Vale mesmo que ele esteja
-    // trocando de TR pra CT — se a troca não for pro espectador, a devolução
-    // simplesmente não acontece.
-    g_iDinheiro[client] = GetEntProp(client, Prop_Send, "m_iAccount");
-    g_fSaiuEm[client] = GetGameTime();
-    g_bTemFoto[client] = true;
+    strcopy(g_sDono[i], sizeof(g_sDono[]), steam);
+    g_iDinheiro[i] = GetEntProp(client, Prop_Send, "m_iAccount");
+    g_iFrags[i] = (g_iTemPlacar == 1) ? GetEntProp(client, Prop_Send, "m_iFrags") : -1;
+    g_iMortes[i] = (g_iTemPlacar == 1) ? GetEntProp(client, Prop_Send, "m_iDeaths") : -1;
+    g_fQuando[i] = GetGameTime();
+    g_bViaSpec[i] = viaSpec;
+    g_iTentativas[i] = tentativasAntes;
 
-    if (g_iTemNetprops == 1)
+    if (g_iTemDominancia == 1)
     {
-        for (int i = 1; i <= MaxClients; i++)
-        {
-            g_bDominava[client][i] = GetEntProp(client, Prop_Send, "m_bPlayerDominated", 1, i) != 0;
-            g_bDominado[client][i] = GetEntProp(client, Prop_Send, "m_bPlayerDominatingMe", 1, i) != 0;
-        }
+        Lendas_GuardarDominancia(client, steam);
     }
 
     if (g_CvarDebug.BoolValue)
     {
-        LogMessage("foto de %N: dinheiro=%d", client, g_iDinheiro[client]);
+        LogMessage("foto de %N (%s): $%d, %d frags, via %s",
+            client, steam, g_iDinheiro[i], g_iFrags[i], viaSpec ? "spec" : "desconexao");
+    }
+}
+
+/** Regrava os pares de dominância deste jogador, nos dois sentidos. */
+void Lendas_GuardarDominancia(int client, const char[] steam)
+{
+    // Fora os pares antigos deste jogador — serão reescritos com o estado
+    // de agora, e manter os dois faria a dominância ressuscitar.
+    for (int p = g_iPares - 1; p >= 0; p--)
+    {
+        if (StrEqual(g_sDomina[p], steam) || StrEqual(g_sDominado[p], steam))
+        {
+            g_iPares--;
+            strcopy(g_sDomina[p], 32, g_sDomina[g_iPares]);
+            strcopy(g_sDominado[p], 32, g_sDominado[g_iPares]);
+        }
     }
 
+    for (int outro = 1; outro <= MaxClients; outro++)
+    {
+        char steamOutro[32];
+        if (outro == client || !Lendas_SteamDe(outro, steamOutro, sizeof(steamOutro)))
+        {
+            continue;
+        }
+
+        if (GetEntProp(client, Prop_Send, "m_bPlayerDominated", 1, outro) != 0)
+        {
+            Lendas_AddPar(steam, steamOutro);
+        }
+        if (GetEntProp(client, Prop_Send, "m_bPlayerDominatingMe", 1, outro) != 0)
+        {
+            Lendas_AddPar(steamOutro, steam);
+        }
+    }
+}
+
+void Lendas_AddPar(const char[] domina, const char[] dominado)
+{
+    for (int p = 0; p < g_iPares; p++)
+    {
+        if (StrEqual(g_sDomina[p], domina) && StrEqual(g_sDominado[p], dominado))
+        {
+            return;
+        }
+    }
+    if (g_iPares >= MAX_PARES)
+    {
+        return;
+    }
+    strcopy(g_sDomina[g_iPares], 32, domina);
+    strcopy(g_sDominado[g_iPares], 32, dominado);
+    g_iPares++;
+}
+
+// ==========================================================================
+//  Gatilhos
+// ==========================================================================
+
+/** Antes da troca de time — única janela em que o estado ainda é o real. */
+public Action Lendas_AntesDeTrocar(int client, const char[] comando, int args)
+{
+    if (client > 0 && IsClientInGame(client))
+    {
+        Lendas_Fotografar(client, true);
+    }
     return Plugin_Continue;
+}
+
+/**
+ * Desconexão. A 1.x APAGAVA o estado aqui; agora ele é gravado.
+ *
+ * É a correção central desta versão: sair do servidor era a rota mais fácil
+ * de resetar tudo, justamente porque o plugin cooperava.
+ */
+public void OnClientDisconnect(int client)
+{
+    Lendas_Fotografar(client, false);
 }
 
 public void Evento_TrocaDeTime(Event event, const char[] name, bool dontBroadcast)
 {
     int client = GetClientOfUserId(event.GetInt("userid"));
-    if (client <= 0 || !IsClientInGame(client))
+    if (client <= 0 || !IsClientInGame(client) || event.GetBool("disconnect"))
     {
-        return;
-    }
-
-    // Quem está saindo do servidor não volta pra time nenhum.
-    if (event.GetBool("disconnect"))
-    {
-        Lendas_Esquecer(client);
         return;
     }
 
     int novo = event.GetInt("team");
     int velho = event.GetInt("oldteam");
 
-    // Só interessa a VOLTA: do espectador para um time jogável.
-    if (velho != TIME_ESPECTADOR || (novo != TIME_TR && novo != TIME_CT))
+    // Entrar num time jogável, vindo do espectador OU de recém-chegado
+    // (reconexão cai aqui, com oldteam "sem time").
+    if (novo != TIME_TR && novo != TIME_CT)
+    {
+        return;
+    }
+    if (velho != TIME_ESPECTADOR && velho != TIME_NENHUM)
     {
         return;
     }
 
-    if (!g_bTemFoto[client])
-    {
-        return;
-    }
-
-    // O jogo ainda vai mexer no jogador depois deste evento. Devolver agora
-    // seria sobrescrito; por isso a devolução espera o próximo quadro.
+    // O jogo ainda mexe no jogador depois deste evento; devolver agora seria
+    // sobrescrito no mesmo quadro.
     RequestFrame(Lendas_DevolverNoFrame, GetClientUserId(client));
 }
 
 public void Lendas_DevolverNoFrame(any userid)
 {
     int client = GetClientOfUserId(userid);
-    if (client <= 0 || !IsClientInGame(client) || !g_bTemFoto[client])
+    char steam[32];
+    if (client <= 0 || !Lendas_SteamDe(client, steam, sizeof(steam)))
     {
         return;
     }
 
-    if (g_CvarDinheiro.BoolValue && g_iDinheiro[client] >= 0)
+    int i = Lendas_Achar(steam);
+    if (i == -1)
     {
-        SetEntProp(client, Prop_Send, "m_iAccount", g_iDinheiro[client]);
+        return;
     }
 
-    if (g_CvarDominancia.BoolValue && g_iTemNetprops == 1)
+    // Passou da memória: volta zerado, como qualquer um que chega agora.
+    if (GetGameTime() - g_fQuando[i] > g_CvarMemoria.FloatValue)
     {
-        for (int i = 1; i <= MaxClients; i++)
-        {
-            if (!IsClientInGame(i))
-            {
-                continue;
-            }
-
-            SetEntProp(client, Prop_Send, "m_bPlayerDominated", g_bDominava[client][i] ? 1 : 0, 1, i);
-            SetEntProp(client, Prop_Send, "m_bPlayerDominatingMe", g_bDominado[client][i] ? 1 : 0, 1, i);
-
-            // O espelho no OUTRO jogador também foi limpo pelo jogo. Sem
-            // isto, um lado veria a dominância e o outro não.
-            SetEntProp(i, Prop_Send, "m_bPlayerDominatingMe", g_bDominava[client][i] ? 1 : 0, 1, client);
-            SetEntProp(i, Prop_Send, "m_bPlayerDominated", g_bDominado[client][i] ? 1 : 0, 1, client);
-        }
+        g_sDono[i][0] = EOS;
+        return;
     }
 
-    Lendas_Zoar(client);
+    Lendas_Detectar(client);
+
+    if (g_CvarDinheiro.BoolValue && g_iDinheiro[i] >= 0)
+    {
+        SetEntProp(client, Prop_Send, "m_iAccount", g_iDinheiro[i]);
+    }
+
+    if (g_CvarPlacar.BoolValue && g_iTemPlacar == 1 && g_iFrags[i] >= 0)
+    {
+        SetEntProp(client, Prop_Send, "m_iFrags", g_iFrags[i]);
+        SetEntProp(client, Prop_Send, "m_iDeaths", g_iMortes[i]);
+    }
+
+    if (g_CvarDominancia.BoolValue && g_iTemDominancia == 1)
+    {
+        Lendas_DevolverDominancia(client, steam);
+    }
+
+    bool viaSpec = g_bViaSpec[i];
+    float fora = GetGameTime() - g_fQuando[i];
 
     if (g_CvarDebug.BoolValue)
     {
-        LogMessage("devolvido a %N: dinheiro=%d dominancia=%s",
-            client, g_iDinheiro[client], g_iTemNetprops == 1 ? "sim" : "indisponivel");
+        LogMessage("devolvido a %N: $%d, %d frags, %.0fs fora, via %s",
+            client, g_iDinheiro[i], g_iFrags[i], fora, viaSpec ? "spec" : "desconexao");
     }
 
-    // A foto se gasta ao ser usada: uma segunda volta sem ter saído de novo
-    // devolveria um estado velho.
-    g_bTemFoto[client] = false;
+    // A foto se gasta ao ser usada, mas o contador de tentativas fica: é ele
+    // que sabe que o jogador é reincidente NESTE mapa.
+    g_sDono[i][0] = EOS;
+
+    if (viaSpec)
+    {
+        Lendas_Zoar(client, steam, fora);
+    }
 }
 
-/**
- * A parte que dói: humilhação pública.
- *
- * Só dispara em quem ESTAVA sendo dominado na hora em que foi pro
- * espectador. Quem foi por motivo legítimo — travou, telefone tocou, tanto
- * faz — não passa vergonha nenhuma. Sem essa checagem o plugin acusaria
- * inocente, que é pior do que não acusar ninguém.
- *
- * A multa é opcional e vem desligada. Num mix, tirar dinheiro de alguém
- * castiga o time inteiro pelo erro de um; a vergonha, não.
- */
-void Lendas_Zoar(int client)
+/** Repõe a dominância nos dois lados, resolvendo SteamID para o slot atual. */
+void Lendas_DevolverDominancia(int client, const char[] steam)
 {
-    if (!g_CvarZoar.BoolValue || g_iTemNetprops != 1)
+    for (int outro = 1; outro <= MaxClients; outro++)
+    {
+        char steamOutro[32];
+        if (outro == client || !Lendas_SteamDe(outro, steamOutro, sizeof(steamOutro)))
+        {
+            continue;
+        }
+
+        bool euDomino = Lendas_TemPar(steam, steamOutro);
+        bool eleMeDomina = Lendas_TemPar(steamOutro, steam);
+
+        SetEntProp(client, Prop_Send, "m_bPlayerDominated", euDomino ? 1 : 0, 1, outro);
+        SetEntProp(client, Prop_Send, "m_bPlayerDominatingMe", eleMeDomina ? 1 : 0, 1, outro);
+
+        // O espelho no outro jogador também foi limpo pelo jogo. Sem isto um
+        // lado veria a relação e o outro não.
+        SetEntProp(outro, Prop_Send, "m_bPlayerDominatingMe", euDomino ? 1 : 0, 1, client);
+        SetEntProp(outro, Prop_Send, "m_bPlayerDominated", eleMeDomina ? 1 : 0, 1, client);
+    }
+}
+
+bool Lendas_TemPar(const char[] domina, const char[] dominado)
+{
+    for (int p = 0; p < g_iPares; p++)
+    {
+        if (StrEqual(g_sDomina[p], domina) && StrEqual(g_sDominado[p], dominado))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+// ==========================================================================
+//  Humilhação pública — só na rota do espectador
+// ==========================================================================
+
+void Lendas_Zoar(int client, const char[] steam, float fora)
+{
+    if (!g_CvarZoar.BoolValue || g_iTemDominancia != 1)
     {
         return;
     }
 
-    // Quem o dominava? Se ninguém, não houve fuga nenhuma.
+    // Só quem ESTAVA sendo dominado tentou fugir de alguma coisa. Quem foi
+    // pro espectador por outro motivo não passa vergonha à toa.
     int dominadores = 0;
     int primeiro = -1;
-    for (int i = 1; i <= MaxClients; i++)
+    for (int outro = 1; outro <= MaxClients; outro++)
     {
-        if (g_bDominado[client][i] && IsClientInGame(i))
+        char steamOutro[32];
+        if (outro == client || !Lendas_SteamDe(outro, steamOutro, sizeof(steamOutro)))
+        {
+            continue;
+        }
+        if (Lendas_TemPar(steamOutro, steam))
         {
             dominadores++;
             if (primeiro == -1)
             {
-                primeiro = i;
+                primeiro = outro;
             }
         }
     }
 
-    if (dominadores == 0)
+    if (dominadores == 0 || fora > g_CvarJanela.FloatValue)
     {
         return;
     }
 
-    /**
-     * FREIO 1: quanto tempo ficou fora.
-     *
-     * Quem foge de dominância volta correndo — é o sentido da jogada. Quem
-     * saiu por motivo de verdade fica fora bem mais tempo, ou nem volta.
-     * Passou da janela, o estado é devolvido do mesmo jeito (isso é justo
-     * com ele E com quem o domina), mas ninguém é acusado de nada.
-     */
-    float fora = GetGameTime() - g_fSaiuEm[client];
-    if (fora > g_CvarJanela.FloatValue)
-    {
-        if (g_CvarDebug.BoolValue)
-        {
-            LogMessage("%N ficou %.0fs no spec: fora da janela, sem cobrança.", client, fora);
-        }
-        return;
-    }
+    int i = Lendas_Vaga(steam);
+    strcopy(g_sDono[i], sizeof(g_sDono[]), steam);
+    g_fQuando[i] = GetGameTime();
+    g_iDinheiro[i] = -1;
+    g_iFrags[i] = -1;
+    g_iTentativas[i]++;
+    int vezes = g_iTentativas[i];
 
-    g_iTentativas[client]++;
-    int vezes = g_iTentativas[client];
-
-    /**
-     * FREIO 2: perdão configurável, DESLIGADO por decisão do servidor.
-     *
-     * Em `0` a cobrança vem já na primeira. Quem quiser afrouxar sobe a cvar:
-     * em `1`, a primeira do mapa recebe só um aviso no privado.
-     *
-     * Note que este freio protege quem errou uma vez; quem saiu por motivo
-     * REAL continua protegido pelo freio da janela de tempo acima, que não
-     * depende desta cvar.
-     */
     if (vezes <= g_CvarTolerancia.IntValue)
     {
-        PrintToChat(client, "\x04[LENDAS]\x01 Você voltou como saiu: dinheiro e dominância intactos. Se repetir, tem multa.");
-        if (g_CvarDebug.BoolValue)
-        {
-            LogMessage("%N: tentativa %d dentro da tolerancia, so aviso.", client, vezes);
-        }
+        PrintToChat(client, "\x04[LENDAS]\x01 Você voltou como saiu: nada foi resetado. Se repetir, tem multa.");
         return;
     }
 
@@ -398,10 +543,6 @@ void Lendas_Zoar(int client)
     if (vezes > 1)
     {
         Format(extra, sizeof(extra), " Já é a \x04%dª vez\x01.", vezes);
-    }
-    else
-    {
-        extra = "";
     }
 
     if (dominadores == 1)
@@ -415,12 +556,16 @@ void Lendas_Zoar(int client)
             client, dominadores, extra);
     }
 
-    // Quem domina merece saber, e é essa mensagem que arranca o "kkkk" no mic.
-    for (int i = 1; i <= MaxClients; i++)
+    for (int outro = 1; outro <= MaxClients; outro++)
     {
-        if (g_bDominado[client][i] && IsClientInGame(i))
+        char steamOutro[32];
+        if (outro == client || !Lendas_SteamDe(outro, steamOutro, sizeof(steamOutro)))
         {
-            PrintToChat(i, "\x04[LENDAS]\x01 \x03%N\x01 tentou fugir da SUA dominância. Continua sendo seu.", client);
+            continue;
+        }
+        if (Lendas_TemPar(steamOutro, steam))
+        {
+            PrintToChat(outro, "\x04[LENDAS]\x01 \x03%N\x01 tentou fugir da SUA dominância. Continua sendo seu.", client);
         }
     }
 
