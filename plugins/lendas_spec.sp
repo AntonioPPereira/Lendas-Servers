@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_VERSION "2.0.0"
+#define PLUGIN_VERSION "2.1.0"
 
 /**
  * Fecha os atalhos de "sair e voltar limpo".
@@ -29,9 +29,11 @@
  * reconectar o jogador pode receber outro slot, e um índice velho apontaria
  * para a pessoa errada.
  *
- * ZOAÇÃO E MULTA SÓ NA ROTA DO ESPECTADOR. Ir pro espectador é ato
- * deliberado e observável; cair não é. Punir desconexão puniria quem teve
- * queda de energia, e não existe jeito de distinguir isso de dentro do jogo.
+ * QUEM CAIU NÃO É PUNIDO. O evento `player_disconnect` traz o MOTIVO da
+ * saída, e é ele que separa quem clicou em desconectar de quem perdeu a
+ * conexão. A regra é deliberadamente torta a favor do inocente: só pune
+ * quando o motivo bate na lista de saída voluntária E não bate na lista de
+ * problema de rede. Motivo desconhecido não pune. Ver `Lendas_SaidaFoiEscolha`.
  */
 
 public Plugin myinfo =
@@ -64,6 +66,12 @@ ConVar g_CvarSom;
 ConVar g_CvarMulta;
 ConVar g_CvarTolerancia;
 ConVar g_CvarJanela;
+ConVar g_CvarPunirSaida;
+ConVar g_CvarMotivoVoluntario;
+ConVar g_CvarMotivoInocente;
+
+/** Motivo da desconexão, capturado antes do jogador sumir. */
+char g_sMotivo[MAXPLAYERS + 1][96];
 
 // ---- memória por SteamID, sobrevive à desconexão -------------------------
 char  g_sDono[MAX_GUARDADOS][32];
@@ -71,7 +79,8 @@ int   g_iDinheiro[MAX_GUARDADOS];
 int   g_iFrags[MAX_GUARDADOS];
 int   g_iMortes[MAX_GUARDADOS];
 float g_fQuando[MAX_GUARDADOS];
-bool  g_bViaSpec[MAX_GUARDADOS];   // saiu pelo menu de times, não por queda
+bool  g_bViaSpec[MAX_GUARDADOS];   // saiu pelo menu de times
+bool  g_bSaidaEscolhida[MAX_GUARDADOS];  // desconectou por vontade, não por queda
 int   g_iTentativas[MAX_GUARDADOS];
 
 // ---- dominância por PAR de SteamID: A domina B ---------------------------
@@ -100,22 +109,32 @@ public void OnPluginStart()
     g_CvarDebug = CreateConVar("lendas_spec_debug", "0",
         "Registra no log cada foto e cada devolução.", _, true, 0.0, true, 1.0);
     g_CvarZoar = CreateConVar("lendas_spec_zoar", "1",
-        "Anuncia no chat quem foi pro espectador fugir da dominância.", _, true, 0.0, true, 1.0);
+        "Anuncia no chat quem tentou resetar pelo espectador ou pela desconexão.", _, true, 0.0, true, 1.0);
     g_CvarSom = CreateConVar("lendas_spec_som", "quake/standard/humiliation.mp3",
         "Som tocado na zoação. Vazio = sem som.");
     g_CvarMulta = CreateConVar("lendas_spec_multa", "1500",
-        "Multa em dólares. Só na rota do espectador, nunca na desconexão.", _, true, 0.0, true, 16000.0);
+        "Multa em dólares, nas duas rotas. Quem CAI nunca paga.", _, true, 0.0, true, 16000.0);
     g_CvarTolerancia = CreateConVar("lendas_spec_tolerancia", "0",
         "Quantas idas ao espectador são perdoadas antes de multar. 0 = pega já na primeira.",
         _, true, 0.0, true, 10.0);
     g_CvarJanela = CreateConVar("lendas_spec_janela", "180",
-        "Segundos no espectador para ainda contar como fuga. Quem fica mais que isso não é cobrado.",
+        "Segundos fora para ainda contar como fuga. Quem fica mais que isso não é cobrado.",
         _, true, 5.0, true, 3600.0);
+    g_CvarPunirSaida = CreateConVar("lendas_spec_punir_saida", "1",
+        "Pune também quem desconecta e volta correndo. Quem CAI nunca é punido — ver as duas cvars abaixo.",
+        _, true, 0.0, true, 1.0);
+    g_CvarMotivoVoluntario = CreateConVar("lendas_spec_saida_voluntaria", "by user,quit,left the game",
+        "Trechos do motivo de desconexão que contam como saída por vontade própria. Separados por vírgula.");
+    g_CvarMotivoInocente = CreateConVar("lendas_spec_saida_inocente", "timed out,timeout,overflow,connection,loss,steam,shutdown",
+        "Trechos que SEMPRE inocentam, mesmo se casarem com a lista de cima. Queda de conexão vive aqui.");
 
     AddCommandListener(Lendas_AntesDeTrocar, "jointeam");
     AddCommandListener(Lendas_AntesDeTrocar, "spectate");
 
     HookEvent("player_team", Evento_TrocaDeTime, EventHookMode_Post);
+
+    // Pre: o motivo precisa estar em mãos antes do jogador sumir de vez.
+    HookEvent("player_disconnect", Evento_Desconectou, EventHookMode_Pre);
 
     AutoExecConfig(true, "lendas_spec");
 }
@@ -275,6 +294,7 @@ void Lendas_Fotografar(int client, bool viaSpec)
     g_iMortes[i] = (g_iTemPlacar == 1) ? GetEntProp(client, Prop_Send, "m_iDeaths") : -1;
     g_fQuando[i] = GetGameTime();
     g_bViaSpec[i] = viaSpec;
+    g_bSaidaEscolhida[i] = viaSpec ? false : Lendas_SaidaFoiEscolha(client);
     g_iTentativas[i] = tentativasAntes;
 
     if (g_iTemDominancia == 1)
@@ -284,8 +304,13 @@ void Lendas_Fotografar(int client, bool viaSpec)
 
     if (g_CvarDebug.BoolValue)
     {
-        LogMessage("foto de %N (%s): $%d, %d frags, via %s",
-            client, steam, g_iDinheiro[i], g_iFrags[i], viaSpec ? "spec" : "desconexao");
+        LogMessage("foto de %N (%s): $%d, %d frags, via %s%s",
+            client, steam, g_iDinheiro[i], g_iFrags[i], viaSpec ? "spec" : "desconexao",
+            viaSpec ? "" : (g_bSaidaEscolhida[i] ? " ESCOLHIDA" : " (caiu — nao pune)"));
+        if (!viaSpec)
+        {
+            LogMessage("   motivo cru: \"%s\"", g_sMotivo[client]);
+        }
     }
 }
 
@@ -345,6 +370,79 @@ void Lendas_AddPar(const char[] domina, const char[] dominado)
 //  Gatilhos
 // ==========================================================================
 
+/** O motivo chega neste evento e some junto com o jogador. Guarda antes. */
+public Action Evento_Desconectou(Event event, const char[] name, bool dontBroadcast)
+{
+    int client = GetClientOfUserId(event.GetInt("userid"));
+    if (client > 0 && client <= MaxClients)
+    {
+        event.GetString("reason", g_sMotivo[client], sizeof(g_sMotivo[]));
+    }
+    return Plugin_Continue;
+}
+
+/**
+ * A saída foi escolha do jogador, ou o link caiu?
+ *
+ * Torta a favor do inocente, de propósito: para punir, o motivo precisa bater
+ * na lista de saída voluntária E não bater na de problema de rede. Motivo
+ * desconhecido, vazio ou irreconhecível **não pune**.
+ *
+ * A lista de inocentes vence a de voluntários. É o que garante o pedido de
+ * "não aplique em quem tomou timeout" mesmo que um dia a Valve mude a string
+ * e ela passe a conter, digamos, a palavra "quit".
+ */
+bool Lendas_SaidaFoiEscolha(int client)
+{
+    if (g_sMotivo[client][0] == EOS)
+    {
+        return false;
+    }
+
+    char motivo[96];
+    strcopy(motivo, sizeof(motivo), g_sMotivo[client]);
+    String_ToLower(motivo, motivo, sizeof(motivo));
+
+    char lista[256];
+
+    // Inocentes primeiro: quem cai nunca é cobrado, custe o que custar.
+    g_CvarMotivoInocente.GetString(lista, sizeof(lista));
+    if (Lendas_MotivoBate(motivo, lista))
+    {
+        return false;
+    }
+
+    g_CvarMotivoVoluntario.GetString(lista, sizeof(lista));
+    return Lendas_MotivoBate(motivo, lista);
+}
+
+/** Algum trecho da lista separada por vírgula aparece no motivo? */
+bool Lendas_MotivoBate(const char[] motivo, const char[] lista)
+{
+    char pedacos[16][40];
+    int n = ExplodeString(lista, ",", pedacos, sizeof(pedacos), sizeof(pedacos[]));
+    for (int i = 0; i < n; i++)
+    {
+        TrimString(pedacos[i]);
+        String_ToLower(pedacos[i], pedacos[i], sizeof(pedacos[]));
+        if (pedacos[i][0] != EOS && StrContains(motivo, pedacos[i]) != -1)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void String_ToLower(const char[] entrada, char[] saida, int tamanho)
+{
+    int i = 0;
+    for (; entrada[i] != EOS && i < tamanho - 1; i++)
+    {
+        saida[i] = CharToLower(entrada[i]);
+    }
+    saida[i] = EOS;
+}
+
 /** Antes da troca de time — única janela em que o estado ainda é o real. */
 public Action Lendas_AntesDeTrocar(int client, const char[] comando, int args)
 {
@@ -361,9 +459,16 @@ public Action Lendas_AntesDeTrocar(int client, const char[] comando, int args)
  * É a correção central desta versão: sair do servidor era a rota mais fácil
  * de resetar tudo, justamente porque o plugin cooperava.
  */
+public void OnClientPutInServer(int client)
+{
+    // Slot reaproveitado não pode herdar o motivo de quem saiu antes.
+    g_sMotivo[client][0] = EOS;
+}
+
 public void OnClientDisconnect(int client)
 {
     Lendas_Fotografar(client, false);
+    g_sMotivo[client][0] = EOS;
 }
 
 public void Evento_TrocaDeTime(Event event, const char[] name, bool dontBroadcast)
@@ -434,6 +539,7 @@ public void Lendas_DevolverNoFrame(any userid)
     }
 
     bool viaSpec = g_bViaSpec[i];
+    bool saidaEscolhida = g_bSaidaEscolhida[i];
     float fora = GetGameTime() - g_fQuando[i];
 
     if (g_CvarDebug.BoolValue)
@@ -449,6 +555,10 @@ public void Lendas_DevolverNoFrame(any userid)
     if (viaSpec)
     {
         Lendas_Zoar(client, steam, fora);
+    }
+    else if (saidaEscolhida && g_CvarPunirSaida.BoolValue)
+    {
+        Lendas_ZoarSaida(client, steam, fora);
     }
 }
 
@@ -489,8 +599,66 @@ bool Lendas_TemPar(const char[] domina, const char[] dominado)
 }
 
 // ==========================================================================
-//  Humilhação pública — só na rota do espectador
+//  Humilhação pública
 // ==========================================================================
+/**
+ * Punição da rota da DESCONEXÃO.
+ *
+ * Aqui não se exige que ele estivesse sendo dominado: o que ele foi buscar é
+ * o reset do dinheiro e dos frags, e isso vale para qualquer um. O que se
+ * exige é que a saída tenha sido escolha dele (já julgado pelo motivo) e que
+ * a volta tenha sido rápida — quem sai e volta horas depois não estava
+ * farmando nada.
+ */
+void Lendas_ZoarSaida(int client, const char[] steam, float fora)
+{
+    if (!g_CvarZoar.BoolValue || fora > g_CvarJanela.FloatValue)
+    {
+        return;
+    }
+
+    int i = Lendas_Vaga(steam);
+    strcopy(g_sDono[i], sizeof(g_sDono[]), steam);
+    g_fQuando[i] = GetGameTime();
+    g_iDinheiro[i] = -1;
+    g_iFrags[i] = -1;
+    g_iTentativas[i]++;
+    int vezes = g_iTentativas[i];
+
+    if (vezes <= g_CvarTolerancia.IntValue)
+    {
+        PrintToChat(client, "\x04[LENDAS]\x01 Você voltou como saiu: dinheiro e frags intactos. Se repetir, tem multa.");
+        return;
+    }
+
+    char extra[64];
+    if (vezes > 1)
+    {
+        Format(extra, sizeof(extra), " Já é a \x04%dª vez\x01.", vezes);
+    }
+
+    PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 desconectou e voltou correndo pra resetar dinheiro e frags. Voltou com tudo igual.%s",
+        client, extra);
+
+    PrintCenterText(client, "Não colou.");
+
+    char som[PLATFORM_MAX_PATH];
+    g_CvarSom.GetString(som, sizeof(som));
+    if (som[0] != EOS)
+    {
+        EmitSoundToAll(som);
+    }
+
+    int multa = g_CvarMulta.IntValue;
+    if (multa > 0)
+    {
+        int agora = GetEntProp(client, Prop_Send, "m_iAccount");
+        int resto = agora - multa;
+        SetEntProp(client, Prop_Send, "m_iAccount", resto < 0 ? 0 : resto);
+        PrintToChat(client, "\x04[LENDAS]\x01 Multa de \x03$%d\x01 pela tentativa.", multa);
+    }
+}
+
 
 void Lendas_Zoar(int client, const char[] steam, float fora)
 {
