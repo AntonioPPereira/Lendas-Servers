@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_VERSION "2.2.0"
+#define PLUGIN_VERSION "2.3.0"
 
 /**
  * Fecha os atalhos de "sair e voltar limpo".
@@ -69,6 +69,13 @@ ConVar g_CvarJanela;
 ConVar g_CvarPunirSaida;
 ConVar g_CvarMotivoVoluntario;
 ConVar g_CvarMotivoInocente;
+ConVar g_CvarPerdeFrags;
+ConVar g_CvarCongelar;
+ConVar g_CvarSlay;
+ConVar g_CvarRodadas;
+
+/** Quantos spawns ainda carregam castigo. Zera sozinho. */
+int g_iCastigo[MAXPLAYERS + 1];
 
 /** Motivo da desconexão, capturado antes do jogador sumir. */
 char g_sMotivo[MAXPLAYERS + 1][96];
@@ -127,11 +134,22 @@ public void OnPluginStart()
         "Trechos do motivo de desconexão que contam como saída por vontade própria. Separados por vírgula.");
     g_CvarMotivoInocente = CreateConVar("lendas_spec_saida_inocente", "timed out,timeout,overflow,connection,loss,steam,shutdown",
         "Trechos que SEMPRE inocentam, mesmo se casarem com a lista de cima. Queda de conexão vive aqui.");
+    g_CvarPerdeFrags = CreateConVar("lendas_spec_perde_frags", "3",
+        "Frags descontados do placar. É o castigo que dói e NÃO penaliza o time junto.",
+        _, true, 0.0, true, 100.0);
+    g_CvarCongelar = CreateConVar("lendas_spec_congelar", "6.0",
+        "Segundos preso no lugar ao nascer. 0 = desliga.", _, true, 0.0, true, 30.0);
+    g_CvarSlay = CreateConVar("lendas_spec_slay", "0",
+        "Mata ao nascer, pelas rodadas de castigo. Deixa o time com um a menos — ligue sabendo disso.",
+        _, true, 0.0, true, 1.0);
+    g_CvarRodadas = CreateConVar("lendas_spec_rodadas", "1",
+        "Por quantos nascimentos o congelar/slay valem.", _, true, 1.0, true, 10.0);
 
     AddCommandListener(Lendas_AntesDeTrocar, "jointeam");
     AddCommandListener(Lendas_AntesDeTrocar, "spectate");
 
     HookEvent("player_team", Evento_TrocaDeTime, EventHookMode_Post);
+    HookEvent("player_spawn", Evento_Nasceu, EventHookMode_Post);
 
     // Pre: o motivo precisa estar em mãos antes do jogador sumir de vez.
     HookEvent("player_disconnect", Evento_Desconectou, EventHookMode_Pre);
@@ -461,8 +479,86 @@ public Action Lendas_AntesDeTrocar(int client, const char[] comando, int args)
  */
 public void OnClientPutInServer(int client)
 {
-    // Slot reaproveitado não pode herdar o motivo de quem saiu antes.
+    // Slot reaproveitado não pode herdar nada de quem saiu antes.
     g_sMotivo[client][0] = EOS;
+    g_iCastigo[client] = 0;
+}
+
+/**
+ * O castigo físico só pode ser aplicado ao NASCER.
+ *
+ * Quem volta do espectador no meio da rodada entra morto e só nasce na
+ * seguinte — congelar ou matar na hora da volta não faria absolutamente
+ * nada, porque não existe corpo em jogo para congelar.
+ */
+public void Evento_Nasceu(Event event, const char[] name, bool dontBroadcast)
+{
+    int client = GetClientOfUserId(event.GetInt("userid"));
+    if (client <= 0 || !IsClientInGame(client) || g_iCastigo[client] <= 0)
+    {
+        return;
+    }
+
+    g_iCastigo[client]--;
+
+    if (g_CvarSlay.BoolValue)
+    {
+        ForcePlayerSuicide(client);
+        PrintCenterText(client, "Castigo: você morre esta rodada.");
+        return;
+    }
+
+    float segundos = g_CvarCongelar.FloatValue;
+    if (segundos > 0.0)
+    {
+        SetEntityMoveType(client, MOVETYPE_NONE);
+        CreateTimer(segundos, Timer_Descongelar, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+        PrintCenterText(client, "Preso por %.0fs. Não colou.", segundos);
+    }
+}
+
+public Action Timer_Descongelar(Handle timer, any userid)
+{
+    int client = GetClientOfUserId(userid);
+    if (client > 0 && IsClientInGame(client) && IsPlayerAlive(client))
+    {
+        SetEntityMoveType(client, MOVETYPE_WALK);
+    }
+    return Plugin_Stop;
+}
+
+/**
+ * O castigo em si, igual nas duas rotas.
+ *
+ * Os frags vêm primeiro de propósito: é o único que atinge SÓ o infrator.
+ * Congelar e matar tiram um jogador do time por uma rodada, então quem paga
+ * parte da conta são os companheiros — por isso o slay sai de fábrica
+ * desligado e o congelamento é curto.
+ */
+void Lendas_AplicarCastigo(int client)
+{
+    int perde = g_CvarPerdeFrags.IntValue;
+    if (perde > 0 && g_iTemPlacar == 1)
+    {
+        int agora = GetEntProp(client, Prop_Send, "m_iFrags");
+        int resto = agora - perde;
+        SetEntProp(client, Prop_Send, "m_iFrags", resto < 0 ? 0 : resto);
+        PrintToChat(client, "\x04[LENDAS]\x01 Menos \x03%d frags\x01 pela tentativa.", perde);
+    }
+
+    int multa = g_CvarMulta.IntValue;
+    if (multa > 0)
+    {
+        int agora = GetEntProp(client, Prop_Send, "m_iAccount");
+        int resto = agora - multa;
+        SetEntProp(client, Prop_Send, "m_iAccount", resto < 0 ? 0 : resto);
+        PrintToChat(client, "\x04[LENDAS]\x01 Multa de \x03$%d\x01.", multa);
+    }
+
+    if (g_CvarSlay.BoolValue || g_CvarCongelar.FloatValue > 0.0)
+    {
+        g_iCastigo[client] = g_CvarRodadas.IntValue;
+    }
 }
 
 public void OnClientDisconnect(int client)
@@ -649,14 +745,7 @@ void Lendas_ZoarSaida(int client, const char[] steam, float fora)
         EmitSoundToAll(som);
     }
 
-    int multa = g_CvarMulta.IntValue;
-    if (multa > 0)
-    {
-        int agora = GetEntProp(client, Prop_Send, "m_iAccount");
-        int resto = agora - multa;
-        SetEntProp(client, Prop_Send, "m_iAccount", resto < 0 ? 0 : resto);
-        PrintToChat(client, "\x04[LENDAS]\x01 Multa de \x03$%d\x01 pela tentativa.", multa);
-    }
+    Lendas_AplicarCastigo(client);
 }
 
 
@@ -759,12 +848,5 @@ void Lendas_Zoar(int client, const char[] steam, float fora)
         EmitSoundToAll(som);
     }
 
-    int multa = g_CvarMulta.IntValue;
-    if (multa > 0)
-    {
-        int agora = GetEntProp(client, Prop_Send, "m_iAccount");
-        int resto = agora - multa;
-        SetEntProp(client, Prop_Send, "m_iAccount", resto < 0 ? 0 : resto);
-        PrintToChat(client, "\x04[LENDAS]\x01 Multa de \x03$%d\x01 pela tentativa.", multa);
-    }
+    Lendas_AplicarCastigo(client);
 }
