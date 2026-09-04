@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_VERSION "2.3.0"
+#define PLUGIN_VERSION "2.4.0"
 
 /**
  * Fecha os atalhos de "sair e voltar limpo".
@@ -95,9 +95,18 @@ char g_sDomina[MAX_PARES][32];
 char g_sDominado[MAX_PARES][32];
 int  g_iPares;
 
-/** -1 = não olhamos ainda; 0 = netprops não existem; 1 = existem. */
+/** -1 = não olhamos ainda; 0 = não existe; 1 = existe. */
 int g_iTemDominancia = -1;
-int g_iTemPlacar = -1;
+
+/**
+ * Onde mora o placar: 0 = em lugar nenhum, 1 = Prop_Send, 2 = Prop_Data.
+ *
+ * No CS:S `m_iFrags` NÃO é propriedade de rede — vive no datamap, e o
+ * scoreboard é alimentado pela entidade de recursos do jogo, não pelo
+ * jogador. Procurar só em `Prop_Send` fazia o plugin concluir que o placar
+ * não existia e desligar essa metade em silêncio.
+ */
+int g_iOndePlacar = -1;
 
 public void OnPluginStart()
 {
@@ -261,18 +270,22 @@ void Lendas_Detectar(int client)
         }
     }
 
-    if (g_iTemPlacar == -1)
+    if (g_iOndePlacar == -1)
     {
-        bool tem = HasEntProp(client, Prop_Send, "m_iFrags")
-                && HasEntProp(client, Prop_Send, "m_iDeaths");
-        g_iTemPlacar = tem ? 1 : 0;
-        if (tem)
+        if (HasEntProp(client, Prop_Send, "m_iFrags") && HasEntProp(client, Prop_Send, "m_iDeaths"))
         {
-            LogMessage("Placar disponível (m_iFrags + m_iDeaths). Proteção ligada.");
+            g_iOndePlacar = 1;
+            LogMessage("Placar em Prop_Send. Proteção ligada.");
+        }
+        else if (HasEntProp(client, Prop_Data, "m_iFrags") && HasEntProp(client, Prop_Data, "m_iDeaths"))
+        {
+            g_iOndePlacar = 2;
+            LogMessage("Placar em Prop_Data (o normal no CS:S). Proteção ligada.");
         }
         else
         {
-            LogError("Netprops de placar não existem neste jogo — frags não serão devolvidos.");
+            g_iOndePlacar = 0;
+            LogError("Não achei m_iFrags nem em Prop_Send nem em Prop_Data — frags ficam de fora.");
         }
     }
 }
@@ -280,6 +293,19 @@ void Lendas_Detectar(int client)
 // ==========================================================================
 //  Fotografar
 // ==========================================================================
+
+int Lendas_LerPlacar(int client, const char[] campo)
+{
+    if (g_iOndePlacar == 1) return GetEntProp(client, Prop_Send, campo);
+    if (g_iOndePlacar == 2) return GetEntProp(client, Prop_Data, campo);
+    return -1;
+}
+
+void Lendas_EscreverPlacar(int client, const char[] campo, int valor)
+{
+    if (g_iOndePlacar == 1) SetEntProp(client, Prop_Send, campo, valor);
+    else if (g_iOndePlacar == 2) SetEntProp(client, Prop_Data, campo, valor);
+}
 
 /**
  * Guarda tudo o que o jogador tem agora.
@@ -308,8 +334,8 @@ void Lendas_Fotografar(int client, bool viaSpec)
 
     strcopy(g_sDono[i], sizeof(g_sDono[]), steam);
     g_iDinheiro[i] = GetEntProp(client, Prop_Send, "m_iAccount");
-    g_iFrags[i] = (g_iTemPlacar == 1) ? GetEntProp(client, Prop_Send, "m_iFrags") : -1;
-    g_iMortes[i] = (g_iTemPlacar == 1) ? GetEntProp(client, Prop_Send, "m_iDeaths") : -1;
+    g_iFrags[i] = Lendas_LerPlacar(client, "m_iFrags");
+    g_iMortes[i] = Lendas_LerPlacar(client, "m_iDeaths");
     g_fQuando[i] = GetGameTime();
     g_bViaSpec[i] = viaSpec;
     g_bSaidaEscolhida[i] = viaSpec ? false : Lendas_SaidaFoiEscolha(client);
@@ -538,11 +564,11 @@ public Action Timer_Descongelar(Handle timer, any userid)
 void Lendas_AplicarCastigo(int client)
 {
     int perde = g_CvarPerdeFrags.IntValue;
-    if (perde > 0 && g_iTemPlacar == 1)
+    if (perde > 0 && g_iOndePlacar > 0)
     {
-        int agora = GetEntProp(client, Prop_Send, "m_iFrags");
+        int agora = Lendas_LerPlacar(client, "m_iFrags");
         int resto = agora - perde;
-        SetEntProp(client, Prop_Send, "m_iFrags", resto < 0 ? 0 : resto);
+        Lendas_EscreverPlacar(client, "m_iFrags", resto < 0 ? 0 : resto);
         PrintToChat(client, "\x04[LENDAS]\x01 Menos \x03%d frags\x01 pela tentativa.", perde);
     }
 
@@ -623,10 +649,10 @@ public void Lendas_DevolverNoFrame(any userid)
         SetEntProp(client, Prop_Send, "m_iAccount", g_iDinheiro[i]);
     }
 
-    if (g_CvarPlacar.BoolValue && g_iTemPlacar == 1 && g_iFrags[i] >= 0)
+    if (g_CvarPlacar.BoolValue && g_iOndePlacar > 0 && g_iFrags[i] >= 0)
     {
-        SetEntProp(client, Prop_Send, "m_iFrags", g_iFrags[i]);
-        SetEntProp(client, Prop_Send, "m_iDeaths", g_iMortes[i]);
+        Lendas_EscreverPlacar(client, "m_iFrags", g_iFrags[i]);
+        Lendas_EscreverPlacar(client, "m_iDeaths", g_iMortes[i]);
     }
 
     if (g_CvarDominancia.BoolValue && g_iTemDominancia == 1)
