@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_VERSION "2.1.0"
+#define PLUGIN_VERSION "2.2.0"
 
 /**
  * Fecha os atalhos de "sair e voltar limpo".
@@ -109,7 +109,7 @@ public void OnPluginStart()
     g_CvarDebug = CreateConVar("lendas_spec_debug", "0",
         "Registra no log cada foto e cada devolução.", _, true, 0.0, true, 1.0);
     g_CvarZoar = CreateConVar("lendas_spec_zoar", "1",
-        "Anuncia no chat quem tentou resetar pelo espectador ou pela desconexão.", _, true, 0.0, true, 1.0);
+        "Anuncia no chat quem foi e voltou correndo, pelas duas rotas.", _, true, 0.0, true, 1.0);
     g_CvarSom = CreateConVar("lendas_spec_som", "quake/standard/humiliation.mp3",
         "Som tocado na zoação. Vazio = sem som.");
     g_CvarMulta = CreateConVar("lendas_spec_multa", "1500",
@@ -660,37 +660,45 @@ void Lendas_ZoarSaida(int client, const char[] steam, float fora)
 }
 
 
+/**
+ * Punição da rota do ESPECTADOR.
+ *
+ * O portão é a VOLTA RÁPIDA, não a dominância. Quem sai e volta correndo foi
+ * buscar o reset de dinheiro e frags, tenha ou não alguém dominando ele —
+ * exigir dominância deixava passar a maioria dos casos reais.
+ *
+ * A dominância só decide o TEXTO: quando existe, o anúncio nomeia de quem ele
+ * tentou fugir, e cada dominador recebe o recado no privado. Sem ela, o
+ * anúncio é o genérico de reset.
+ */
 void Lendas_Zoar(int client, const char[] steam, float fora)
 {
-    if (!g_CvarZoar.BoolValue || g_iTemDominancia != 1)
+    if (!g_CvarZoar.BoolValue || fora > g_CvarJanela.FloatValue)
     {
         return;
     }
 
-    // Só quem ESTAVA sendo dominado tentou fugir de alguma coisa. Quem foi
-    // pro espectador por outro motivo não passa vergonha à toa.
+    // Quem o dominava, se é que a informação existe neste jogo.
     int dominadores = 0;
     int primeiro = -1;
-    for (int outro = 1; outro <= MaxClients; outro++)
+    if (g_iTemDominancia == 1)
     {
-        char steamOutro[32];
-        if (outro == client || !Lendas_SteamDe(outro, steamOutro, sizeof(steamOutro)))
+        for (int outro = 1; outro <= MaxClients; outro++)
         {
-            continue;
-        }
-        if (Lendas_TemPar(steamOutro, steam))
-        {
-            dominadores++;
-            if (primeiro == -1)
+            char steamOutro[32];
+            if (outro == client || !Lendas_SteamDe(outro, steamOutro, sizeof(steamOutro)))
             {
-                primeiro = outro;
+                continue;
+            }
+            if (Lendas_TemPar(steamOutro, steam))
+            {
+                dominadores++;
+                if (primeiro == -1)
+                {
+                    primeiro = outro;
+                }
             }
         }
-    }
-
-    if (dominadores == 0 || fora > g_CvarJanela.FloatValue)
-    {
-        return;
     }
 
     int i = Lendas_Vaga(steam);
@@ -718,10 +726,15 @@ void Lendas_Zoar(int client, const char[] steam, float fora)
         PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 correu pro espectador pra fugir da dominância de \x03%N\x01. Voltou do mesmo jeito.%s",
             client, primeiro, extra);
     }
-    else
+    else if (dominadores > 1)
     {
         PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 correu pro espectador pra fugir de \x03%d\x01 dominâncias. Voltou com todas.%s",
             client, dominadores, extra);
+    }
+    else
+    {
+        PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 foi pro espectador e voltou correndo pra resetar dinheiro e frags. Voltou com tudo igual.%s",
+            client, extra);
     }
 
     for (int outro = 1; outro <= MaxClients; outro++)
@@ -750,8 +763,8 @@ void Lendas_Zoar(int client, const char[] steam, float fora)
     if (multa > 0)
     {
         int agora = GetEntProp(client, Prop_Send, "m_iAccount");
-        int novo = agora - multa;
-        SetEntProp(client, Prop_Send, "m_iAccount", novo < 0 ? 0 : novo);
+        int resto = agora - multa;
+        SetEntProp(client, Prop_Send, "m_iAccount", resto < 0 ? 0 : resto);
         PrintToChat(client, "\x04[LENDAS]\x01 Multa de \x03$%d\x01 pela tentativa.", multa);
     }
 }
