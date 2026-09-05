@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_VERSION "2.8.0"
+#define PLUGIN_VERSION "2.9.0"
 
 /**
  * Fecha os atalhos de "sair e voltar limpo".
@@ -78,13 +78,17 @@ ConVar g_CvarRodadas;
 int g_iCastigo[MAXPLAYERS + 1];
 
 /**
- * Quando o jogador mandou `jointeam`/`spectate` pela última vez.
+ * Quando alguém MOVEU este jogador para o espectador.
  *
- * Serve só para separar quem ESCOLHEU ir do que foi movido por plugin ou
- * admin. Sem esse cuidado, um `sm_allspec` puniria o servidor inteiro na
- * volta.
+ * A presunção é a oposta da 2.8.0: todo mundo é punível, e só escapa quem
+ * tiver sido movido por outra pessoa nos últimos segundos. A 2.8.0 exigia
+ * que o comando `jointeam` tivesse disparado para punir — e como ele é
+ * justamente o que falha, o resultado era poupar quase todos.
  */
-float g_fComandoEm[MAXPLAYERS + 1];
+float g_fMovidoEm[MAXPLAYERS + 1];
+
+/** Segundos em que um comando de admin ainda inocenta quem foi movido. */
+#define JANELA_MOVIDO 3.0
 
 /** Motivo da desconexão, capturado antes do jogador sumir. */
 char g_sMotivo[MAXPLAYERS + 1][96];
@@ -203,6 +207,13 @@ public void OnPluginStart()
 
     AddCommandListener(Lendas_AntesDeTrocar, "jointeam");
     AddCommandListener(Lendas_AntesDeTrocar, "spectate");
+
+    // Comandos de admin que movem gente para o espectador. Quem foi movido
+    // não escolheu ir, e não pode pagar por isso.
+    AddCommandListener(Lendas_AdminMoveu, "sm_spec");
+    AddCommandListener(Lendas_AdminMoveu, "sm_allspec");
+    AddCommandListener(Lendas_AdminMoveu, "sm_swap");
+    AddCommandListener(Lendas_AdminMoveu, "sm_swapteam");
 
     HookEvent("player_team", Evento_TrocaDeTime, EventHookMode_Post);
     HookEvent("player_spawn", Evento_Nasceu, EventHookMode_Post);
@@ -535,11 +546,48 @@ void String_ToLower(const char[] entrada, char[] saida, int tamanho)
 }
 
 /** Antes da troca de time — única janela em que o estado ainda é o real. */
+/**
+ * Um admin mandou mover alguém.
+ *
+ * Marca todos os jogadores como movidos, EXCETO quem digitou: se o admin se
+ * manda para o espectador, ele escolheu ir e paga como qualquer um. Sem essa
+ * exceção, bastaria ser admin para ter passe livre — que é exatamente o que
+ * foi relatado em jogo.
+ *
+ * Marcar todo mundo em vez de resolver o alvo do comando é de propósito:
+ * errar para o lado de não cobrar é barato, e resolver alvo por nome abriria
+ * uma classe de bug que não vale o risco aqui.
+ */
+public Action Lendas_AdminMoveu(int client, const char[] comando, int args)
+{
+    float agora = GetGameTime();
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (i != client && IsClientInGame(i))
+        {
+            g_fMovidoEm[i] = agora;
+        }
+    }
+
+    // O sm_allspec existe para mandar TODOS ao espectador, inclusive quem
+    // digitou. Aí ninguém escolheu nada.
+    if (StrEqual(comando, "sm_allspec", false) && client > 0)
+    {
+        g_fMovidoEm[client] = agora;
+    }
+
+    if (g_CvarDebug.BoolValue)
+    {
+        LogMessage("admin %N usou '%s' — os outros ficam protegidos por %.0fs",
+            client > 0 ? client : 0, comando, JANELA_MOVIDO);
+    }
+    return Plugin_Continue;
+}
+
 public Action Lendas_AntesDeTrocar(int client, const char[] comando, int args)
 {
     if (client > 0 && IsClientInGame(client))
     {
-        g_fComandoEm[client] = GetGameTime();
         if (g_CvarDebug.BoolValue)
         {
             LogMessage("comando '%s' de %N (time atual %d)", comando, client, GetClientTeam(client));
@@ -560,7 +608,7 @@ public void OnClientPutInServer(int client)
     // Slot reaproveitado não pode herdar nada de quem saiu antes.
     g_sMotivo[client][0] = EOS;
     g_iCastigo[client] = 0;
-    g_fComandoEm[client] = 0.0;
+    g_fMovidoEm[client] = 0.0;
 }
 
 /**
@@ -676,7 +724,8 @@ public void Evento_TrocaDeTime(Event event, const char[] name, bool dontBroadcas
         char steam[32];
         if (Lendas_SteamDe(client, steam, sizeof(steam)) && Lendas_Achar(steam) == -1)
         {
-            bool escolheu = (GetGameTime() - g_fComandoEm[client]) < 1.0;
+            // Punível por padrão. Só escapa quem foi movido há pouco.
+            bool escolheu = (GetGameTime() - g_fMovidoEm[client]) >= JANELA_MOVIDO;
             if (g_CvarDebug.BoolValue)
             {
                 LogMessage("foto de reserva no player_team para %N (escolheu=%d)", client, escolheu);
