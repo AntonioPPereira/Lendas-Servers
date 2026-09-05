@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_VERSION "2.7.0"
+#define PLUGIN_VERSION "2.8.0"
 
 /**
  * Fecha os atalhos de "sair e voltar limpo".
@@ -76,6 +76,15 @@ ConVar g_CvarRodadas;
 
 /** Quantos spawns ainda carregam castigo. Zera sozinho. */
 int g_iCastigo[MAXPLAYERS + 1];
+
+/**
+ * Quando o jogador mandou `jointeam`/`spectate` pela última vez.
+ *
+ * Serve só para separar quem ESCOLHEU ir do que foi movido por plugin ou
+ * admin. Sem esse cuidado, um `sm_allspec` puniria o servidor inteiro na
+ * volta.
+ */
+float g_fComandoEm[MAXPLAYERS + 1];
 
 /** Motivo da desconexão, capturado antes do jogador sumir. */
 char g_sMotivo[MAXPLAYERS + 1][96];
@@ -530,6 +539,11 @@ public Action Lendas_AntesDeTrocar(int client, const char[] comando, int args)
 {
     if (client > 0 && IsClientInGame(client))
     {
+        g_fComandoEm[client] = GetGameTime();
+        if (g_CvarDebug.BoolValue)
+        {
+            LogMessage("comando '%s' de %N (time atual %d)", comando, client, GetClientTeam(client));
+        }
         Lendas_Fotografar(client, true);
     }
     return Plugin_Continue;
@@ -546,6 +560,7 @@ public void OnClientPutInServer(int client)
     // Slot reaproveitado não pode herdar nada de quem saiu antes.
     g_sMotivo[client][0] = EOS;
     g_iCastigo[client] = 0;
+    g_fComandoEm[client] = 0.0;
 }
 
 /**
@@ -640,6 +655,36 @@ public void Evento_TrocaDeTime(Event event, const char[] name, bool dontBroadcas
 
     int novo = event.GetInt("team");
     int velho = event.GetInt("oldteam");
+
+    /**
+     * SAINDO de um time jogável para o espectador.
+     *
+     * O ouvinte de `jointeam` nem sempre vê essa troca — medido no servidor:
+     * o log do jogo registrou idas ao espectador sem nenhum comando chegar
+     * aqui. Sem foto não há devolução nem punição, e a rota inteira fica
+     * muda.
+     *
+     * Fotografar aqui é seguro para o dinheiro: o jogo paga `mp_startmoney`
+     * ao ENTRAR num time, não ao sair dele.
+     *
+     * `viaSpec` — que autoriza a punição — só vale se o jogador tiver mandado
+     * o comando há menos de um segundo. Movido por plugin ou admin, o estado
+     * é preservado mas ninguém é cobrado.
+     */
+    if (novo == TIME_ESPECTADOR && (velho == TIME_TR || velho == TIME_CT))
+    {
+        char steam[32];
+        if (Lendas_SteamDe(client, steam, sizeof(steam)) && Lendas_Achar(steam) == -1)
+        {
+            bool escolheu = (GetGameTime() - g_fComandoEm[client]) < 1.0;
+            if (g_CvarDebug.BoolValue)
+            {
+                LogMessage("foto de reserva no player_team para %N (escolheu=%d)", client, escolheu);
+            }
+            Lendas_Fotografar(client, escolheu);
+        }
+        return;
+    }
 
     // Entrar num time jogável, vindo do espectador OU de recém-chegado
     // (reconexão cai aqui, com oldteam "sem time").
