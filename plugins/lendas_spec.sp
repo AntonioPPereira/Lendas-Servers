@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_VERSION "2.6.0"
+#define PLUGIN_VERSION "2.7.0"
 
 /**
  * Fecha os atalhos de "sair e voltar limpo".
@@ -798,7 +798,7 @@ void Lendas_ZoarSaida(int client, const char[] steam, float fora)
 
     if (vezes <= g_CvarTolerancia.IntValue)
     {
-        PrintToChat(client, "\x04[LENDAS]\x01 Você voltou como saiu: dinheiro e frags intactos. Se repetir, tem multa.");
+        PrintToChat(client, "\x04[LENDAS]\x01 Nada foi resetado. Se repetir, tem multa.");
         return;
     }
 
@@ -808,10 +808,15 @@ void Lendas_ZoarSaida(int client, const char[] steam, float fora)
         Format(extra, sizeof(extra), " Já é a \x04%dª vez\x01.", vezes);
     }
 
-    PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 desconectou e voltou correndo pra resetar dinheiro e frags. Voltou com tudo igual.%s",
+    PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 deu retry pra resetar. Nao colou.%s",
         client, extra);
 
-    PrintCenterText(client, "Não colou.");
+    if (g_CvarDebug.BoolValue)
+    {
+        LogMessage("anuncio publico emitido para %N", client);
+    }
+
+    PrintCenterText(client, "Nao colou.");
 
     char som[PLATFORM_MAX_PATH];
     g_CvarSom.GetString(som, sizeof(som));
@@ -875,7 +880,7 @@ void Lendas_Zoar(int client, const char[] steam, float fora)
 
     if (vezes <= g_CvarTolerancia.IntValue)
     {
-        PrintToChat(client, "\x04[LENDAS]\x01 Você voltou como saiu: nada foi resetado. Se repetir, tem multa.");
+        PrintToChat(client, "\x04[LENDAS]\x01 Nada foi resetado. Se repetir, tem multa.");
         return;
     }
 
@@ -887,17 +892,17 @@ void Lendas_Zoar(int client, const char[] steam, float fora)
 
     if (dominadores == 1)
     {
-        PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 correu pro espectador pra fugir da dominância de \x03%N\x01. Voltou do mesmo jeito.%s",
+        PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 fugiu da dominancia de \x03%N\x01. Nao colou.%s",
             client, primeiro, extra);
     }
     else if (dominadores > 1)
     {
-        PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 correu pro espectador pra fugir de \x03%d\x01 dominâncias. Voltou com todas.%s",
+        PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 fugiu de \x03%d\x01 dominancias. Nao colou.%s",
             client, dominadores, extra);
     }
     else
     {
-        PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 foi pro espectador e voltou correndo pra resetar dinheiro e frags. Voltou com tudo igual.%s",
+        PrintToChatAll("\x04[LENDAS]\x01 \x03%N\x01 foi pro spec pra resetar. Nao colou.%s",
             client, extra);
     }
 
@@ -910,11 +915,16 @@ void Lendas_Zoar(int client, const char[] steam, float fora)
         }
         if (Lendas_TemPar(steamOutro, steam))
         {
-            PrintToChat(outro, "\x04[LENDAS]\x01 \x03%N\x01 tentou fugir da SUA dominância. Continua sendo seu.", client);
+            PrintToChat(outro, "\x04[LENDAS]\x01 \x03%N\x01 tentou fugir da SUA dominancia.", client);
         }
     }
 
-    PrintCenterText(client, "Não colou.");
+    if (g_CvarDebug.BoolValue)
+    {
+        LogMessage("anuncio publico emitido para %N", client);
+    }
+
+    PrintCenterText(client, "Nao colou.");
 
     char som[PLATFORM_MAX_PATH];
     g_CvarSom.GetString(som, sizeof(som));
