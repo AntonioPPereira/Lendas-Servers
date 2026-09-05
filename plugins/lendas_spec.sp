@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_VERSION "2.5.0"
+#define PLUGIN_VERSION "2.6.0"
 
 /**
  * Fecha os atalhos de "sair e voltar limpo".
@@ -150,8 +150,9 @@ public void OnPluginStart()
     CreateConVar("lendas_spec_version", PLUGIN_VERSION, "Versão do [LENDAS] Anti-abuso do Spec.",
         FCVAR_NOTIFY | FCVAR_DONTRECORD);
 
-    g_CvarDinheiro = CreateConVar("lendas_spec_dinheiro", "1",
-        "Devolve o dinheiro ao voltar do espectador ou de uma desconexão.", _, true, 0.0, true, 1.0);
+    g_CvarDinheiro = CreateConVar("lendas_spec_dinheiro", "2",
+        "0 = não mexe. 1 = devolve exatamente o que tinha. 2 = devolve o MENOR entre o que tinha e o que tem agora, de modo que a ida e volta nunca renda lucro.",
+        _, true, 0.0, true, 2.0);
     g_CvarPlacar = CreateConVar("lendas_spec_placar", "1",
         "Devolve frags e mortes ao voltar.", _, true, 0.0, true, 1.0);
     g_CvarDominancia = CreateConVar("lendas_spec_dominancia", "1",
@@ -176,10 +177,10 @@ public void OnPluginStart()
     g_CvarPunirSaida = CreateConVar("lendas_spec_punir_saida", "1",
         "Pune também quem desconecta e volta correndo. Quem CAI nunca é punido — ver as duas cvars abaixo.",
         _, true, 0.0, true, 1.0);
-    g_CvarMotivoVoluntario = CreateConVar("lendas_spec_saida_voluntaria", "by user,quit,left the game",
-        "Trechos do motivo de desconexão que contam como saída por vontade própria. Separados por vírgula.");
-    g_CvarMotivoInocente = CreateConVar("lendas_spec_saida_inocente", "timed out,timeout,overflow,connection,loss,steam,shutdown",
-        "Trechos que SEMPRE inocentam, mesmo se casarem com a lista de cima. Queda de conexão vive aqui.");
+    g_CvarMotivoVoluntario = CreateConVar("lendas_spec_saida_voluntaria", "client disconnect,by user,quit,left the game",
+        "Trechos do motivo que contam como saída por vontade própria. MEDIDO neste servidor: o CS:S usa \"Client Disconnect\".");
+    g_CvarMotivoInocente = CreateConVar("lendas_spec_saida_inocente", "timed out,timeout,overflow,connection lost,loss,steam,shutdown,kick,ban,map change,changelevel",
+        "Trechos que SEMPRE inocentam, mesmo casando com a lista de cima. Queda, kick e troca de mapa vivem aqui.");
     g_CvarPerdeFrags = CreateConVar("lendas_spec_perde_frags", "3",
         "Frags descontados do placar. É o castigo que dói e NÃO penaliza o time junto.",
         _, true, 0.0, true, 100.0);
@@ -680,9 +681,21 @@ public void Lendas_DevolverNoFrame(any userid)
 
     Lendas_Detectar(client);
 
-    if (g_CvarDinheiro.BoolValue && g_iDinheiro[i] >= 0)
+    int modo = g_CvarDinheiro.IntValue;
+    if (modo > 0 && g_iDinheiro[i] >= 0)
     {
-        Lendas_EscreverDinheiro(client, g_iDinheiro[i], "devolucao");
+        /**
+         * Modo 2: o MENOR entre o guardado e o atual.
+         *
+         * Devolver o valor exato fecha o ganho de quem estava quebrado, mas
+         * PREMIA quem estava rico: sem o plugin ele voltaria com o dinheiro
+         * inicial, e com ele mantém a bolada. O menor dos dois fecha os dois
+         * lados — a ida e volta nunca rende, e para quem tinha muito ela
+         * custa, que é o desestímulo que faltava.
+         */
+        int agora = GetEntProp(client, Prop_Send, "m_iAccount");
+        int alvo = (modo == 2 && agora < g_iDinheiro[i]) ? agora : g_iDinheiro[i];
+        Lendas_EscreverDinheiro(client, alvo, modo == 2 ? "devolucao-menor" : "devolucao");
     }
 
     if (g_CvarPlacar.BoolValue && g_iOndePlacar > 0 && g_iFrags[i] >= 0)
