@@ -4,7 +4,7 @@
 #include <sourcemod>
 #include <sdktools>
 
-#define PLUGIN_VERSION "2.4.0"
+#define PLUGIN_VERSION "2.5.0"
 
 /**
  * Fecha os atalhos de "sair e voltar limpo".
@@ -107,6 +107,43 @@ int g_iTemDominancia = -1;
  * não existia e desligar essa metade em silêncio.
  */
 int g_iOndePlacar = -1;
+
+/**
+ * Escreve dinheiro respeitando o teto do servidor.
+ *
+ * `SetEntProp` em `m_iAccount` fura o `mp_maxmoney` — o jogo só aplica esse
+ * limite nos caminhos dele. Um valor guardado errado, vindo de onde for,
+ * viraria dinheiro que nem existe nas regras da partida.
+ *
+ * A trava é a última linha de defesa, não a correção da causa: se ela
+ * precisar agir, tem coisa errada antes, e o log registra isso alto.
+ */
+void Lendas_EscreverDinheiro(int client, int valor, const char[] origem)
+{
+    int teto = 16000;
+    ConVar cv = FindConVar("mp_maxmoney");
+    if (cv != null && cv.IntValue > 0)
+    {
+        teto = cv.IntValue;
+    }
+
+    int antes = GetEntProp(client, Prop_Send, "m_iAccount");
+    int final = valor < 0 ? 0 : valor;
+
+    if (final > teto)
+    {
+        LogError("[%s] tentou escrever $%d em %N, acima do mp_maxmoney (%d). Travado no teto — investigar a origem.",
+            origem, valor, client, teto);
+        final = teto;
+    }
+
+    SetEntProp(client, Prop_Send, "m_iAccount", final);
+
+    if (g_CvarDebug.BoolValue)
+    {
+        LogMessage("[%s] dinheiro de %N: %d -> %d (teto %d)", origem, client, antes, final, teto);
+    }
+}
 
 public void OnPluginStart()
 {
@@ -348,7 +385,7 @@ void Lendas_Fotografar(int client, bool viaSpec)
 
     if (g_CvarDebug.BoolValue)
     {
-        LogMessage("foto de %N (%s): $%d, %d frags, via %s%s",
+        LogMessage("FOTO de %N (%s): $%d, %d frags, via %s%s",
             client, steam, g_iDinheiro[i], g_iFrags[i], viaSpec ? "spec" : "desconexao",
             viaSpec ? "" : (g_bSaidaEscolhida[i] ? " ESCOLHIDA" : " (caiu — nao pune)"));
         if (!viaSpec)
@@ -576,8 +613,7 @@ void Lendas_AplicarCastigo(int client)
     if (multa > 0)
     {
         int agora = GetEntProp(client, Prop_Send, "m_iAccount");
-        int resto = agora - multa;
-        SetEntProp(client, Prop_Send, "m_iAccount", resto < 0 ? 0 : resto);
+        Lendas_EscreverDinheiro(client, agora - multa, "multa");
         PrintToChat(client, "\x04[LENDAS]\x01 Multa de \x03$%d\x01.", multa);
     }
 
@@ -646,7 +682,7 @@ public void Lendas_DevolverNoFrame(any userid)
 
     if (g_CvarDinheiro.BoolValue && g_iDinheiro[i] >= 0)
     {
-        SetEntProp(client, Prop_Send, "m_iAccount", g_iDinheiro[i]);
+        Lendas_EscreverDinheiro(client, g_iDinheiro[i], "devolucao");
     }
 
     if (g_CvarPlacar.BoolValue && g_iOndePlacar > 0 && g_iFrags[i] >= 0)
