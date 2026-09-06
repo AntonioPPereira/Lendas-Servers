@@ -3,7 +3,7 @@
 
 #include <sourcemod>
 
-#define PLUGIN_VERSION "1.0.0"
+#define PLUGIN_VERSION "1.1.0"
 
 /** Lista de padrões de nome de mapa que ligam o modo sozinhos. */
 #define ARQUIVO_MAPAS "configs/lendas_mg_maps.cfg"
@@ -56,6 +56,19 @@ char g_sMapa[64];
 /** Padrões lidos do arquivo. Um `*` no fim vale como "começa com". */
 ArrayList g_alPadroes;
 
+/**
+ * Perfil de cada padrão, na mesma ordem do `g_alPadroes`. Vazio = o perfil
+ * padrão, o `mg_on.cfg`.
+ *
+ * Existe porque bhop e surf querem coisas OPOSTAS do `sv_airaccelerate`: no
+ * bhop, quanto maior melhor; no surf, valor alto tira a dificuldade — a rampa
+ * vira corredor. Um valor só serviria mal aos dois.
+ */
+ArrayList g_alPerfis;
+
+/** Perfil do mapa atual. Vazio = perfil padrão. */
+char g_sPerfil[32];
+
 public void OnPluginStart()
 {
     CreateConVar("lendas_mg_version", PLUGIN_VERSION, "Versão do [LENDAS] Modo Minigame.",
@@ -65,9 +78,9 @@ public void OnPluginStart()
         "Liga o modo sozinho nos mapas da lista. 0 = só no comando sm_mg.",
         FCVAR_NONE, true, 0.0, true, 1.0);
     g_CvarCfgLiga = CreateConVar("lendas_mg_cfg", "lendas/mg_on.cfg",
-        "Configuração executada ao entrar no modo minigame, relativa a cfg/.");
+        "Configuração ao entrar no modo, relativa a cfg/. Vale para os mapas sem perfil próprio.");
     g_CvarCfgDesliga = CreateConVar("lendas_mg_cfg_fim", "lendas/mg_off.cfg",
-        "Configuração executada ao sair do modo minigame, relativa a cfg/.");
+        "Configuração ao sair do modo, relativa a cfg/. Serve para qualquer perfil.");
     g_CvarAviso = CreateConVar("lendas_mg_aviso", "1",
         "Anuncia no chat quando o modo liga ou desliga. 0 = calado.",
         FCVAR_NONE, true, 0.0, true, 1.0);
@@ -81,13 +94,14 @@ public void OnPluginStart()
         "Liga ou desliga o modo minigame. sm_mg 1 liga, sm_mg 0 desliga, sm_mg alterna.");
 
     g_alPadroes = new ArrayList(64);
+    g_alPerfis = new ArrayList(32);
 }
 
 public void OnMapStart()
 {
     GetCurrentMap(g_sMapa, sizeof(g_sMapa));
     CarregarPadroes();
-    g_bMapaDeMinigame = MapaBateComALista(g_sMapa);
+    g_bMapaDeMinigame = MapaBateComALista(g_sMapa, g_sPerfil, sizeof(g_sPerfil));
 
     // O mapa novo desfaz qualquer decisão manual do mapa anterior: quem
     // desligou o modo à mão não quis desligá-lo para sempre.
@@ -112,8 +126,8 @@ public void OnConfigsExecuted()
 
     if (g_CvarDebug.BoolValue)
     {
-        LogMessage("mapa '%s': na lista=%d, auto=%d, ligado agora=%d",
-            g_sMapa, g_bMapaDeMinigame, g_CvarAuto.BoolValue, g_bLigado);
+        LogMessage("mapa '%s': na lista=%d, perfil='%s', auto=%d, ligado agora=%d",
+            g_sMapa, g_bMapaDeMinigame, g_sPerfil, g_CvarAuto.BoolValue, g_bLigado);
     }
 
     if (queremos)
@@ -163,16 +177,23 @@ public Action Comando_Mg(int client, int args)
 void AplicarModo(bool ligar, const char[] motivo)
 {
     char cfg[PLATFORM_MAX_PATH];
-    if (ligar)
+
+    if (!ligar)
     {
-        g_CvarCfgLiga.GetString(cfg, sizeof(cfg));
+        // Um cfg de saída só, para qualquer perfil: ele devolve tudo que
+        // qualquer perfil mexe, e assim não precisa saber qual rodou.
+        g_CvarCfgDesliga.GetString(cfg, sizeof(cfg));
+    }
+    else if (g_sPerfil[0] != 0)
+    {
+        Format(cfg, sizeof(cfg), "lendas/mg_%s.cfg", g_sPerfil);
     }
     else
     {
-        g_CvarCfgDesliga.GetString(cfg, sizeof(cfg));
+        g_CvarCfgLiga.GetString(cfg, sizeof(cfg));
     }
 
-    if (cfg[0] == '\0')
+    if (cfg[0] == 0)
     {
         LogError("Nenhuma configuração definida para %s o modo minigame.",
             ligar ? "ligar" : "desligar");
@@ -205,12 +226,13 @@ void AplicarModo(bool ligar, const char[] motivo)
 /**
  * Lê a lista de mapas do disco.
  *
- * É relido a cada mapa de propósito: assim dá para acrescentar um mapa na
+ * É relida a cada mapa de propósito: assim dá para acrescentar um mapa na
  * lista sem recarregar o plugin nem reiniciar o servidor.
  */
 void CarregarPadroes()
 {
     g_alPadroes.Clear();
+    g_alPerfis.Clear();
 
     char caminho[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, caminho, sizeof(caminho), ARQUIVO_MAPAS);
@@ -222,21 +244,45 @@ void CarregarPadroes()
         return;
     }
 
-    char linha[64];
+    char linha[96];
     while (arquivo.ReadLine(linha, sizeof(linha)))
     {
         // Corta comentário e espaço em branco das pontas.
         int comentario = StrContains(linha, "//");
         if (comentario != -1)
         {
-            linha[comentario] = '\0';
+            linha[comentario] = 0;
         }
         TrimString(linha);
 
-        if (linha[0] != '\0')
+        if (linha[0] == 0)
         {
-            g_alPadroes.PushString(linha);
+            continue;
         }
+
+        // Formato: "<padrão>  [perfil]". O perfil é opcional; sem ele vale o
+        // cfg padrão. A separação é na primeira folga em branco.
+        char padrao[64];
+        char perfil[32];
+        perfil[0] = 0;
+
+        int folga = FindCharInString(linha, ' ');
+        int tabulacao = FindCharInString(linha, '\t');
+        if (tabulacao != -1 && (folga == -1 || tabulacao < folga))
+        {
+            folga = tabulacao;
+        }
+
+        strcopy(padrao, sizeof(padrao), linha);
+        if (folga != -1)
+        {
+            padrao[folga] = 0;
+            strcopy(perfil, sizeof(perfil), linha[folga]);
+            TrimString(perfil);
+        }
+
+        g_alPadroes.PushString(padrao);
+        g_alPerfis.PushString(perfil);
     }
     delete arquivo;
 
@@ -246,25 +292,37 @@ void CarregarPadroes()
     }
 }
 
-bool MapaBateComALista(const char[] mapa)
+/**
+ * O mapa está na lista? Em caso afirmativo, devolve também o perfil dele.
+ *
+ * A primeira linha que casar ganha, então a ordem do arquivo importa: um
+ * padrão mais específico tem de vir antes de um genérico que também casaria.
+ */
+bool MapaBateComALista(const char[] mapa, char[] perfil, int tamPerfil)
 {
+    perfil[0] = 0;
+
     char padrao[64];
     for (int i = 0; i < g_alPadroes.Length; i++)
     {
         g_alPadroes.GetString(i, padrao, sizeof(padrao));
+        bool casou = false;
 
         int fim = strlen(padrao) - 1;
         if (fim >= 0 && padrao[fim] == '*')
         {
             // "mg_*" casa com tudo que começa com "mg_".
-            padrao[fim] = '\0';
-            if (strncmp(mapa, padrao, strlen(padrao), false) == 0)
-            {
-                return true;
-            }
+            padrao[fim] = 0;
+            casou = (strncmp(mapa, padrao, strlen(padrao), false) == 0);
         }
-        else if (StrEqual(mapa, padrao, false))
+        else
         {
+            casou = StrEqual(mapa, padrao, false);
+        }
+
+        if (casou)
+        {
+            g_alPerfis.GetString(i, perfil, tamPerfil);
             return true;
         }
     }

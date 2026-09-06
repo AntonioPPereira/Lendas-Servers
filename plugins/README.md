@@ -39,6 +39,7 @@ servidor foi exatamente o que se perdeu no incidente de 29/08.
 | --- | --- |
 | `lendas_mg.sp` | compilado em `addons/sourcemod/plugins/lendas_mg.smx` |
 | `lendas_mg/mg_on.cfg` | `cfg/lendas/mg_on.cfg` |
+| `lendas_mg/mg_surf.cfg` | `cfg/lendas/mg_surf.cfg` |
 | `lendas_mg/mg_off.cfg` | `cfg/lendas/mg_off.cfg` |
 | `lendas_mg/lendas_mg_maps.cfg` | `addons/sourcemod/configs/lendas_mg_maps.cfg` |
 
@@ -51,8 +52,22 @@ sozinha; sem o `mg_off.cfg` o servidor sairia do minigame com o movimento
 alterado no meio do mix seguinte. E ele só roda quando o modo estava mesmo
 ligado: em mapa comum o plugin não escreve um cvar sequer.
 
+**Perfis por família de mapa.** A segunda coluna do `lendas_mg_maps.cfg`
+escolhe qual cfg roda: vazia usa o `mg_on.cfg`, `surf` usa o `mg_surf.cfg`.
+Isso existe porque bhop e surf querem coisas opostas do `sv_airaccelerate` —
+no bhop quanto maior melhor (1000), no surf um valor alto tira a dificuldade
+e a rampa vira corredor (150). Um valor só serviria mal aos dois. Perfil novo
+é só criar `cfg/lendas/mg_<nome>.cfg` e citar `<nome>` na lista; o
+`mg_off.cfg` desfaz qualquer um deles.
+
 Para acrescentar um mapa ao modo basta editar `lendas_mg_maps.cfg` no
 servidor — o plugin relê o arquivo a cada troca de mapa, sem reload.
+
+**Todo cvar das cfg foi conferido dentro do `server_srv.so` do servidor.**
+Isso não é zelo excessivo: cvar que não existe o CS:S ignora sem reclamar, e
+a configuração fica com cara de certa sem fazer nada. Foi assim que o
+`sv_full_alltalk` saiu daqui (está no `server.cfg` da casa, mas não existe no
+binário) e que os cvars de stamina do CS:GO nem chegaram a entrar.
 
 ## Compilar
 
