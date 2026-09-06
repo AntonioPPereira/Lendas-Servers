@@ -29,6 +29,31 @@ Cada um explica no próprio cabeçalho **por que** foi feito daquele jeito —
 principalmente as decisões que não são óbvias (o atraso antes de gravar, a
 escrita atômica do JSON, o `utf8mb4`). Vale ler antes de mexer.
 
+## Modo minigame (`lendas_mg`)
+
+Os arquivos ficam em `lendas_mg/`, e não só o `.sp`: as **configurações
+fazem parte do plugin**. Um sem o outro não funciona, e config solta no
+servidor foi exatamente o que se perdeu no incidente de 29/08.
+
+| arquivo | vai para |
+| --- | --- |
+| `lendas_mg.sp` | compilado em `addons/sourcemod/plugins/lendas_mg.smx` |
+| `lendas_mg/mg_on.cfg` | `cfg/lendas/mg_on.cfg` |
+| `lendas_mg/mg_off.cfg` | `cfg/lendas/mg_off.cfg` |
+| `lendas_mg/lendas_mg_maps.cfg` | `addons/sourcemod/configs/lendas_mg_maps.cfg` |
+
+O desenho é o mesmo do `!mix`: um cfg ao entrar no modo, outro ao sair. A
+diferença é o gatilho — aqui é o nome do mapa, não um comando.
+
+**A parte que não é óbvia** é o cfg de saída. Nenhum cvar de movimento
+aparece no `server.cfg`, então a troca de mapa não desfaz o bunnyhop
+sozinha; sem o `mg_off.cfg` o servidor sairia do minigame com o movimento
+alterado no meio do mix seguinte. E ele só roda quando o modo estava mesmo
+ligado: em mapa comum o plugin não escreve um cvar sequer.
+
+Para acrescentar um mapa ao modo basta editar `lendas_mg_maps.cfg` no
+servidor — o plugin relê o arquivo a cada troca de mapa, sem reload.
+
 ## Compilar
 
 O compilador tem que ser da **mesma versão do SourceMod que roda no
