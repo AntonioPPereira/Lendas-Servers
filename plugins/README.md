@@ -40,6 +40,7 @@ servidor foi exatamente o que se perdeu no incidente de 29/08.
 | `lendas_mg.sp` | compilado em `addons/sourcemod/plugins/lendas_mg.smx` |
 | `lendas_mg/mg_on.cfg` | `cfg/lendas/mg_on.cfg` |
 | `lendas_mg/mg_surf.cfg` | `cfg/lendas/mg_surf.cfg` |
+| `lendas_mg/mg_combo.cfg` | `cfg/lendas/mg_combo.cfg` |
 | `lendas_mg/mg_off.cfg` | `cfg/lendas/mg_off.cfg` |
 | `lendas_mg/lendas_mg_maps.cfg` | `addons/sourcemod/configs/lendas_mg_maps.cfg` |
 
@@ -53,12 +54,28 @@ alterado no meio do mix seguinte. E ele só roda quando o modo estava mesmo
 ligado: em mapa comum o plugin não escreve um cvar sequer.
 
 **Perfis por família de mapa.** A segunda coluna do `lendas_mg_maps.cfg`
-escolhe qual cfg roda: vazia usa o `mg_on.cfg`, `surf` usa o `mg_surf.cfg`.
-Isso existe porque bhop e surf querem coisas opostas do `sv_airaccelerate` —
-no bhop quanto maior melhor (1000), no surf um valor alto tira a dificuldade
-e a rampa vira corredor (150). Um valor só serviria mal aos dois. Perfil novo
-é só criar `cfg/lendas/mg_<nome>.cfg` e citar `<nome>` na lista; o
-`mg_off.cfg` desfaz qualquer um deles.
+escolhe qual cfg roda:
+
+| perfil | cfg | `sv_airaccelerate` | para |
+| --- | --- | --- | --- |
+| (vazio) | `mg_on.cfg` | 1000 | minigame e bhop |
+| `surf` | `mg_surf.cfg` | 150 | rampa |
+| `combo` | `mg_combo.cfg` | 300 | mapa com rampa **e** bhop |
+
+O `sv_airaccelerate` **não é uma chave** surf-ou-bhop: é o quanto se ganha de
+velocidade estrafando no ar. Com `sv_enablebunnyhopping` ligado o bhop
+funciona em 150 também, só acelera mais devagar, e o surf funciona em 1000, só
+fica fácil demais. Mapa misto por isso não fica sem saída — ele quer um valor
+no meio, que é o `combo`.
+
+Perfil novo é criar `cfg/lendas/mg_<nome>.cfg` e citar `<nome>` na lista; o
+`mg_off.cfg` desfaz qualquer um deles, então não precisa de par.
+
+**A ordem da lista importa e pega todo mundo**: a primeira linha que casar
+ganha, e o resto nem é olhado. Exceção por mapa tem de ficar **acima** dos
+curingas — escrita depois de `mg_*`, um mapa `mg_qualquercoisa` perderia para
+o curinga e rodaria o perfil errado sem nenhum aviso. Por isso o arquivo tem
+uma seção de exceções no topo, e o teste exercita os dois sentidos.
 
 Para acrescentar um mapa ao modo basta editar `lendas_mg_maps.cfg` no
 servidor — o plugin relê o arquivo a cada troca de mapa, sem reload.
