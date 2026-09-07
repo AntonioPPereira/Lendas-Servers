@@ -114,6 +114,32 @@ O plugin avisa no log quando um arquivo da lista não existe. Isso não é
 zelo: `AddFileToDownloadsTable` aceita caminho inexistente calado, e o erro
 só apareceria como mais um ERROR no lugar do boneco.
 
+## Painel VIP (`lendas_vip` 2.0.0)
+
+| arquivo | vai para |
+| --- | --- |
+| `lendas_vip.sp` | compilado em `addons/sourcemod/plugins/lendas_vip.smx` |
+| `lendas_vip/lendas_vip_skins.cfg` | `addons/sourcemod/configs/lendas_vip_skins.cfg` |
+
+Reescrito do zero em 06/09/2026. A 1.x só existia como `.smx` — a mesma
+situação que fez o gravador de demos ser perdido em agosto. Comandos, cvars,
+textos e a lista de skins foram reconstruídos lendo o binário antigo, que
+está guardado no servidor em `plugins/disabled/` como a única cópia dela.
+
+**Skin nova não precisa de recompilação**: é um bloco no
+`lendas_vip_skins.cfg`, mais os arquivos dela na lista do `lendas_downloads`.
+Uma skin cujo `.mdl` não está no servidor não aparece no menu — escolher e
+receber um ERROR é pior do que ela não estar lá.
+
+**Este plugin não registra download nenhum**, de propósito. Esse assunto é do
+`lendas_downloads`: um assunto, um dono. A 1.x fazia os dois e registrava a
+pasta de materiais inteira de uma skin — 73 arquivos, 257 MB por jogador.
+
+**O padrão da flag é `a`, não `b`.** É o valor com que a 1.x rodava aqui, e
+VIP costuma ser justamente a flag de reserva de slot. Adotar um padrão "mais
+certo" tiraria o benefício de quem só tem `a` — por isso o `cfg/sourcemod/`
+foi escrito à mão na troca, em vez de deixar o `AutoExecConfig` gerar.
+
 ## Compilar
 
 O compilador tem que ser da **mesma versão do SourceMod que roda no
