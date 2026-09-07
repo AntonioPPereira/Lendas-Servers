@@ -5,9 +5,11 @@
 #include <sdktools>
 #include <clientprefs>
 
-#define PLUGIN_VERSION "2.2.0"
+#define PLUGIN_VERSION "2.3.0"
 
 #define ARQUIVO_SKINS "configs/lendas_vip_skins.cfg"
+#define ARQUIVO_TRILHAS "configs/lendas_vip_trilhas.cfg"
+#define MAX_TRILHAS 16
 #define MAX_SKINS 32
 #define SEM_SKIN 0
 
@@ -61,8 +63,7 @@ ConVar g_CvarAtivo;
 ConVar g_CvarFlag;
 ConVar g_CvarTracerVida;
 ConVar g_CvarTracerLargura;
-ConVar g_CvarTrilhaVida;
-ConVar g_CvarTrilhaLargura;
+ConVar g_CvarTrilhaAltura;
 ConVar g_CvarSkinPadrao;
 
 /* ------------------------------------------------------------- preferência */
@@ -70,6 +71,7 @@ ConVar g_CvarSkinPadrao;
 Cookie g_ckSkin;
 Cookie g_ckTracer;
 Cookie g_ckTrilha;
+Cookie g_ckTrilhaEstilo;
 
 /** Escolha de cada jogador. 0 = modelo padrão do jogo. */
 int g_iSkin[MAXPLAYERS + 1];
@@ -87,6 +89,17 @@ int g_iSkin[MAXPLAYERS + 1];
  */
 int g_iTracer[MAXPLAYERS + 1];
 int g_iTrilha[MAXPLAYERS + 1];
+int g_iTrilhaEstilo[MAXPLAYERS + 1];
+
+/**
+ * A entidade de trilha viva de cada jogador, guardada como REFERENCIA.
+ *
+ * Indice de entidade e reaproveitado pelo jogo: guardar o numero cru faria o
+ * plugin apagar, mais tarde, uma entidade completamente diferente que herdou
+ * o mesmo indice. A referencia carrega um numero de serie junto e nao se
+ * confunde.
+ */
+int g_iTrilhaEnt[MAXPLAYERS + 1];
 
 /* ------------------------------------------------------------------ skins */
 
@@ -125,6 +138,23 @@ Cor g_Cores[] = {
 
 int g_iModeloFeixe = -1;
 
+/* --------------------------------------------------------------- trilhas */
+
+enum struct Trilha
+{
+    int id;
+    char nome[64];
+    char sprite[PLATFORM_MAX_PATH];
+    float largura;
+    float fim;
+    float duracao;
+    int modo;
+    bool existe;   // o sprite está nesta instalação do jogo?
+}
+
+Trilha g_Trilhas[MAX_TRILHAS];
+int g_nTrilhas;
+
 /* =================================================================== ciclo */
 
 public void OnPluginStart()
@@ -148,11 +178,15 @@ public void OnPluginStart()
     g_CvarTracerLargura = CreateConVar("lendas_vip_tracer_width", "1.8",
         "Espessura do rastro de tiro.", FCVAR_NONE, true, 0.1, true, 20.0);
 
-    g_CvarTrilhaVida = CreateConVar("lendas_vip_trilha_life", "1.5",
-        "Quanto tempo a trilha do jogador fica no ar, em segundos. Valor alto deixa o mapa cheio de linha.",
-        FCVAR_NONE, true, 0.2, true, 10.0);
-    g_CvarTrilhaLargura = CreateConVar("lendas_vip_trilha_width", "6.0",
-        "Espessura da trilha do jogador.", FCVAR_NONE, true, 0.5, true, 40.0);
+    // A altura é medida a partir do CHÃO: a origem do jogador no Source fica
+    // nos pés. 0 = colado no chão, 35 = cintura, 64 = cabeça — que era onde a
+    // trilha ficava presa antes, e o motivo desta versão existir.
+    g_CvarTrilhaAltura = CreateConVar("lendas_vip_trilha_altura", "8.0",
+        "Altura da trilha a partir do chão, em unidades do jogo. 0 = no chão, 35 = cintura, 64 = cabeça.",
+        FCVAR_NONE, true, 0.0, true, 80.0);
+
+    // Espessura e duração deixaram de ser cvar: agora são do ESTILO, no
+    // configs/lendas_vip_trilhas.cfg, porque variam de um estilo para outro.
     g_CvarSkinPadrao = CreateConVar("lendas_vip_skin_padrao", "0",
         "Skin de quem nunca escolheu. 0 = modelo padrão do jogo.",
         FCVAR_NONE, true, 0.0);
@@ -168,9 +202,13 @@ public void OnPluginStart()
     g_ckSkin = new Cookie("lendas_vip_skin", "Skin VIP escolhida", CookieAccess_Protected);
     g_ckTracer = new Cookie("lendas_vip_tracer", "Cor do rastro de tiro VIP", CookieAccess_Protected);
     g_ckTrilha = new Cookie("lendas_vip_trilha", "Cor da trilha do jogador VIP", CookieAccess_Protected);
+    g_ckTrilhaEstilo = new Cookie("lendas_vip_trilha_estilo", "Estilo da trilha do jogador VIP", CookieAccess_Protected);
 
     HookEvent("player_spawn", Evento_Nasceu, EventHookMode_Post);
     HookEvent("bullet_impact", Evento_Tiro, EventHookMode_Post);
+
+    // Sem isto a trilha fica pendurada no corpo caído e continua desenhando.
+    HookEvent("player_death", Evento_Morreu, EventHookMode_Post);
 
     for (int i = 1; i <= MaxClients; i++)
     {
@@ -191,7 +229,126 @@ public void OnPluginStart()
 public void OnMapStart()
 {
     CarregarSkins();
+    CarregarTrilhas();
     g_iModeloFeixe = PrecacheModel("materials/sprites/laserbeam.vmt", true);
+
+    // Entidade de mapa anterior não sobrevive à troca; zerar as referências
+    // evita o plugin tentar apagar algo que já não existe.
+    for (int i = 1; i <= MAXPLAYERS; i++)
+    {
+        g_iTrilhaEnt[i] = INVALID_ENT_REFERENCE;
+    }
+}
+
+/**
+ * Lê os estilos de trilha e confere se o sprite de cada um existe.
+ *
+ * `FileExists` com o segundo parâmetro em `true` procura pelo sistema de
+ * arquivos do JOGO, o que inclui o conteúdo dentro dos VPK — é o único jeito
+ * de saber se um sprite padrão do CS:S está disponível, já que ele não existe
+ * como arquivo solto no disco.
+ *
+ * Estilo com sprite ausente some do menu e vai para o log. Um sprite que não
+ * carrega não deixa de desenhar: ele desenha o quadrado rosa de textura
+ * faltando, atrás do jogador, o tempo todo.
+ */
+void CarregarTrilhas()
+{
+    g_nTrilhas = 0;
+
+    char caminho[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, caminho, sizeof(caminho), ARQUIVO_TRILHAS);
+
+    KeyValues kv = new KeyValues("Trilhas");
+    if (!kv.ImportFromFile(caminho) || !kv.GotoFirstSubKey())
+    {
+        delete kv;
+        LogError("Não consegui ler os estilos de trilha em %s.", caminho);
+        return;
+    }
+
+    char faltando[512];
+    int nFaltando = 0;
+
+    do
+    {
+        if (g_nTrilhas >= MAX_TRILHAS)
+        {
+            LogError("Mais de %d estilos de trilha; o resto foi ignorado.", MAX_TRILHAS);
+            break;
+        }
+
+        char chave[16];
+        kv.GetSectionName(chave, sizeof(chave));
+
+        Trilha t;
+        t.id = StringToInt(chave);
+        kv.GetString("nome", t.nome, sizeof(t.nome), "sem nome");
+        kv.GetString("sprite", t.sprite, sizeof(t.sprite), "");
+        t.largura = kv.GetFloat("largura", 6.0);
+        t.fim = kv.GetFloat("fim", 1.0);
+        t.duracao = kv.GetFloat("duracao", 1.2);
+        t.modo = kv.GetNum("modo", 5);
+
+        if (t.id <= 0 || t.sprite[0] == 0)
+        {
+            LogError("Estilo de trilha '%s' ignorado: precisa de número e sprite.", chave);
+            continue;
+        }
+
+        t.existe = FileExists(t.sprite, true);
+        if (t.existe)
+        {
+            PrecacheModel(t.sprite, true);
+        }
+        else
+        {
+            nFaltando++;
+            if (faltando[0] != 0)
+            {
+                StrCat(faltando, sizeof(faltando), ", ");
+            }
+            StrCat(faltando, sizeof(faltando), t.nome);
+        }
+
+        g_Trilhas[g_nTrilhas] = t;
+        g_nTrilhas++;
+    }
+    while (kv.GotoNextKey());
+
+    delete kv;
+
+    LogMessage("%d estilo(s) de trilha lidos, %d utilizáveis.",
+        g_nTrilhas, g_nTrilhas - nFaltando);
+    if (nFaltando > 0)
+    {
+        LogMessage("Sem o sprite nesta instalação, fora do menu: %s", faltando);
+    }
+}
+
+int AcharTrilha(int id)
+{
+    for (int i = 0; i < g_nTrilhas; i++)
+    {
+        if (g_Trilhas[i].id == id)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/** Primeiro estilo utilizável, para quem nunca escolheu. */
+int PrimeiraTrilhaUsavel()
+{
+    for (int i = 0; i < g_nTrilhas; i++)
+    {
+        if (g_Trilhas[i].existe)
+        {
+            return g_Trilhas[i].id;
+        }
+    }
+    return 0;
 }
 
 public void OnClientCookiesCached(int client)
@@ -199,13 +356,34 @@ public void OnClientCookiesCached(int client)
     g_iSkin[client] = LerCookie(client, g_ckSkin, g_CvarSkinPadrao.IntValue);
     g_iTracer[client] = LerCookie(client, g_ckTracer, 0);
     g_iTrilha[client] = LerCookie(client, g_ckTrilha, 0);
+    g_iTrilhaEstilo[client] = LerCookie(client, g_ckTrilhaEstilo, PrimeiraTrilhaUsavel());
 }
 
 public void OnClientDisconnect(int client)
 {
+    ApagarTrilha(client);
     g_iSkin[client] = 0;
     g_iTracer[client] = 0;
     g_iTrilha[client] = 0;
+    g_iTrilhaEstilo[client] = 0;
+}
+
+/**
+ * Remove a trilha viva do jogador, se houver.
+ *
+ * A entidade é filha do jogador, e uma entidade filha não some sozinha em
+ * todos os casos — sobra pendurada e vira lixo que se acumula a cada
+ * nascimento. Apagar antes de criar a próxima é o que mantém uma só por
+ * pessoa.
+ */
+void ApagarTrilha(int client)
+{
+    int ent = EntRefToEntIndex(g_iTrilhaEnt[client]);
+    if (ent > 0 && IsValidEntity(ent))
+    {
+        AcceptEntityInput(ent, "Kill");
+    }
+    g_iTrilhaEnt[client] = INVALID_ENT_REFERENCE;
 }
 
 int LerCookie(int client, Cookie ck, int padrao)
@@ -321,6 +499,12 @@ void NomeDaSkin(int id, char[] destino, int tamanho)
     strcopy(destino, tamanho, (i == -1) ? "nenhuma" : g_Skins[i].nome);
 }
 
+void NomeDoEstilo(int id, char[] destino, int tamanho)
+{
+    int i = AcharTrilha(id);
+    strcopy(destino, tamanho, (i == -1) ? "nenhum" : g_Trilhas[i].nome);
+}
+
 void NomeDoTracer(int cor, char[] destino, int tamanho)
 {
     if (cor <= 0 || cor > sizeof(g_Cores))
@@ -404,36 +588,92 @@ public Action Timer_VestirSkin(Handle timer, any userid)
 /**
  * Liga a trilha que segue o jogador pelo mapa.
  *
- * `TE_SetupBeamFollow` prende o feixe à ENTIDADE, e ele acompanha sozinho
- * enquanto o jogador anda — nada precisa ser reenviado por quadro. Mas ele
- * morre junto com a vida do jogador, então tem de ser ligado a cada
- * nascimento, e é por isso que vive no mesmo temporizador da skin.
+ * POR QUE NÃO É MAIS `TE_SetupBeamFollow`
+ *
+ * Aquele efeito prende o feixe à ENTIDADE e não aceita deslocamento: ele
+ * segue o centro do jogador, e o rastro saía na altura da cabeça. Não havia
+ * o que configurar — é o que o efeito faz.
+ *
+ * `env_spritetrail` é uma entidade de verdade: dá para pendurá-la no jogador
+ * e movê-la para onde se quiser depois. Daí a altura virar ajustável, e o
+ * sprite, a espessura e a duração virarem escolha de estilo.
+ *
+ * A ordem importa: pendura primeiro (`SetParent`), move depois. Movida antes,
+ * a posição seria no mundo e o `SetParent` a jogaria de volta para cima do
+ * jogador; movida depois, o deslocamento é RELATIVO a ele e acompanha.
  */
 public Action Timer_LigarTrilha(Handle timer, any userid)
 {
     int client = GetClientOfUserId(userid);
-    if (client <= 0 || !IsClientInGame(client) || !IsPlayerAlive(client) || !EhVip(client))
+    if (client <= 0 || !IsClientInGame(client))
+    {
+        return Plugin_Stop;
+    }
+
+    // Sempre limpa a anterior, mesmo quando não vai criar outra: quem
+    // desligou a trilha no menu precisa ver a antiga sumir.
+    ApagarTrilha(client);
+
+    if (!IsPlayerAlive(client) || !EhVip(client))
     {
         return Plugin_Stop;
     }
 
     int cor = g_iTrilha[client];
-    if (cor <= 0 || cor > sizeof(g_Cores) || g_iModeloFeixe <= 0)
+    if (cor <= 0 || cor > sizeof(g_Cores))
     {
         return Plugin_Stop;
     }
 
-    int rgba[4];
-    rgba[0] = g_Cores[cor - 1].r;
-    rgba[1] = g_Cores[cor - 1].g;
-    rgba[2] = g_Cores[cor - 1].b;
-    rgba[3] = 255;
+    int i = AcharTrilha(g_iTrilhaEstilo[client]);
+    if (i == -1 || !g_Trilhas[i].existe)
+    {
+        return Plugin_Stop;
+    }
 
-    float largura = g_CvarTrilhaLargura.FloatValue;
-    TE_SetupBeamFollow(client, g_iModeloFeixe, 0, g_CvarTrilhaVida.FloatValue,
-        largura, largura * 0.1, 1, rgba);
-    TE_SendToAll();
+    int ent = CreateEntityByName("env_spritetrail");
+    if (ent <= 0)
+    {
+        return Plugin_Stop;
+    }
+
+    char valor[64];
+
+    DispatchKeyValue(ent, "spritename", g_Trilhas[i].sprite);
+    FormatEx(valor, sizeof(valor), "%d %d %d",
+        g_Cores[cor - 1].r, g_Cores[cor - 1].g, g_Cores[cor - 1].b);
+    DispatchKeyValue(ent, "rendercolor", valor);
+    DispatchKeyValue(ent, "renderamt", "255");
+
+    FormatEx(valor, sizeof(valor), "%d", g_Trilhas[i].modo);
+    DispatchKeyValue(ent, "rendermode", valor);
+
+    DispatchKeyValueFloat(ent, "lifetime", g_Trilhas[i].duracao);
+    DispatchKeyValueFloat(ent, "startwidth", g_Trilhas[i].largura);
+    DispatchKeyValueFloat(ent, "endwidth", g_Trilhas[i].fim);
+
+    DispatchSpawn(ent);
+    ActivateEntity(ent);
+
+    SetVariantString("!activator");
+    AcceptEntityInput(ent, "SetParent", client);
+
+    // Agora sim a altura, relativa ao jogador. A origem dele fica nos pés.
+    float desloc[3];
+    desloc[2] = g_CvarTrilhaAltura.FloatValue;
+    TeleportEntity(ent, desloc, NULL_VECTOR, NULL_VECTOR);
+
+    g_iTrilhaEnt[client] = EntIndexToEntRef(ent);
     return Plugin_Stop;
+}
+
+public void Evento_Morreu(Event evento, const char[] nome, bool naoTransmitir)
+{
+    int client = GetClientOfUserId(evento.GetInt("userid"));
+    if (client > 0)
+    {
+        ApagarTrilha(client);
+    }
 }
 
 public void Evento_Tiro(Event evento, const char[] nome, bool naoTransmitir)
@@ -539,10 +779,18 @@ public Action Comando_Vips(int client, int args)
  */
 void MenuPrincipal(int client)
 {
-    char skin[64], tracer[32], trilha[32];
+    char skin[64], tracer[32], trilha[96];
     NomeDaSkin(g_iSkin[client], skin, sizeof(skin));
     NomeDoTracer(g_iTracer[client], tracer, sizeof(tracer));
     NomeDoTracer(g_iTrilha[client], trilha, sizeof(trilha));
+    if (g_iTrilha[client] > 0)
+    {
+        // Cor sozinha não diz o que a pessoa vai ver; o estilo é metade da
+        // informação.
+        char estilo[64];
+        NomeDoEstilo(g_iTrilhaEstilo[client], estilo, sizeof(estilo));
+        Format(trilha, sizeof(trilha), "%s, %s", estilo, trilha);
+    }
 
     char titulo[256];
     Format(titulo, sizeof(titulo),
@@ -603,6 +851,7 @@ public int Escolha_Principal(Menu menu, MenuAction acao, int client, int item)
         GravarCookie(client, g_ckSkin, SEM_SKIN);
         GravarCookie(client, g_ckTracer, 0);
         GravarCookie(client, g_ckTrilha, 0);
+        ApagarTrilha(client);
         PrintToChat(client, "\x04[LENDAS VIP]\x01 Tudo desligado. A skin sai no proximo nascimento.");
         MenuPrincipal(client);
     }
@@ -772,10 +1021,133 @@ public int Escolha_Tracer(Menu menu, MenuAction acao, int client, int item)
     return 0;
 }
 
+/**
+ * A trilha tem duas escolhas — estilo e cor —, então este menu é um hub.
+ *
+ * Juntar as duas num menu só daria estilos x cores itens: com 6 e 6, trinta e
+ * seis linhas num painel que mostra sete. Separar é o que mantém a coisa
+ * navegável.
+ */
 void MenuTrilha(int client)
 {
+    char estilo[64], cor[32];
+    NomeDoEstilo(g_iTrilhaEstilo[client], estilo, sizeof(estilo));
+    NomeDoTracer(g_iTrilha[client], cor, sizeof(cor));
+
+    char titulo[192];
+    Format(titulo, sizeof(titulo),
+        "TRILHA DO JOGADOR\n \nEstilo:  %s\nCor:     %s\n ", estilo, cor);
+
+    Menu menu = new Menu(Escolha_TrilhaHub);
+    menu.SetTitle(titulo);
+    menu.AddItem("estilo", "Trocar o estilo");
+    menu.AddItem("cor", "Trocar a cor");
+    menu.AddItem("off", "Desligar a trilha",
+        g_iTrilha[client] > 0 ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
+    menu.ExitBackButton = true;
+    menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int Escolha_TrilhaHub(Menu menu, MenuAction acao, int client, int item)
+{
+    if (acao == MenuAction_End)
+    {
+        delete menu;
+        return 0;
+    }
+    if (acao == MenuAction_Cancel && item == MenuCancel_ExitBack)
+    {
+        MenuPrincipal(client);
+        return 0;
+    }
+    if (acao != MenuAction_Select)
+    {
+        return 0;
+    }
+
+    char chave[16];
+    menu.GetItem(item, chave, sizeof(chave));
+
+    if (StrEqual(chave, "estilo"))
+    {
+        MenuTrilhaEstilo(client);
+    }
+    else if (StrEqual(chave, "cor"))
+    {
+        MenuTrilhaCor(client);
+    }
+    else
+    {
+        g_iTrilha[client] = 0;
+        GravarCookie(client, g_ckTrilha, 0);
+        ApagarTrilha(client);
+        PrintToChat(client, "\x04[LENDAS VIP]\x01 Trilha desligada.");
+        MenuTrilha(client);
+    }
+    return 0;
+}
+
+void MenuTrilhaEstilo(int client)
+{
+    Menu menu = new Menu(Escolha_TrilhaEstilo);
+    menu.SetTitle("ESTILO DA TRILHA\n ");
+
+    char chave[8], linha[96];
+    for (int i = 0; i < g_nTrilhas; i++)
+    {
+        // Estilo cujo sprite não existe nesta instalação fica de fora: ele
+        // desenharia o quadrado rosa de textura faltando atrás do jogador.
+        if (!g_Trilhas[i].existe)
+        {
+            continue;
+        }
+        strcopy(linha, sizeof(linha), g_Trilhas[i].nome);
+        if (g_Trilhas[i].id == g_iTrilhaEstilo[client])
+        {
+            StrCat(linha, sizeof(linha), "   [EM USO]");
+        }
+        IntToString(g_Trilhas[i].id, chave, sizeof(chave));
+        menu.AddItem(chave, linha);
+    }
+
+    menu.ExitBackButton = true;
+    menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int Escolha_TrilhaEstilo(Menu menu, MenuAction acao, int client, int item)
+{
+    if (acao == MenuAction_End)
+    {
+        delete menu;
+        return 0;
+    }
+    if (acao == MenuAction_Cancel && item == MenuCancel_ExitBack)
+    {
+        MenuTrilha(client);
+        return 0;
+    }
+    if (acao != MenuAction_Select)
+    {
+        return 0;
+    }
+
+    char chave[8];
+    menu.GetItem(item, chave, sizeof(chave));
+    g_iTrilhaEstilo[client] = StringToInt(chave);
+    GravarCookie(client, g_ckTrilhaEstilo, g_iTrilhaEstilo[client]);
+
+    char nome[64];
+    NomeDoEstilo(g_iTrilhaEstilo[client], nome, sizeof(nome));
+    PrintToChat(client, "\x04[LENDAS VIP]\x01 Estilo da trilha: \x04%s\x01. Vale no proximo nascimento.", nome);
+
+    MenuTrilha(client);
+    return 0;
+}
+
+void MenuTrilhaCor(int client)
+{
     Menu menu = new Menu(Escolha_Trilha);
-    menu.SetTitle("TRILHA DO JOGADOR\n \nUm rastro colorido que te segue pelo mapa.\n ");
+    menu.SetTitle("COR DA TRILHA\n ");
 
     char chave[8], linha[64];
     for (int i = 0; i < sizeof(g_Cores); i++)
@@ -809,7 +1181,7 @@ public int Escolha_Trilha(Menu menu, MenuAction acao, int client, int item)
     }
     if (acao == MenuAction_Cancel && item == MenuCancel_ExitBack)
     {
-        MenuPrincipal(client);
+        MenuTrilha(client);
         return 0;
     }
     if (acao != MenuAction_Select)
@@ -838,7 +1210,7 @@ public int Escolha_Trilha(Menu menu, MenuAction acao, int client, int item)
         PrintToChat(client, "\x04[LENDAS VIP]\x01 Trilha desligada no proximo nascimento.");
     }
 
-    MenuPrincipal(client);
+    MenuTrilha(client);
     return 0;
 }
 
@@ -855,7 +1227,8 @@ void MenuInfo(int client)
     Format(linha, sizeof(linha), "%d cores de rastro de tiro", sizeof(g_Cores));
     menu.AddItem("", linha, ITEMDRAW_DISABLED);
 
-    Format(linha, sizeof(linha), "%d cores de trilha que te segue", sizeof(g_Cores));
+    Format(linha, sizeof(linha), "%d estilos de trilha em %d cores",
+        ContarTrilhasUsaveis(), sizeof(g_Cores));
     menu.AddItem("", linha, ITEMDRAW_DISABLED);
 
     menu.AddItem("", "Sua escolha fica salva entre partidas", ITEMDRAW_DISABLED);
@@ -876,6 +1249,19 @@ public int Escolha_Info(Menu menu, MenuAction acao, int client, int item)
         MenuPrincipal(client);
     }
     return 0;
+}
+
+int ContarTrilhasUsaveis()
+{
+    int n = 0;
+    for (int i = 0; i < g_nTrilhas; i++)
+    {
+        if (g_Trilhas[i].existe)
+        {
+            n++;
+        }
+    }
+    return n;
 }
 
 int ContarSkinsUsaveis()
