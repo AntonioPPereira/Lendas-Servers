@@ -86,6 +86,34 @@ a configuração fica com cara de certa sem fazer nada. Foi assim que o
 `sv_full_alltalk` saiu daqui (está no `server.cfg` da casa, mas não existe no
 binário) e que os cvars de stamina do CS:GO nem chegaram a entrar.
 
+## Downloads do conteúdo customizado (`lendas_downloads`)
+
+| arquivo | vai para |
+| --- | --- |
+| `lendas_downloads.sp` | compilado em `addons/sourcemod/plugins/lendas_downloads.smx` |
+| `lendas_downloads/lendas_downloads.cfg` | `addons/sourcemod/configs/lendas_downloads.cfg` |
+
+Existe por causa de um sintoma concreto: as skins do `lendas_vip` apareciam
+como **ERROR** para todo mundo. O plugin do VIP chama `PrecacheModel` e
+`SetEntityModel` — o servidor carrega e veste — mas **não chama
+`AddFileToDownloadsTable`**, então o cliente nunca é avisado de que existe o
+que baixar. Os arquivos estavam no servidor e no FastDL o tempo todo; faltava
+o convite. Descoberto lendo os 51 natives do `.smx` dele, que não tem fonte.
+
+**A lista é mínima de propósito.** A pasta `materials/models/gfl2_charolic`
+tem 73 arquivos e 257 MB, mas o modelo usa 9 materiais. Mandar a pasta
+inteira faria cada jogador baixar 257 MB de textura de roupa que o modelo nem
+tem. A lista saiu de ler o que cada `.mdl` pede (o caminho fica gravado
+dentro dele) e o que cada `.vmt` referencia: dá 51 arquivos, 53,8 MB.
+
+**Maiúscula importa.** O servidor é Linux e os nomes na lista são os do
+disco, não os que o `.vmt` pede — o `wheelchair01.vtf` está em minúscula no
+disco e o material pede `WheelChair01`.
+
+O plugin avisa no log quando um arquivo da lista não existe. Isso não é
+zelo: `AddFileToDownloadsTable` aceita caminho inexistente calado, e o erro
+só apareceria como mais um ERROR no lugar do boneco.
+
 ## Compilar
 
 O compilador tem que ser da **mesma versão do SourceMod que roda no
