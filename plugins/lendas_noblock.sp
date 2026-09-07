@@ -2,78 +2,96 @@
 #pragma newdecls required
 
 #include <sourcemod>
+#include <sdktools>
 #include <sdkhooks>
 
-#define PLUGIN_VERSION "1.0.0"
+#define PLUGIN_VERSION "2.0.0"
 
-// Grupos de colisão do Source. Só estes dois interessam aqui: são os que o
-// jogo usa quando um jogador se move e pergunta "tem alguém no caminho?".
+// Grupos de colisão do Source.
 #define COLLISION_GROUP_PLAYER          5
 #define COLLISION_GROUP_PLAYER_MOVEMENT 8
+/** Atravessa jogador, mas ainda ativa gatilho de mapa. */
+#define COLLISION_GROUP_DEBRIS_TRIGGER  2
 
 /**
- * Tira a colisão entre jogadores — dá para atravessar o colega.
+ * Atravessar outros jogadores — agora sem a sensação de engasgo.
  *
- * POR QUE NÃO PELO CAMINHO ÓBVIO
+ * O QUE ESTAVA ERRADO NA 1.0.0
  *
- * A receita que se acha em todo lugar é escrever no `m_CollisionGroup` do
- * jogador. Ela funciona e **causa um bug conhecido de física no CS:S**: armas
- * caindo pelo mapa, props sumindo. Um servidor movimentado que fez isso
- * mediu o problema acontecendo cerca de 2,6 vezes por dia.
+ * Ela usava só o `SDKHook_ShouldCollide`, que responde à pergunta no
+ * SERVIDOR. Funcionava: dava para atravessar. Mas o CLIENTE não sabia de
+ * nada — ele continuava prevendo a colisão, empurrava o jogador para trás, o
+ * servidor discordava e devolvia. O resultado era o travadinho ao passar
+ * dentro do outro.
  *
- * A causa é que escrever a variável direto pula a limpeza que a engine faz
- * quando o grupo muda de verdade (`CollisionRulesChanged`), e o filtro de
- * colisão fica com estado velho sobre os outros objetos.
+ * O que o cliente enxerga é o GRUPO DE COLISÃO, que é sincronizado com ele.
+ * Mudando o grupo, os dois lados passam a concordar antes do movimento
+ * acontecer, e o engasgo some.
  *
- * COMO ESTE FAZ
+ * O CUIDADO QUE ISSO EXIGE, E POR QUE HÁ DOIS CAMINHOS
  *
- * Não muda o grupo de ninguém. Ele responde à PERGUNTA que a engine já faz
- * antes de cada movimento: "este jogador deve colidir com quem está
- * consultando?". Quando quem consulta é o movimento de outro jogador, a
- * resposta passa a ser não. Nenhum estado é alterado, então não há o que
- * ficar desatualizado — e desligar o plugin devolve tudo ao normal na hora,
- * sem reiniciar nada.
+ * Escrever direto no `m_CollisionGroup` é a receita conhecida e causa um bug
+ * de física documentado no CS:S — armas caindo pelo mapa, props sumindo —
+ * porque pula a limpeza interna (`CollisionRulesChanged`) que a engine faz
+ * quando o grupo muda de verdade.
  *
- * O que continua funcionando de propósito: TIRO. A bala não consulta com
- * grupo de jogador, então ela acerta normalmente. Só o corpo deixa de barrar
- * o corpo.
+ * O SourceMod 1.11 ganhou a nativa `SetEntityCollisionGroup`, que chama a
+ * função da própria engine e faz a limpeza. É o caminho certo. Só que ela
+ * depende de uma assinatura no gamedata, e **nesta instalação essa assinatura
+ * não existe para jogo nenhum** — procurei em todos os arquivos.
  *
- * POR QUE NÃO EXISTE "ATRAVESSA SÓ O ADVERSÁRIO"
+ * Então o plugin tenta a nativa e, se ela não estiver disponível, usa a
+ * escrita direta. E DIZ NO LOG qual dos dois está usando. Assim a escolha
+ * deixa de ser suposição minha: o servidor responde.
  *
- * Seria a opção natural, para não perder o subir-no-colega que vários mapas
- * de minigame usam. Não dá por aqui: a engine informa QUEM é o obstáculo,
- * mas não quem está tentando passar — sem os dois lados não há como comparar
- * time. Fazer isso exigiria voltar a mexer no grupo de colisão, que é
- * justamente o caminho que este plugin existe para evitar.
+ * O gancho do servidor continua ligado junto com o grupo. Não é redundância
+ * inútil: o grupo faz cliente e servidor concordarem, e o gancho garante que
+ * o servidor não deixe passar nenhum caso que o grupo não cubra.
  *
- * Então a escolha é honesta e binária: com colisão, ou sem. Se um mapa
- * precisar de boost, o caminho é `lendas_noblock_ativo 0` naquele mapa.
+ * POR QUE O GRUPO É "DEBRIS_TRIGGER" E NÃO "DEBRIS"
+ *
+ * Os dois atravessam jogador. A diferença é que o DEBRIS puro também ignora
+ * os gatilhos do mapa — e um mapa de percurso é feito de gatilho. Com ele, o
+ * jogador atravessaria o colega e também o fim da fase.
  */
 public Plugin myinfo =
 {
     name = "[LENDAS] Sem Colisao",
     author = "LENDAS / Codex",
-    description = "Permite atravessar outros jogadores, sem mexer no grupo de colisão.",
+    description = "Permite atravessar outros jogadores, com o cliente sabendo disso.",
     version = PLUGIN_VERSION,
     url = ""
 };
 
 ConVar g_CvarAtivo;
+ConVar g_CvarNativo;
+
+/** A nativa correta existe e está utilizável neste servidor? */
+bool g_bTemNativo;
 
 public void OnPluginStart()
 {
-    CreateConVar("lendas_noblock_version", PLUGIN_VERSION, "Versão do [LENDAS] Sem Colisao.",
-        FCVAR_NOTIFY | FCVAR_DONTRECORD);
+    CreateConVar("lendas_noblock_version", PLUGIN_VERSION,
+        "Versão do [LENDAS] Sem Colisao.", FCVAR_NOTIFY | FCVAR_DONTRECORD);
 
     g_CvarAtivo = CreateConVar("lendas_noblock_ativo", "1",
-        "1 = jogadores se atravessam. 0 = colisão normal do jogo (para mapa que precisa de boost).",
+        "1 = jogadores se atravessam. 0 = colisão normal do jogo.",
+        FCVAR_NONE, true, 0.0, true, 1.0);
+
+    g_CvarNativo = CreateConVar("lendas_noblock_nativo", "1",
+        "1 = usa SetEntityCollisionGroup quando existir (caminho certo). 0 = força a escrita direta. Só mexa se o log acusar erro.",
         FCVAR_NONE, true, 0.0, true, 1.0);
 
     AutoExecConfig(true, "lendas_noblock", "sourcemod");
 
-    // Quem já está no servidor quando o plugin carrega também precisa do
-    // gancho — senão só quem entrar depois atravessa, e o resultado fica
-    // inexplicável para quem está jogando.
+    g_bTemNativo = (GetFeatureStatus(FeatureType_Native, "SetEntityCollisionGroup")
+                    == FeatureStatus_Available);
+
+    LogMessage("caminho para mudar o grupo de colisão: %s",
+        g_bTemNativo
+            ? "SetEntityCollisionGroup (nativa da engine, com limpeza interna)"
+            : "escrita direta em m_CollisionGroup (a nativa não existe aqui)");
+
     for (int i = 1; i <= MaxClients; i++)
     {
         if (IsClientInGame(i))
@@ -86,18 +104,64 @@ public void OnPluginStart()
 public void OnClientPutInServer(int client)
 {
     SDKHook(client, SDKHook_ShouldCollide, Gancho_DeveColidir);
+    SDKHook(client, SDKHook_SpawnPost, Gancho_Nasceu);
+}
+
+public void Gancho_Nasceu(int client)
+{
+    // Um instante depois: no próprio spawn o jogo ainda está montando o
+    // jogador, e o grupo escrito agora seria sobrescrito em seguida.
+    CreateTimer(0.2, Timer_Aplicar, GetClientUserId(client));
+}
+
+public Action Timer_Aplicar(Handle timer, any userid)
+{
+    int client = GetClientOfUserId(userid);
+    if (client <= 0 || !IsClientInGame(client) || !IsPlayerAlive(client))
+    {
+        return Plugin_Stop;
+    }
+
+    DefinirGrupo(client, g_CvarAtivo.BoolValue
+        ? COLLISION_GROUP_DEBRIS_TRIGGER
+        : COLLISION_GROUP_PLAYER);
+    return Plugin_Stop;
 }
 
 /**
- * A engine pergunta, antes de mover alguém, se este jogador atrapalha.
+ * Muda o grupo pelo melhor caminho disponível.
  *
- * `entity` é o jogador que tem o gancho — o obstáculo em potencial.
- * `collisiongroup` é o grupo de QUEM está se movendo.
+ * A nativa faz a engine cuidar da limpeza interna. A escrita direta não faz,
+ * e é a origem do bug de física conhecido — por isso ela é o segundo caminho,
+ * não o primeiro.
+ */
+void DefinirGrupo(int client, int grupo)
+{
+    if (GetEntProp(client, Prop_Data, "m_CollisionGroup") == grupo)
+    {
+        return;   // já está assim; mexer à toa é o que causa o bug
+    }
+
+    if (g_bTemNativo && g_CvarNativo.BoolValue)
+    {
+        SetEntityCollisionGroup(client, grupo);
+        return;
+    }
+
+    SetEntProp(client, Prop_Data, "m_CollisionGroup", grupo);
+    // Marca o estado como alterado para o cliente receber o valor novo. Sem
+    // isto a mudança poderia ficar só no servidor — e o engasgo continuaria,
+    // que é justamente o que esta versão veio consertar.
+    ChangeEdictState(client, FindDataMapInfo(client, "m_CollisionGroup"));
+}
+
+/**
+ * A rede de segurança do lado do servidor.
  *
- * Devolver `false` faz o trace ignorar este jogador. Devolver o `original`
- * em todo o resto é o que mantém tiro, granada, porta e física do mapa
- * funcionando como sempre: só a pergunta "outro jogador está tentando passar
- * por aqui?" tem a resposta trocada.
+ * `entity` é o obstáculo em potencial; `collisiongroup` é o grupo de quem se
+ * move. Devolver `false` faz o trace ignorar este jogador. Tudo o que não for
+ * outro jogador passando cai no `original`, e por isso tiro, granada e porta
+ * continuam funcionando.
  */
 public bool Gancho_DeveColidir(int entity, int collisiongroup, int contentsmask, bool original)
 {
@@ -106,8 +170,6 @@ public bool Gancho_DeveColidir(int entity, int collisiongroup, int contentsmask,
         return original;
     }
 
-    // Só interessa quando quem consulta é o corpo de outro jogador. Bala e
-    // granada consultam com outro grupo e caem no `original`.
     if (collisiongroup != COLLISION_GROUP_PLAYER
         && collisiongroup != COLLISION_GROUP_PLAYER_MOVEMENT)
     {
