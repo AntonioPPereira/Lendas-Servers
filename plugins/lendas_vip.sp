@@ -5,7 +5,7 @@
 #include <sdktools>
 #include <clientprefs>
 
-#define PLUGIN_VERSION "2.1.0"
+#define PLUGIN_VERSION "2.2.0"
 
 #define ARQUIVO_SKINS "configs/lendas_vip_skins.cfg"
 #define MAX_SKINS 32
@@ -61,16 +61,32 @@ ConVar g_CvarAtivo;
 ConVar g_CvarFlag;
 ConVar g_CvarTracerVida;
 ConVar g_CvarTracerLargura;
+ConVar g_CvarTrilhaVida;
+ConVar g_CvarTrilhaLargura;
 ConVar g_CvarSkinPadrao;
 
 /* ------------------------------------------------------------- preferência */
 
 Cookie g_ckSkin;
 Cookie g_ckTracer;
+Cookie g_ckTrilha;
 
 /** Escolha de cada jogador. 0 = modelo padrão do jogo. */
 int g_iSkin[MAXPLAYERS + 1];
+
+/**
+ * Duas coisas parecidas que não são a mesma, e por isso têm nomes diferentes
+ * no menu:
+ *
+ *   tracer  — o feixe do TIRO, do olho até onde a bala bateu. Aparece a cada
+ *             disparo e some.
+ *   trilha  — o rastro que segue o JOGADOR pelo mapa enquanto ele anda.
+ *
+ * Chamar as duas de "rastro" no menu faria o jogador ligar uma achando que
+ * era a outra.
+ */
 int g_iTracer[MAXPLAYERS + 1];
+int g_iTrilha[MAXPLAYERS + 1];
 
 /* ------------------------------------------------------------------ skins */
 
@@ -131,6 +147,12 @@ public void OnPluginStart()
         FCVAR_NONE, true, 0.1, true, 5.0);
     g_CvarTracerLargura = CreateConVar("lendas_vip_tracer_width", "1.8",
         "Espessura do rastro de tiro.", FCVAR_NONE, true, 0.1, true, 20.0);
+
+    g_CvarTrilhaVida = CreateConVar("lendas_vip_trilha_life", "1.5",
+        "Quanto tempo a trilha do jogador fica no ar, em segundos. Valor alto deixa o mapa cheio de linha.",
+        FCVAR_NONE, true, 0.2, true, 10.0);
+    g_CvarTrilhaLargura = CreateConVar("lendas_vip_trilha_width", "6.0",
+        "Espessura da trilha do jogador.", FCVAR_NONE, true, 0.5, true, 40.0);
     g_CvarSkinPadrao = CreateConVar("lendas_vip_skin_padrao", "0",
         "Skin de quem nunca escolheu. 0 = modelo padrão do jogo.",
         FCVAR_NONE, true, 0.0);
@@ -145,6 +167,7 @@ public void OnPluginStart()
 
     g_ckSkin = new Cookie("lendas_vip_skin", "Skin VIP escolhida", CookieAccess_Protected);
     g_ckTracer = new Cookie("lendas_vip_tracer", "Cor do rastro de tiro VIP", CookieAccess_Protected);
+    g_ckTrilha = new Cookie("lendas_vip_trilha", "Cor da trilha do jogador VIP", CookieAccess_Protected);
 
     HookEvent("player_spawn", Evento_Nasceu, EventHookMode_Post);
     HookEvent("bullet_impact", Evento_Tiro, EventHookMode_Post);
@@ -175,12 +198,14 @@ public void OnClientCookiesCached(int client)
 {
     g_iSkin[client] = LerCookie(client, g_ckSkin, g_CvarSkinPadrao.IntValue);
     g_iTracer[client] = LerCookie(client, g_ckTracer, 0);
+    g_iTrilha[client] = LerCookie(client, g_ckTrilha, 0);
 }
 
 public void OnClientDisconnect(int client)
 {
     g_iSkin[client] = 0;
     g_iTracer[client] = 0;
+    g_iTrilha[client] = 0;
 }
 
 int LerCookie(int client, Cookie ck, int padrao)
@@ -342,6 +367,7 @@ public void Evento_Nasceu(Event evento, const char[] nome, bool naoTransmitir)
     // time e modelo, e escrever antes disso é escrever por cima do que ele
     // vai escrever depois.
     CreateTimer(0.1, Timer_VestirSkin, GetClientUserId(client));
+    CreateTimer(0.3, Timer_LigarTrilha, GetClientUserId(client));
 }
 
 public Action Timer_VestirSkin(Handle timer, any userid)
@@ -372,6 +398,41 @@ public Action Timer_VestirSkin(Handle timer, any userid)
     }
 
     SetEntityModel(client, g_Skins[i].modelo);
+    return Plugin_Stop;
+}
+
+/**
+ * Liga a trilha que segue o jogador pelo mapa.
+ *
+ * `TE_SetupBeamFollow` prende o feixe à ENTIDADE, e ele acompanha sozinho
+ * enquanto o jogador anda — nada precisa ser reenviado por quadro. Mas ele
+ * morre junto com a vida do jogador, então tem de ser ligado a cada
+ * nascimento, e é por isso que vive no mesmo temporizador da skin.
+ */
+public Action Timer_LigarTrilha(Handle timer, any userid)
+{
+    int client = GetClientOfUserId(userid);
+    if (client <= 0 || !IsClientInGame(client) || !IsPlayerAlive(client) || !EhVip(client))
+    {
+        return Plugin_Stop;
+    }
+
+    int cor = g_iTrilha[client];
+    if (cor <= 0 || cor > sizeof(g_Cores) || g_iModeloFeixe <= 0)
+    {
+        return Plugin_Stop;
+    }
+
+    int rgba[4];
+    rgba[0] = g_Cores[cor - 1].r;
+    rgba[1] = g_Cores[cor - 1].g;
+    rgba[2] = g_Cores[cor - 1].b;
+    rgba[3] = 255;
+
+    float largura = g_CvarTrilhaLargura.FloatValue;
+    TE_SetupBeamFollow(client, g_iModeloFeixe, 0, g_CvarTrilhaVida.FloatValue,
+        largura, largura * 0.1, 1, rgba);
+    TE_SendToAll();
     return Plugin_Stop;
 }
 
@@ -478,23 +539,27 @@ public Action Comando_Vips(int client, int args)
  */
 void MenuPrincipal(int client)
 {
-    char skin[64], tracer[32];
+    char skin[64], tracer[32], trilha[32];
     NomeDaSkin(g_iSkin[client], skin, sizeof(skin));
     NomeDoTracer(g_iTracer[client], tracer, sizeof(tracer));
+    NomeDoTracer(g_iTrilha[client], trilha, sizeof(trilha));
 
-    char titulo[192];
+    char titulo[256];
     Format(titulo, sizeof(titulo),
-        "PAINEL VIP  -  L.E.N.D.A.S\n \nSkin:    %s\nRastro:  %s\n ", skin, tracer);
+        "PAINEL VIP  -  L.E.N.D.A.S\n \nSkin:              %s\nRastro de tiro:    %s\nTrilha:            %s\n ",
+        skin, tracer, trilha);
 
     Menu menu = new Menu(Escolha_Principal);
     menu.SetTitle(titulo);
 
     menu.AddItem("skin", "Trocar minha skin");
-    menu.AddItem("tracer", "Trocar a cor do meu rastro de tiro");
+    menu.AddItem("tracer", "Rastro de tiro - o feixe do disparo");
+    menu.AddItem("trilha", "Trilha - o rastro que te segue andando");
 
     // Só oferece "tirar tudo" quando há o que tirar. Item que não faz nada é
     // ruído, e no menu do CS:S ruído custa uma linha das poucas que cabem.
-    bool temAlgo = (g_iSkin[client] != SEM_SKIN) || (g_iTracer[client] > 0);
+    bool temAlgo = (g_iSkin[client] != SEM_SKIN) || (g_iTracer[client] > 0)
+        || (g_iTrilha[client] > 0);
     menu.AddItem("limpar", "Tirar tudo e voltar ao normal",
         temAlgo ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 
@@ -526,12 +591,18 @@ public int Escolha_Principal(Menu menu, MenuAction acao, int client, int item)
     {
         MenuTracers(client);
     }
+    else if (StrEqual(chave, "trilha"))
+    {
+        MenuTrilha(client);
+    }
     else if (StrEqual(chave, "limpar"))
     {
         g_iSkin[client] = SEM_SKIN;
         g_iTracer[client] = 0;
+        g_iTrilha[client] = 0;
         GravarCookie(client, g_ckSkin, SEM_SKIN);
         GravarCookie(client, g_ckTracer, 0);
+        GravarCookie(client, g_ckTrilha, 0);
         PrintToChat(client, "\x04[LENDAS VIP]\x01 Tudo desligado. A skin sai no proximo nascimento.");
         MenuPrincipal(client);
     }
@@ -701,6 +772,76 @@ public int Escolha_Tracer(Menu menu, MenuAction acao, int client, int item)
     return 0;
 }
 
+void MenuTrilha(int client)
+{
+    Menu menu = new Menu(Escolha_Trilha);
+    menu.SetTitle("TRILHA DO JOGADOR\n \nUm rastro colorido que te segue pelo mapa.\n ");
+
+    char chave[8], linha[64];
+    for (int i = 0; i < sizeof(g_Cores); i++)
+    {
+        strcopy(linha, sizeof(linha), g_Cores[i].nome);
+        if (i + 1 == g_iTrilha[client])
+        {
+            StrCat(linha, sizeof(linha), "   [EM USO]");
+        }
+        IntToString(i + 1, chave, sizeof(chave));
+        menu.AddItem(chave, linha);
+    }
+
+    strcopy(linha, sizeof(linha), "Sem trilha");
+    if (g_iTrilha[client] <= 0)
+    {
+        StrCat(linha, sizeof(linha), "   [EM USO]");
+    }
+    menu.AddItem("0", linha);
+
+    menu.ExitBackButton = true;
+    menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int Escolha_Trilha(Menu menu, MenuAction acao, int client, int item)
+{
+    if (acao == MenuAction_End)
+    {
+        delete menu;
+        return 0;
+    }
+    if (acao == MenuAction_Cancel && item == MenuCancel_ExitBack)
+    {
+        MenuPrincipal(client);
+        return 0;
+    }
+    if (acao != MenuAction_Select)
+    {
+        return 0;
+    }
+
+    char chave[8];
+    menu.GetItem(item, chave, sizeof(chave));
+    int cor = StringToInt(chave);
+
+    g_iTrilha[client] = cor;
+    GravarCookie(client, g_ckTrilha, cor);
+
+    char nome[32];
+    NomeDoTracer(cor, nome, sizeof(nome));
+
+    // A trilha se prende à vida do jogador, então trocar de cor no meio da
+    // rodada não muda a que já está no ar. Dizer isso evita o "nao funcionou".
+    if (cor > 0)
+    {
+        PrintToChat(client, "\x04[LENDAS VIP]\x01 Trilha: \x04%s\x01. Vale no proximo nascimento.", nome);
+    }
+    else
+    {
+        PrintToChat(client, "\x04[LENDAS VIP]\x01 Trilha desligada no proximo nascimento.");
+    }
+
+    MenuPrincipal(client);
+    return 0;
+}
+
 void MenuInfo(int client)
 {
     Menu menu = new Menu(Escolha_Info);
@@ -712,6 +853,9 @@ void MenuInfo(int client)
     menu.AddItem("", linha, ITEMDRAW_DISABLED);
 
     Format(linha, sizeof(linha), "%d cores de rastro de tiro", sizeof(g_Cores));
+    menu.AddItem("", linha, ITEMDRAW_DISABLED);
+
+    Format(linha, sizeof(linha), "%d cores de trilha que te segue", sizeof(g_Cores));
     menu.AddItem("", linha, ITEMDRAW_DISABLED);
 
     menu.AddItem("", "Sua escolha fica salva entre partidas", ITEMDRAW_DISABLED);
