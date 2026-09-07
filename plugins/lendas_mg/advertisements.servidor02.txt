@@ -1,0 +1,87 @@
+// Mensagens que giram no chat — VARIANTE DO SERVIDOR 02 (minigame).
+// Vai para addons/sourcemod/configs/advertisements.txt NAQUELE servidor.
+//
+// SEM TAG DE COR, E ISSO É DE PROPÓSITO
+//
+// O plugin converte {green}, {red}, {blue} e companhia para \x07RRGGBB, que é
+// o formato de cor do CS:GO. O CS:S entende só \x01 a \x04 e IMPRIME o código
+// como texto: era por isso que aparecia "FF4040PROIBIDO PLAYERS COM VAC" no
+// chat, com o código colado na frente da frase.
+//
+// Mensagem sem tag sai limpa. Vale mais uma linha branca legível do que uma
+// colorida com lixo na frente.
+//
+// O QUE SAIU DA LISTA ANTIGA, E POR QUÊ
+//
+//   "MIX TODAS OS DIAS A PARTIR DAS 18:00"  — este servidor não é mais de mix.
+//   "PROIBIDO PERFIL PRIVADO"               — o filtro de conta foi desligado
+//   "PROIBIDO PLAYERS COM VAC NA CONTA"       aqui; anunciar regra que não é
+//                                             mais aplicada só gera discussão.
+//   "IP SERVIDOR DE MIX 2 ... :27490"       — é o IP DESTE servidor, e ele
+//                                             não é mais o mix 2.
+//
+// O que ficou (Discord, contato, anti-cheat, convite de CF) continua valendo e
+// foi mantido, com o acento arrumado onde estava quebrado.
+
+"Advertisements"
+{
+	"1"
+	{
+		"chat"		"SEJAM BEM-VINDOS AO L.E.N.D.A.S MINIGAME! Digite !vip para abrir seu painel."
+	}
+
+	"2"
+	{
+		"chat"		"VIP LIBERADO PARA TODOS EM TESTE: skins de jogador, rastro de tiro e trilha colorida. Digite !vip"
+	}
+
+	"3"
+	{
+		"chat"		"Cansou do mapa? Digite !rtv para pedir votação. Quando bastante gente pedir, a votação abre."
+	}
+
+	"4"
+	{
+		"chat"		"Quer escolher o próximo mapa? Digite !nominate e ponha o seu na votação."
+	}
+
+	"5"
+	{
+		"chat"		"Aqui os jogadores se atravessam: ninguém tranca ninguém na passagem."
+	}
+
+	"6"
+	{
+		"chat"		"Bunnyhop liberado. Segure o espaço e vá ganhando velocidade nas curvas."
+	}
+
+	"7"
+	{
+		"chat"		"Digite !arma para ajustar a posição da sua arma na tela."
+	}
+
+	"8"
+	{
+		"chat"		"DISCORD: https://discord.gg/2cvzmzsfRC"
+	}
+
+	"9"
+	{
+		"chat"		"CONTATO E GRUPO DO WHATSAPP: 85988417844 - KANGACEIROZ"
+	}
+
+	"10"
+	{
+		"chat"		"SE VOCÊ USA CHEATS SERÁ SEMPRE UM ETERNO NOOB, ENTENDEU?"
+	}
+
+	"11"
+	{
+		"chat"		"TEM UM CLAN DE CS:S? QUER JOGAR UM CF? TOPAMOS O DESAFIO!"
+	}
+
+	"12"
+	{
+		"chat"		"Servidor de MIX do L.E.N.D.A.S: 104.234.65.244:27800"
+	}
+}
