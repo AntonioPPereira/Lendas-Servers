@@ -5,7 +5,7 @@
 #include <sdktools>
 #include <clientprefs>
 
-#define PLUGIN_VERSION "2.0.0"
+#define PLUGIN_VERSION "2.1.0"
 
 #define ARQUIVO_SKINS "configs/lendas_vip_skins.cfg"
 #define MAX_SKINS 32
@@ -14,39 +14,43 @@
 /**
  * Painel VIP: skins e rastro de tiro, com espaço para o que vier depois.
  *
- * REESCRITA DO ZERO (2.0.0)
+ * REESCRITO DO ZERO (2.0.0), UMA SKIN SÓ (2.1.0)
  *
  * A 1.x existia só como `.smx`, sem fonte — a mesma situação que fez o
- * gravador de demos ser perdido para sempre em 29/08. Esta versão foi
- * reconstruída lendo o binário antigo: comandos, cvars, textos e a lista de
- * skins vieram de lá, para ninguém sentir a troca.
+ * gravador de demos ser perdido para sempre em 29/08. Comandos, cvars,
+ * textos e a lista de skins foram reconstruídos lendo o binário antigo.
  *
- * DOIS DEFEITOS DA 1.x QUE ESTA VERSÃO NÃO TEM
+ * A 2.0.0 herdou dela a escolha de skin SEPARADA por time, TR e CT. Na
+ * prática ninguém quer isso: quem escolhe um boneco quer aquele boneco, e a
+ * separação só transformava uma decisão em três cliques. Na 2.1.0 a skin é
+ * uma só e vale nos dois times. O campo `times` do arquivo de skins continua
+ * existindo, mas agora serve para o caso raro de uma skin que só faz sentido
+ * num lado — ela simplesmente não é vestida no outro.
+ *
+ * DOIS DEFEITOS DA 1.x QUE NÃO EXISTEM AQUI
  *
  * 1. Ela registrava para download a pasta de materiais INTEIRA de uma das
- *    skins: 73 arquivos, 257 MB. Quem entrava tinha de baixar isso antes de
- *    ver qualquer coisa, e quem desistia no meio entrava sem os arquivos e
- *    via o boneco de ERROR. Aqui este plugin não registra download nenhum —
- *    esse assunto é do `lendas_downloads`, que trabalha com uma lista mínima
- *    montada a partir do que cada modelo realmente usa.
- *
- * 2. O caminho de material do Batman aparecia cortado no primeiro espaço
- *    (`.../batmanlaugh/the`), porque a lista era quebrada por espaço e a
- *    pasta se chama "the batman who laughs". Aqui não existe essa lista, e o
- *    problema deixa de existir junto.
+ *    skins: 73 arquivos, 257 MB por jogador. Quem desistia do download no
+ *    meio entrava com arquivo pela metade e via o boneco de ERROR — e o CS:S
+ *    nunca rebaixa o que já está em `cstrike/download/`, então isso não se
+ *    curava sozinho. Aqui este plugin não registra download nenhum: esse
+ *    assunto é do `lendas_downloads`, com lista mínima.
+ * 2. O caminho de material do Batman saía cortado no primeiro espaço, porque
+ *    a lista era quebrada por espaço e a pasta se chama "the batman who
+ *    laughs". Sem a lista, o problema some junto.
  *
  * COMO CRESCER SEM MEXER NO CÓDIGO
  *
  * As skins vêm de `configs/lendas_vip_skins.cfg` e o menu é montado a partir
  * do arquivo. Skin nova é um bloco lá, mais os arquivos dela na lista do
- * `lendas_downloads`. Benefício de outro tipo entra como um item novo no
- * menu principal: a estrutura já separa "quem é VIP" de "o que o VIP ganha".
+ * `lendas_downloads`. Benefício de outro tipo entra como item novo no menu
+ * principal: a estrutura separa "quem é VIP" de "o que o VIP ganha".
  */
 public Plugin myinfo =
 {
     name = "[LENDAS] VIP",
     author = "LENDAS / Codex",
-    description = "Painel VIP: skins por time e rastro de tiro, com preferências salvas por jogador.",
+    description = "Painel VIP: skin de jogador e rastro de tiro, com a escolha salva por jogador.",
     version = PLUGIN_VERSION,
     url = ""
 };
@@ -57,18 +61,15 @@ ConVar g_CvarAtivo;
 ConVar g_CvarFlag;
 ConVar g_CvarTracerVida;
 ConVar g_CvarTracerLargura;
-ConVar g_CvarSkinPadraoTR;
-ConVar g_CvarSkinPadraoCT;
+ConVar g_CvarSkinPadrao;
 
 /* ------------------------------------------------------------- preferência */
 
-Cookie g_ckSkinTR;
-Cookie g_ckSkinCT;
+Cookie g_ckSkin;
 Cookie g_ckTracer;
 
-/** Escolha atual de cada jogador. 0 = modelo padrão do jogo. */
-int g_iSkinTR[MAXPLAYERS + 1];
-int g_iSkinCT[MAXPLAYERS + 1];
+/** Escolha de cada jogador. 0 = modelo padrão do jogo. */
+int g_iSkin[MAXPLAYERS + 1];
 int g_iTracer[MAXPLAYERS + 1];
 
 /* ------------------------------------------------------------------ skins */
@@ -118,21 +119,20 @@ public void OnPluginStart()
     g_CvarAtivo = CreateConVar("lendas_vip_enabled", "1",
         "Liga o painel VIP. 0 = desligado, e ninguém recebe benefício.",
         FCVAR_NONE, true, 0.0, true, 1.0);
-    // "a" e nao "b": e o valor com que a 1.x rodava neste servidor, e VIP
+
+    // "a" e não "b": é o valor com que a 1.x rodava neste servidor, e VIP
     // costuma ser exatamente a flag de reserva de slot. Trocar isso por um
-    // padrao "mais certo" tiraria o VIP de quem so tem "a".
+    // padrão "mais certo" tiraria o VIP de quem só tem "a".
     g_CvarFlag = CreateConVar("lendas_vip_flag", "a",
         "Flag de admin que dá acesso ao VIP (a, b, ... z). Vazio = todo mundo é VIP.");
+
     g_CvarTracerVida = CreateConVar("lendas_vip_tracer_life", "0.4",
         "Quanto tempo o rastro de tiro fica na tela, em segundos.",
         FCVAR_NONE, true, 0.1, true, 5.0);
     g_CvarTracerLargura = CreateConVar("lendas_vip_tracer_width", "1.8",
         "Espessura do rastro de tiro.", FCVAR_NONE, true, 0.1, true, 20.0);
-    g_CvarSkinPadraoTR = CreateConVar("lendas_vip_skintr", "0",
-        "Skin de TR para quem nunca escolheu. 0 = modelo padrão do jogo.",
-        FCVAR_NONE, true, 0.0);
-    g_CvarSkinPadraoCT = CreateConVar("lendas_vip_skinct", "0",
-        "Skin de CT para quem nunca escolheu. 0 = modelo padrão do jogo.",
+    g_CvarSkinPadrao = CreateConVar("lendas_vip_skin_padrao", "0",
+        "Skin de quem nunca escolheu. 0 = modelo padrão do jogo.",
         FCVAR_NONE, true, 0.0);
 
     AutoExecConfig(true, "lendas_vip", "sourcemod");
@@ -143,8 +143,7 @@ public void OnPluginStart()
     RegConsoleCmd("sm_menuvip", Comando_Menu, "Abre o painel VIP.");
     RegConsoleCmd("sm_vips", Comando_Vips, "Lista os VIPs online.");
 
-    g_ckSkinTR = new Cookie("lendas_vip_skin_tr", "Skin VIP do time TR", CookieAccess_Protected);
-    g_ckSkinCT = new Cookie("lendas_vip_skin_ct", "Skin VIP do time CT", CookieAccess_Protected);
+    g_ckSkin = new Cookie("lendas_vip_skin", "Skin VIP escolhida", CookieAccess_Protected);
     g_ckTracer = new Cookie("lendas_vip_tracer", "Cor do rastro de tiro VIP", CookieAccess_Protected);
 
     HookEvent("player_spawn", Evento_Nasceu, EventHookMode_Post);
@@ -163,27 +162,24 @@ public void OnPluginStart()
  * Recarrega as skins e pré-carrega os modelos.
  *
  * O pré-carregamento tem de acontecer a cada mapa, e ANTES de alguém nascer:
- * `SetEntityModel` com um modelo não pré-carregado é justamente uma das
- * formas de o jogador virar ERROR.
+ * `SetEntityModel` com um modelo não pré-carregado é uma das formas de o
+ * jogador virar ERROR.
  */
 public void OnMapStart()
 {
     CarregarSkins();
-
     g_iModeloFeixe = PrecacheModel("materials/sprites/laserbeam.vmt", true);
 }
 
 public void OnClientCookiesCached(int client)
 {
-    g_iSkinTR[client] = LerCookie(client, g_ckSkinTR, g_CvarSkinPadraoTR.IntValue);
-    g_iSkinCT[client] = LerCookie(client, g_ckSkinCT, g_CvarSkinPadraoCT.IntValue);
+    g_iSkin[client] = LerCookie(client, g_ckSkin, g_CvarSkinPadrao.IntValue);
     g_iTracer[client] = LerCookie(client, g_ckTracer, 0);
 }
 
 public void OnClientDisconnect(int client)
 {
-    g_iSkinTR[client] = 0;
-    g_iSkinCT[client] = 0;
+    g_iSkin[client] = 0;
     g_iTracer[client] = 0;
 }
 
@@ -208,7 +204,7 @@ void GravarCookie(int client, Cookie ck, int valor)
  *
  * Uma skin cujo `.mdl` não está no servidor é marcada como não carregada e
  * **some do menu**, em vez de aparecer e entregar um ERROR a quem escolher.
- * Falhar visivelmente aqui, no log, é melhor que falhar na cara do jogador.
+ * Falhar visivelmente no log é melhor que falhar na cara do jogador.
  */
 void CarregarSkins()
 {
@@ -256,7 +252,7 @@ void CarregarSkins()
 
         if (s.id <= 0 || s.modelo[0] == 0)
         {
-            LogError("Skin '%s' ignorada: precisa de um número maior que zero e de um modelo.", chave);
+            LogError("Skin '%s' ignorada: precisa de número maior que zero e de um modelo.", chave);
             continue;
         }
 
@@ -297,7 +293,17 @@ int AcharSkin(int id)
 void NomeDaSkin(int id, char[] destino, int tamanho)
 {
     int i = AcharSkin(id);
-    strcopy(destino, tamanho, (i == -1) ? "Padrao" : g_Skins[i].nome);
+    strcopy(destino, tamanho, (i == -1) ? "nenhuma" : g_Skins[i].nome);
+}
+
+void NomeDoTracer(int cor, char[] destino, int tamanho)
+{
+    if (cor <= 0 || cor > sizeof(g_Cores))
+    {
+        strcopy(destino, tamanho, "desligado");
+        return;
+    }
+    strcopy(destino, tamanho, g_Cores[cor - 1].nome);
 }
 
 /* ================================================================ benefícios */
@@ -332,9 +338,9 @@ public void Evento_Nasceu(Event evento, const char[] nome, bool naoTransmitir)
         return;
     }
 
-    // Um quadro de atraso: no instante do spawn o time e o modelo do jogador
-    // ainda estão sendo definidos pelo jogo, e escrever antes disso é escrever
-    // por cima do que o jogo vai escrever depois.
+    // Um instante de atraso: no momento do spawn o jogo ainda está definindo
+    // time e modelo, e escrever antes disso é escrever por cima do que ele
+    // vai escrever depois.
     CreateTimer(0.1, Timer_VestirSkin, GetClientUserId(client));
 }
 
@@ -346,18 +352,20 @@ public Action Timer_VestirSkin(Handle timer, any userid)
         return Plugin_Stop;
     }
 
-    int time = GetClientTeam(client);
-    int escolha = (time == 2) ? g_iSkinTR[client] : (time == 3) ? g_iSkinCT[client] : SEM_SKIN;
-    if (escolha == SEM_SKIN)
+    if (g_iSkin[client] == SEM_SKIN)
     {
         return Plugin_Stop;
     }
 
-    int i = AcharSkin(escolha);
+    int i = AcharSkin(g_iSkin[client]);
     if (i == -1 || !g_Skins[i].carregou)
     {
         return Plugin_Stop;
     }
+
+    // A skin vale nos dois times. O `times` do arquivo só entra em cena na
+    // exceção: skin marcada para um lado só não é vestida no outro.
+    int time = GetClientTeam(client);
     if ((time == 2 && !g_Skins[i].valeTR) || (time == 3 && !g_Skins[i].valeCT))
     {
         return Plugin_Stop;
@@ -417,10 +425,11 @@ public Action Comando_Menu(int client, int args)
 
     if (!EhVip(client))
     {
-        // Mensagem curta de propósito: o chat do CS:S descarta o que passa de
-        // ~127 bytes, e uma propaganda que ninguém lê não vende nada.
-        PrintToChat(client, "\x04[LENDAS VIP]\x01 Exclusivo para VIP: skins e rastro de tiro colorido.");
-        PrintToChat(client, "\x04[LENDAS VIP]\x01 Fale com um admin para adquirir o seu.");
+        // Curto de propósito: o chat do CS:S descarta o que passa de ~127
+        // bytes, e propaganda que ninguém lê não vende nada.
+        PrintToChat(client, "\x04[LENDAS VIP]\x01 So para VIP: \x04%d skins\x01 e \x04%d cores\x01 de rastro de tiro.",
+            ContarSkinsUsaveis(), sizeof(g_Cores));
+        PrintToChat(client, "\x04[LENDAS VIP]\x01 Fale com um admin para pegar o seu.");
         return Plugin_Handled;
     }
 
@@ -460,24 +469,36 @@ public Action Comando_Vips(int client, int args)
     return Plugin_Handled;
 }
 
+/**
+ * O menu principal mostra o ESTADO antes das opções.
+ *
+ * Um menu que só lista ações obriga o jogador a entrar em cada uma para
+ * lembrar o que escolheu. Com a skin e a cor no topo, quem abre o painel já
+ * sabe onde está, e quem não quer mudar nada fecha na hora.
+ */
 void MenuPrincipal(int client)
 {
-    char skinTR[64], skinCT[64], tracer[32];
-    NomeDaSkin(g_iSkinTR[client], skinTR, sizeof(skinTR));
-    NomeDaSkin(g_iSkinCT[client], skinCT, sizeof(skinCT));
+    char skin[64], tracer[32];
+    NomeDaSkin(g_iSkin[client], skin, sizeof(skin));
     NomeDoTracer(g_iTracer[client], tracer, sizeof(tracer));
 
+    char titulo[192];
+    Format(titulo, sizeof(titulo),
+        "PAINEL VIP  -  L.E.N.D.A.S\n \nSkin:    %s\nRastro:  %s\n ", skin, tracer);
+
     Menu menu = new Menu(Escolha_Principal);
-    menu.SetTitle("PAINEL VIP - LENDAS\n ");
+    menu.SetTitle(titulo);
 
-    char linha[128];
-    Format(linha, sizeof(linha), "Skins    TR [%s] | CT [%s]", skinTR, skinCT);
-    menu.AddItem("skins", linha);
+    menu.AddItem("skin", "Trocar minha skin");
+    menu.AddItem("tracer", "Trocar a cor do meu rastro de tiro");
 
-    Format(linha, sizeof(linha), "Rastro de tiro    [%s]", tracer);
-    menu.AddItem("tracer", linha);
+    // Só oferece "tirar tudo" quando há o que tirar. Item que não faz nada é
+    // ruído, e no menu do CS:S ruído custa uma linha das poucas que cabem.
+    bool temAlgo = (g_iSkin[client] != SEM_SKIN) || (g_iTracer[client] > 0);
+    menu.AddItem("limpar", "Tirar tudo e voltar ao normal",
+        temAlgo ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 
-    menu.AddItem("info", "O que o VIP da");
+    menu.AddItem("info", "O que o VIP me da");
     menu.ExitButton = true;
     menu.Display(client, MENU_TIME_FOREVER);
 }
@@ -497,13 +518,22 @@ public int Escolha_Principal(Menu menu, MenuAction acao, int client, int item)
     char chave[16];
     menu.GetItem(item, chave, sizeof(chave));
 
-    if (StrEqual(chave, "skins"))
+    if (StrEqual(chave, "skin"))
     {
-        MenuEscolherTime(client);
+        MenuSkins(client);
     }
     else if (StrEqual(chave, "tracer"))
     {
         MenuTracers(client);
+    }
+    else if (StrEqual(chave, "limpar"))
+    {
+        g_iSkin[client] = SEM_SKIN;
+        g_iTracer[client] = 0;
+        GravarCookie(client, g_ckSkin, SEM_SKIN);
+        GravarCookie(client, g_ckTracer, 0);
+        PrintToChat(client, "\x04[LENDAS VIP]\x01 Tudo desligado. A skin sai no proximo nascimento.");
+        MenuPrincipal(client);
     }
     else
     {
@@ -512,65 +542,19 @@ public int Escolha_Principal(Menu menu, MenuAction acao, int client, int item)
     return 0;
 }
 
-void MenuEscolherTime(int client)
-{
-    Menu menu = new Menu(Escolha_Time);
-    menu.SetTitle("SKINS VIP - para qual time?\n ");
-    menu.AddItem("tr", "Terrorista (TR)");
-    menu.AddItem("ct", "Contra-Terrorista (CT)");
-    menu.AddItem("ambos", "Os dois times de uma vez");
-    menu.AddItem("nenhuma", "Desligar as skins (modelo padrao)");
-    menu.ExitBackButton = true;
-    menu.Display(client, MENU_TIME_FOREVER);
-}
-
-public int Escolha_Time(Menu menu, MenuAction acao, int client, int item)
-{
-    if (acao == MenuAction_End)
-    {
-        delete menu;
-        return 0;
-    }
-    if (acao == MenuAction_Cancel && item == MenuCancel_ExitBack)
-    {
-        MenuPrincipal(client);
-        return 0;
-    }
-    if (acao != MenuAction_Select)
-    {
-        return 0;
-    }
-
-    char chave[16];
-    menu.GetItem(item, chave, sizeof(chave));
-
-    if (StrEqual(chave, "nenhuma"))
-    {
-        g_iSkinTR[client] = SEM_SKIN;
-        g_iSkinCT[client] = SEM_SKIN;
-        GravarCookie(client, g_ckSkinTR, SEM_SKIN);
-        GravarCookie(client, g_ckSkinCT, SEM_SKIN);
-        PrintToChat(client, "\x04[LENDAS VIP]\x01 Skins desligadas. Valem no proximo nascimento.");
-        MenuPrincipal(client);
-        return 0;
-    }
-
-    MenuEscolherSkin(client, chave);
-    return 0;
-}
-
-/** `alvo` é "tr", "ct" ou "ambos" e viaja no valor de cada item do menu. */
-void MenuEscolherSkin(int client, const char[] alvo)
+/**
+ * Uma escolha só de skin, sem passar por time.
+ *
+ * A 2.0.0 perguntava antes se era para TR, CT ou ambos. Era uma pergunta que
+ * o jogador não queria responder: ele quer um boneco, não uma matriz. A skin
+ * agora vale nos dois times e o menu tem um passo a menos.
+ */
+void MenuSkins(int client)
 {
     Menu menu = new Menu(Escolha_Skin);
+    menu.SetTitle("ESCOLHA SUA SKIN\n \nVale nos dois times.\n ");
 
-    char titulo[64];
-    if (StrEqual(alvo, "tr")) strcopy(titulo, sizeof(titulo), "SKIN DO TERRORISTA\n ");
-    else if (StrEqual(alvo, "ct")) strcopy(titulo, sizeof(titulo), "SKIN DO CONTRA-TERRORISTA\n ");
-    else strcopy(titulo, sizeof(titulo), "SKIN DOS DOIS TIMES\n ");
-    menu.SetTitle(titulo);
-
-    char chave[32];
+    char chave[8], linha[96];
     for (int i = 0; i < g_nSkins; i++)
     {
         // Skin sem o modelo no servidor não entra: escolher e virar ERROR é
@@ -579,16 +563,39 @@ void MenuEscolherSkin(int client, const char[] alvo)
         {
             continue;
         }
-        if (StrEqual(alvo, "tr") && !g_Skins[i].valeTR) continue;
-        if (StrEqual(alvo, "ct") && !g_Skins[i].valeCT) continue;
-        if (StrEqual(alvo, "ambos") && (!g_Skins[i].valeTR || !g_Skins[i].valeCT)) continue;
 
-        Format(chave, sizeof(chave), "%s:%d", alvo, g_Skins[i].id);
-        menu.AddItem(chave, g_Skins[i].nome);
+        // O que já está em uso vem marcado, para o jogador não precisar
+        // decorar o que escolheu da última vez.
+        if (g_Skins[i].id == g_iSkin[client])
+        {
+            Format(linha, sizeof(linha), "%s   [EM USO]", g_Skins[i].nome);
+        }
+        else
+        {
+            strcopy(linha, sizeof(linha), g_Skins[i].nome);
+        }
+
+        // Uma skin restrita a um lado precisa dizer isso ANTES de ser
+        // escolhida, senão o jogador acha que ela quebrou quando troca de time.
+        if (!g_Skins[i].valeTR)
+        {
+            StrCat(linha, sizeof(linha), " (so CT)");
+        }
+        else if (!g_Skins[i].valeCT)
+        {
+            StrCat(linha, sizeof(linha), " (so TR)");
+        }
+
+        IntToString(g_Skins[i].id, chave, sizeof(chave));
+        menu.AddItem(chave, linha);
     }
 
-    Format(chave, sizeof(chave), "%s:0", alvo);
-    menu.AddItem(chave, "Nenhuma (modelo padrao)");
+    strcopy(linha, sizeof(linha), "Sem skin - modelo normal do jogo");
+    if (g_iSkin[client] == SEM_SKIN)
+    {
+        StrCat(linha, sizeof(linha), "   [EM USO]");
+    }
+    menu.AddItem("0", linha);
 
     menu.ExitBackButton = true;
     menu.Display(client, MENU_TIME_FOREVER);
@@ -603,7 +610,7 @@ public int Escolha_Skin(Menu menu, MenuAction acao, int client, int item)
     }
     if (acao == MenuAction_Cancel && item == MenuCancel_ExitBack)
     {
-        MenuEscolherTime(client);
+        MenuPrincipal(client);
         return 0;
     }
     if (acao != MenuAction_Select)
@@ -611,54 +618,52 @@ public int Escolha_Skin(Menu menu, MenuAction acao, int client, int item)
         return 0;
     }
 
-    char chave[32];
+    char chave[8];
     menu.GetItem(item, chave, sizeof(chave));
+    int id = StringToInt(chave);
 
-    char partes[2][16];
-    ExplodeString(chave, ":", partes, sizeof(partes), sizeof(partes[]));
-    int id = StringToInt(partes[1]);
+    g_iSkin[client] = id;
+    GravarCookie(client, g_ckSkin, id);
 
     char nome[64];
     NomeDaSkin(id, nome, sizeof(nome));
 
-    if (StrEqual(partes[0], "tr") || StrEqual(partes[0], "ambos"))
+    if (id == SEM_SKIN)
     {
-        g_iSkinTR[client] = id;
-        GravarCookie(client, g_ckSkinTR, id);
+        PrintToChat(client, "\x04[LENDAS VIP]\x01 Skin removida. Vale no proximo nascimento.");
     }
-    if (StrEqual(partes[0], "ct") || StrEqual(partes[0], "ambos"))
+    else
     {
-        g_iSkinCT[client] = id;
-        GravarCookie(client, g_ckSkinCT, id);
+        PrintToChat(client, "\x04[LENDAS VIP]\x01 Skin: \x04%s\x01. Vale no proximo nascimento.", nome);
     }
 
-    PrintToChat(client, "\x04[LENDAS VIP]\x01 Skin: \x04%s\x01. Vale no proximo nascimento.", nome);
     MenuPrincipal(client);
     return 0;
-}
-
-void NomeDoTracer(int cor, char[] destino, int tamanho)
-{
-    if (cor <= 0 || cor > sizeof(g_Cores))
-    {
-        strcopy(destino, tamanho, "Desligado");
-        return;
-    }
-    strcopy(destino, tamanho, g_Cores[cor - 1].nome);
 }
 
 void MenuTracers(int client)
 {
     Menu menu = new Menu(Escolha_Tracer);
-    menu.SetTitle("RASTRO DE TIRO - escolha a cor\n ");
+    menu.SetTitle("COR DO RASTRO DE TIRO\n \nO feixe aparece por onde sua bala passou.\n ");
 
-    char chave[8];
+    char chave[8], linha[64];
     for (int i = 0; i < sizeof(g_Cores); i++)
     {
+        strcopy(linha, sizeof(linha), g_Cores[i].nome);
+        if (i + 1 == g_iTracer[client])
+        {
+            StrCat(linha, sizeof(linha), "   [EM USO]");
+        }
         IntToString(i + 1, chave, sizeof(chave));
-        menu.AddItem(chave, g_Cores[i].nome);
+        menu.AddItem(chave, linha);
     }
-    menu.AddItem("0", "Desligar o rastro");
+
+    strcopy(linha, sizeof(linha), "Sem rastro");
+    if (g_iTracer[client] <= 0)
+    {
+        StrCat(linha, sizeof(linha), "   [EM USO]");
+    }
+    menu.AddItem("0", linha);
 
     menu.ExitBackButton = true;
     menu.Display(client, MENU_TIME_FOREVER);
@@ -699,16 +704,19 @@ public int Escolha_Tracer(Menu menu, MenuAction acao, int client, int item)
 void MenuInfo(int client)
 {
     Menu menu = new Menu(Escolha_Info);
-    menu.SetTitle("O QUE O VIP DA\n ");
+    menu.SetTitle("O QUE O VIP TE DA\n ");
 
-    char linha[128];
-    Format(linha, sizeof(linha), "%d skin(s) de jogador, por time", ContarSkinsUsaveis());
+    char linha[96];
+
+    Format(linha, sizeof(linha), "%d skins de jogador para escolher", ContarSkinsUsaveis());
     menu.AddItem("", linha, ITEMDRAW_DISABLED);
 
     Format(linha, sizeof(linha), "%d cores de rastro de tiro", sizeof(g_Cores));
     menu.AddItem("", linha, ITEMDRAW_DISABLED);
 
     menu.AddItem("", "Sua escolha fica salva entre partidas", ITEMDRAW_DISABLED);
+    menu.AddItem("", "Mais coisas chegando em breve", ITEMDRAW_DISABLED);
+
     menu.ExitBackButton = true;
     menu.Display(client, MENU_TIME_FOREVER);
 }
