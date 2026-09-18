@@ -139,11 +139,14 @@ export function demoIdFromFilename(filename: string): string {
 }
 
 /**
- * Nome de pasta esperado na raiz do SFTP: "104.234.65.244_27800" — um
- * servidor de jogo por pasta. A porta extraída daqui é a mesma que vira
- * prefixo do ID.
+ * Nome de pasta esperado na raiz do SFTP: um servidor de jogo por pasta,
+ * nomeada "IP<sep>PORTA". O separador varia conforme o host de SFTP:
+ * o ClanServers antigo usava underscore ("104.234.65.244_27800") e o novo
+ * usa dois-pontos ("104.234.65.244:27800") — aceitamos os dois pra sobreviver
+ * a migração de host sem quebrar a descoberta. A porta extraída daqui é a
+ * mesma que vira prefixo do ID.
  */
-const SERVER_DIR_PATTERN = /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})_(\d{2,5})$/;
+const SERVER_DIR_PATTERN = /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})[_:](\d{2,5})$/;
 
 export function parseServerDirName(name: string): { ip: string; port: string } | null {
   const match = SERVER_DIR_PATTERN.exec(name);

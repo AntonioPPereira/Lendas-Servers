@@ -79,6 +79,17 @@ describe("parseServerDirName", () => {
     expect(parseServerDirName("cstrike")).toBeNull();
     expect(parseServerDirName("..")).toBeNull();
   });
+
+  it("aceita tanto underscore (host antigo) quanto dois-pontos (host novo do ClanServers)", () => {
+    expect(parseServerDirName("104.234.65.244:27800")).toEqual({
+      ip: "104.234.65.244",
+      port: "27800",
+    });
+    expect(parseServerDirName("104.234.65.243:27490")).toEqual({
+      ip: "104.234.65.243",
+      port: "27490",
+    });
+  });
 });
 
 describe("isYearMonthDir / isDemoFilename", () => {

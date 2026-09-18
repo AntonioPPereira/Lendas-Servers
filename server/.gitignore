@@ -2,3 +2,6 @@ node_modules
 dist
 .env
 *.log
+
+# Backups locais de cfg/logs baixados via SFTP — podem conter tokens/keys. Nunca commitar.
+_backups/
