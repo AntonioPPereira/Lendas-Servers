@@ -5,7 +5,7 @@
 #include <sdktools>
 #include <clientprefs>
 
-#define PLUGIN_VERSION "2.3.0"
+#define PLUGIN_VERSION "2.4.0"
 
 #define ARQUIVO_SKINS "configs/lendas_vip_skins.cfg"
 #define ARQUIVO_TRILHAS "configs/lendas_vip_trilhas.cfg"
@@ -140,11 +140,33 @@ int g_iModeloFeixe = -1;
 
 /* --------------------------------------------------------------- trilhas */
 
+/**
+ * DOIS CAMINHOS PARA O MESMO ARQUIVO, E É DE PROPÓSITO
+ *
+ * O sprite precisa ser nomeado de dois jeitos diferentes, e trocar um pelo
+ * outro faz a trilha simplesmente não aparecer — sem erro, sem aviso.
+ *
+ *   sprite  `materials/sprites/laserbeam.vmt`, o caminho de verdade no disco.
+ *           É o que o `FileExists` entende.
+ *
+ *   modelo  `sprites/laserbeam.vmt`, sem o `materials/`. É o que vai para o
+ *           `PrecacheModel` e para o `spritename` da entidade, porque o motor
+ *           PREPENDE `materials/` sozinho ao carregar um sprite.
+ *
+ * Passar o caminho completo faz o motor procurar
+ * `materials/materials/sprites/laserbeam.vmt`, não achar, e desistir calado.
+ * Foi o que aconteceu aqui: os seis estilos existiam, o log dizia "6
+ * utilizáveis", e nenhum desenhava.
+ *
+ * A prova não veio de adivinhar: das 1386 entidades de sprite nos mapas
+ * instalados, 1384 escrevem o caminho SEM o prefixo.
+ */
 enum struct Trilha
 {
     int id;
     char nome[64];
-    char sprite[PLATFORM_MAX_PATH];
+    char sprite[PLATFORM_MAX_PATH];   // com materials/, para o FileExists
+    char modelo[PLATFORM_MAX_PATH];   // sem materials/, para o motor
     float largura;
     float fim;
     float duracao;
@@ -296,10 +318,23 @@ void CarregarTrilhas()
             continue;
         }
 
+        // O nome que o motor quer é o mesmo caminho sem o `materials/` da
+        // frente. Aceitar as duas formas no arquivo de configuração evita que
+        // um esquecimento de prefixo volte a apagar a trilha inteira.
+        if (StrContains(t.sprite, "materials/", false) == 0)
+        {
+            strcopy(t.modelo, sizeof(t.modelo), t.sprite[10]);
+        }
+        else
+        {
+            strcopy(t.modelo, sizeof(t.modelo), t.sprite);
+            Format(t.sprite, sizeof(t.sprite), "materials/%s", t.modelo);
+        }
+
         t.existe = FileExists(t.sprite, true);
         if (t.existe)
         {
-            PrecacheModel(t.sprite, true);
+            PrecacheModel(t.modelo, true);
         }
         else
         {
@@ -639,7 +674,8 @@ public Action Timer_LigarTrilha(Handle timer, any userid)
 
     char valor[64];
 
-    DispatchKeyValue(ent, "spritename", g_Trilhas[i].sprite);
+    // `modelo`, nunca `sprite`: ver o comentário do enum struct Trilha.
+    DispatchKeyValue(ent, "spritename", g_Trilhas[i].modelo);
     FormatEx(valor, sizeof(valor), "%d %d %d",
         g_Cores[cor - 1].r, g_Cores[cor - 1].g, g_Cores[cor - 1].b);
     DispatchKeyValue(ent, "rendercolor", valor);

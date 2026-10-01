@@ -5,69 +5,102 @@
 #include <sdktools>
 #include <sdkhooks>
 
-#define PLUGIN_VERSION "2.0.0"
+#define PLUGIN_VERSION "3.0.0"
 
-// Grupos de colisão do Source.
+// Grupos de colisão do Source, com os números do enum Collision_Group_t
+// (src/public/const.h do SDK). Os números importam: a regra da engine compara
+// os dois grupos DEPOIS de ordenar do menor para o maior.
+#define COLLISION_GROUP_NONE            0
+#define COLLISION_GROUP_DEBRIS_TRIGGER  2   // atravessa tudo menos o grupo NONE
+#define COLLISION_GROUP_INTERACTIVE     4   // onde o prop_physics costuma cair
 #define COLLISION_GROUP_PLAYER          5
 #define COLLISION_GROUP_PLAYER_MOVEMENT 8
-/** Atravessa jogador, mas ainda ativa gatilho de mapa. */
-#define COLLISION_GROUP_DEBRIS_TRIGGER  2
+#define COLLISION_GROUP_PUSHAWAY       17   // prop de física acordado
 
 /**
- * Atravessar outros jogadores — agora sem a sensação de engasgo.
+ * Atravessar outros jogadores, sem deixar de subir nos props.
  *
- * O QUE ESTAVA ERRADO NA 1.0.0
+ * O QUE A 2.0.0 QUEBROU, E POR QUE DEMOROU A APARECER
  *
- * Ela usava só o `SDKHook_ShouldCollide`, que responde à pergunta no
- * SERVIDOR. Funcionava: dava para atravessar. Mas o CLIENTE não sabia de
- * nada — ele continuava prevendo a colisão, empurrava o jogador para trás, o
- * servidor discordava e devolvia. O resultado era o travadinho ao passar
- * dentro do outro.
+ * Ela põe todo jogador no grupo `DEBRIS_TRIGGER`, que é a receita conhecida
+ * de noblock no CS:S e resolveu mesmo a sensação de engasgo. O preço só
+ * aparece em mapa de veículo, e está escrito no SDK da Valve, em
+ * `CGameRules::ShouldCollide`:
  *
- * O que o cliente enxerga é o GRUPO DE COLISÃO, que é sincronizado com ele.
- * Mudando o grupo, os dois lados passam a concordar antes do movimento
- * acontecer, e o engasgo some.
+ *     if ( collisionGroup0 == COLLISION_GROUP_DEBRIS ||
+ *          collisionGroup0 == COLLISION_GROUP_DEBRIS_TRIGGER )
+ *     {
+ *         // put exceptions here, right now this will only collide with
+ *         // COLLISION_GROUP_NONE
+ *         return false;
+ *     }
  *
- * O CUIDADO QUE ISSO EXIGE, E POR QUE HÁ DOIS CAMINHOS
+ * **`DEBRIS_TRIGGER` colide SÓ com o grupo `NONE`.** O mundo e os brushes
+ * comuns são `NONE`, e é por isso que ninguém cai pelo chão e nada disso
+ * apareceu antes. Mas:
  *
- * Escrever direto no `m_CollisionGroup` é a receita conhecida e causa um bug
- * de física documentado no CS:S — armas caindo pelo mapa, props sumindo —
- * porque pula a limpeza interna (`CollisionRulesChanged`) que a engine faz
- * quando o grupo muda de verdade.
+ *   - `prop_physics` acaba em `COLLISION_GROUP_INTERACTIVE` (4), pelo arquivo
+ *     de dados do modelo;
+ *   - `func_physbox_multiplayer` entra em `COLLISION_GROUP_PUSHAWAY` (17) no
+ *     `Activate()`, sempre;
+ *   - e com `sv_turbophysics`, o `prop_physics` acordado também vira
+ *     `PUSHAWAY`.
  *
- * O SourceMod 1.11 ganhou a nativa `SetEntityCollisionGroup`, que chama a
- * função da própria engine e faz a limpeza. É o caminho certo. Só que ela
- * depende de uma assinatura no gamedata, e **nesta instalação essa assinatura
- * não existe para jogo nenhum** — procurei em todos os arquivos.
+ * Nenhum desses é `NONE`. Então o jogador ATRAVESSA os três — e os "veículos"
+ * dos mapas de minigame são exatamente isso. Não há `prop_vehicle` nenhum nos
+ * mapas instalados: o kart do `mg_crazykart`, o barco do `mg_boatrace` (278
+ * entidades de física) e o tanque do `mg_tankbase` são prop e physbox.
  *
- * Então o plugin tenta a nativa e, se ela não estiver disponível, usa a
- * escrita direta. E DIZ NO LOG qual dos dois está usando. Assim a escolha
- * deixa de ser suposição minha: o servidor responde.
+ * Repare no detalhe cruel: parado, o prop dorme e fica em `NONE`, e dá para
+ * subir nele. Ele acorda ao se mexer, vira `PUSHAWAY`, e o jogador cai fora
+ * justamente quando o veículo começa a andar.
  *
- * O gancho do servidor continua ligado junto com o grupo. Não é redundância
- * inútil: o grupo faz cliente e servidor concordarem, e o gancho garante que
- * o servidor não deixe passar nenhum caso que o grupo não cubra.
+ * O CONSERTO
  *
- * POR QUE O GRUPO É "DEBRIS_TRIGGER" E NÃO "DEBRIS"
+ * Não existe grupo que atravesse jogador e colida com prop: é uma escolha da
+ * engine, não uma configuração. Então o grupo passa a ser decidido pela
+ * situação, e não uma vez só:
  *
- * Os dois atravessam jogador. A diferença é que o DEBRIS puro também ignora
- * os gatilhos do mapa — e um mapa de percurso é feito de gatilho. Com ele, o
- * jogador atravessaria o colega e também o fim da fase.
+ *   em cima (ou logo acima) de algo que não é do grupo NONE  ->  PLAYER
+ *   em qualquer outro lugar                                  ->  DEBRIS_TRIGGER
+ *
+ * Ou seja: o noblock vale no mapa inteiro, e some no instante em que o
+ * jogador está sobre um prop — que é o único momento em que ele atrapalha.
+ * Em cima do veículo os jogadores voltam a se esbarrar, o que é o certo: são
+ * dois corpos dividindo um kart.
+ *
+ * O teste é um traço curto para baixo, com o mesmo volume do jogador,
+ * ignorando os outros jogadores. Ele resolve o problema do ovo e da galinha —
+ * olhar o `m_hGroundEntity` não serviria, porque enquanto o jogador atravessa
+ * o prop ele nunca chega a ter aquele chão.
+ *
+ * A NATIVA EXISTE AQUI, E ISSO MUDOU DESDE A 2.0.0
+ *
+ * A 2.0.0 dizia no comentário que `SetEntityCollisionGroup` não existia nesta
+ * instalação. Existe: o log do servidor a registra em uso desde o dia 7. Isso
+ * importa porque agora o grupo troca com frequência, e é a nativa que faz a
+ * limpeza interna da engine (`CollisionRulesChanged`) — sem ela, a escrita
+ * direta repetida é a origem do bug de física de arma caindo pelo mapa.
  */
 public Plugin myinfo =
 {
     name = "[LENDAS] Sem Colisao",
     author = "LENDAS / Codex",
-    description = "Permite atravessar outros jogadores, com o cliente sabendo disso.",
+    description = "Atravessa outros jogadores, mas fica solido em cima de prop e veiculo.",
     version = PLUGIN_VERSION,
     url = ""
 };
 
 ConVar g_CvarAtivo;
 ConVar g_CvarNativo;
+ConVar g_CvarProps;
+ConVar g_CvarAlcance;
+ConVar g_CvarIntervalo;
 
 /** A nativa correta existe e está utilizável neste servidor? */
 bool g_bTemNativo;
+
+Handle g_hRelogio;
 
 public void OnPluginStart()
 {
@@ -82,6 +115,21 @@ public void OnPluginStart()
         "1 = usa SetEntityCollisionGroup quando existir (caminho certo). 0 = força a escrita direta. Só mexa se o log acusar erro.",
         FCVAR_NONE, true, 0.0, true, 1.0);
 
+    g_CvarProps = CreateConVar("lendas_noblock_props", "1",
+        "1 = fica sólido em cima de prop e veículo, para dar para andar neles. 0 = atravessa tudo, como na 2.0.0.",
+        FCVAR_NONE, true, 0.0, true, 1.0);
+
+    // 24 unidades cobre o degrau que o jogador sobe sozinho. Menos que isso e
+    // ele volta a cair do veículo em cada solavanco; muito mais e ele fica
+    // sólido só de passar por cima de um caixote no chão.
+    g_CvarAlcance = CreateConVar("lendas_noblock_alcance", "24.0",
+        "A que distância abaixo dos pés um prop já conta como chão, em unidades do jogo.",
+        FCVAR_NONE, true, 4.0, true, 128.0);
+
+    g_CvarIntervalo = CreateConVar("lendas_noblock_intervalo", "0.1",
+        "De quanto em quanto tempo o chão de cada jogador é conferido, em segundos.",
+        FCVAR_NONE, true, 0.05, true, 1.0);
+
     AutoExecConfig(true, "lendas_noblock", "sourcemod");
 
     g_bTemNativo = (GetFeatureStatus(FeatureType_Native, "SetEntityCollisionGroup")
@@ -92,6 +140,9 @@ public void OnPluginStart()
             ? "SetEntityCollisionGroup (nativa da engine, com limpeza interna)"
             : "escrita direta em m_CollisionGroup (a nativa não existe aqui)");
 
+    g_CvarIntervalo.AddChangeHook(AoTrocarIntervalo);
+    ReiniciarRelogio();
+
     for (int i = 1; i <= MaxClients; i++)
     {
         if (IsClientInGame(i))
@@ -99,6 +150,23 @@ public void OnPluginStart()
             OnClientPutInServer(i);
         }
     }
+}
+
+public void AoTrocarIntervalo(ConVar cvar, const char[] antes, const char[] agora)
+{
+    ReiniciarRelogio();
+}
+
+void ReiniciarRelogio()
+{
+    delete g_hRelogio;
+    g_hRelogio = CreateTimer(g_CvarIntervalo.FloatValue, Timer_Conferir,
+        _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public void OnMapStart()
+{
+    ReiniciarRelogio();
 }
 
 public void OnClientPutInServer(int client)
@@ -117,15 +185,100 @@ public void Gancho_Nasceu(int client)
 public Action Timer_Aplicar(Handle timer, any userid)
 {
     int client = GetClientOfUserId(userid);
-    if (client <= 0 || !IsClientInGame(client) || !IsPlayerAlive(client))
+    if (client > 0 && IsClientInGame(client) && IsPlayerAlive(client))
     {
-        return Plugin_Stop;
+        Ajustar(client);
+    }
+    return Plugin_Stop;
+}
+
+public Action Timer_Conferir(Handle timer)
+{
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i) && IsPlayerAlive(i) && !IsFakeClient(i))
+        {
+            Ajustar(i);
+        }
+    }
+    return Plugin_Continue;
+}
+
+/**
+ * Decide o grupo deste jogador agora.
+ */
+void Ajustar(int client)
+{
+    if (!g_CvarAtivo.BoolValue)
+    {
+        DefinirGrupo(client, COLLISION_GROUP_PLAYER);
+        return;
     }
 
-    DefinirGrupo(client, g_CvarAtivo.BoolValue
-        ? COLLISION_GROUP_DEBRIS_TRIGGER
-        : COLLISION_GROUP_PLAYER);
-    return Plugin_Stop;
+    if (g_CvarProps.BoolValue && SobreAlgoSolido(client))
+    {
+        DefinirGrupo(client, COLLISION_GROUP_PLAYER);
+        return;
+    }
+
+    DefinirGrupo(client, COLLISION_GROUP_DEBRIS_TRIGGER);
+}
+
+/**
+ * Tem, logo abaixo dos pés, algo que o DEBRIS_TRIGGER não conseguiria pisar?
+ *
+ * Só interessa o que NÃO é do grupo `NONE`: com o grupo `NONE` o jogador já
+ * colide normalmente mesmo atravessando os outros, e mudar o grupo ali seria
+ * ligar a colisão entre jogadores à toa — em cima de um trem, por exemplo,
+ * que é brush e portanto `NONE`.
+ */
+bool SobreAlgoSolido(int client)
+{
+    float origem[3], destino[3], minimo[3], maximo[3];
+    GetClientAbsOrigin(client, origem);
+    GetClientMins(client, minimo);
+    GetClientMaxs(client, maximo);
+
+    destino = origem;
+    destino[2] -= g_CvarAlcance.FloatValue;
+
+    // O volume do jogador, e não um raio: um raio saindo do meio dos pés
+    // erraria o kart em que ele está pisando só com a beirada.
+    TR_TraceHullFilter(origem, destino, minimo, maximo, MASK_PLAYERSOLID,
+        Filtro_SemJogadores, client);
+
+    if (!TR_DidHit())
+    {
+        return false;
+    }
+
+    int ent = TR_GetEntityIndex();
+    if (ent <= 0)
+    {
+        return false;   // o mundo; o grupo NONE já colide
+    }
+
+    if (!HasEntProp(ent, Prop_Data, "m_CollisionGroup"))
+    {
+        return false;
+    }
+
+    return GetEntProp(ent, Prop_Data, "m_CollisionGroup") != COLLISION_GROUP_NONE;
+}
+
+/**
+ * Ignora o próprio jogador e todos os outros no traço.
+ *
+ * Sem isto, um colega parado embaixo contaria como chão sólido e o jogador
+ * viraria sólido no ar — exatamente o contrário do que este plugin existe
+ * para fazer.
+ */
+public bool Filtro_SemJogadores(int entity, int contentsMask, any data)
+{
+    // Só os jogadores saem. A entidade 0 é o mundo e TEM de continuar no
+    // traço: sem ela o raio atravessaria o chão e acharia um prop no andar de
+    // baixo, deixando o jogador sólido no meio do nada.
+    return !(entity >= 1 && entity <= MaxClients);
 }
 
 /**
@@ -133,7 +286,8 @@ public Action Timer_Aplicar(Handle timer, any userid)
  *
  * A nativa faz a engine cuidar da limpeza interna. A escrita direta não faz,
  * e é a origem do bug de física conhecido — por isso ela é o segundo caminho,
- * não o primeiro.
+ * não o primeiro. Isso pesa mais nesta versão do que na anterior: aqui o
+ * grupo troca toda vez que alguém sobe ou desce de um prop.
  */
 void DefinirGrupo(int client, int grupo)
 {
@@ -149,9 +303,6 @@ void DefinirGrupo(int client, int grupo)
     }
 
     SetEntProp(client, Prop_Data, "m_CollisionGroup", grupo);
-    // Marca o estado como alterado para o cliente receber o valor novo. Sem
-    // isto a mudança poderia ficar só no servidor — e o engasgo continuaria,
-    // que é justamente o que esta versão veio consertar.
     ChangeEdictState(client, FindDataMapInfo(client, "m_CollisionGroup"));
 }
 
@@ -159,9 +310,12 @@ void DefinirGrupo(int client, int grupo)
  * A rede de segurança do lado do servidor.
  *
  * `entity` é o obstáculo em potencial; `collisiongroup` é o grupo de quem se
- * move. Devolver `false` faz o trace ignorar este jogador. Tudo o que não for
- * outro jogador passando cai no `original`, e por isso tiro, granada e porta
- * continuam funcionando.
+ * move. Devolver `false` faz o trace ignorar este jogador.
+ *
+ * MUDOU NA 3.0.0: quando este jogador está sólido em cima de um prop, o
+ * gancho tem de devolver o comportamento normal. Senão o servidor continuaria
+ * atravessando ele por baixo do pano, e o cliente — que enxerga o grupo
+ * PLAYER — discordaria. Seria o engasgo de volta, e no pior lugar.
  */
 public bool Gancho_DeveColidir(int entity, int collisiongroup, int contentsmask, bool original)
 {
@@ -172,6 +326,11 @@ public bool Gancho_DeveColidir(int entity, int collisiongroup, int contentsmask,
 
     if (collisiongroup != COLLISION_GROUP_PLAYER
         && collisiongroup != COLLISION_GROUP_PLAYER_MOVEMENT)
+    {
+        return original;
+    }
+
+    if (GetEntProp(entity, Prop_Data, "m_CollisionGroup") == COLLISION_GROUP_PLAYER)
     {
         return original;
     }
