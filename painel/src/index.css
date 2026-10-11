@@ -13,89 +13,82 @@
 }
 
 /* ============================================================
-   LENDAS — design tokens
-   Palette derived from spent materials, not from a UI kit: blued
-   gun steel (CT), oxidised brass casings (accent), sun-bleached
-   dust2 rust (T). Every neutral is warmed toward the concrete wall
-   instead of the default cool "slate" a component library reaches
-   for — a panel should feel cut from the same material as the room
-   it sits in, not floated on top of it in a colder grey.
+   LEGION — design tokens
+   Militar, sombrio, cinematográfico: aço escurecido (CT), prata
+   polida (ink), vermelho sangue como identidade da LEGION. Fundos
+   em grafite neutro — não mais o concreto quente/marrom anterior.
+   O brasão da LEGION respira acima dessa superfície metálica fria,
+   e o vermelho só grita onde precisa gritar (destaque de marca,
+   ação ativa, estado crítico).
+
+   Nota de arquitetura: os nomes `--color-brass*` foram mantidos
+   para evitar renomear centenas de referências em componentes —
+   o VALOR agora é vermelho LEGION. Trate-os mentalmente como
+   "cor de marca" independente do nome legado.
    ============================================================ */
 @theme {
-  /* Escala levantada em 2026-08-26: a versão original lia como "fundo escuro
-     liso" em vez de concreto de verdade — os degraus entre void/base/panel
-     eram tão apertados (6→13→20 num canal de 255) que quase não se via
-     superfície nenhuma, só um preto uniforme. Mantém o mesmo tom quente,
-     só com mais luz nele. */
-  --color-void: #0d0c0a;
-  --color-base: #16130f;
-  --color-panel: #201c17;
-  --color-panel-2: #292420;
-  --color-raised: #332c25;
-  --color-line: #4a4033;
-  --color-line-soft: #2c2620;
+  /* Pretos e grafite — a parede não é mais concreto quente de dust2,
+     é aço escovado de underground militar. Progressão feita por
+     medida: void<base<panel<panel-2<raised, cada passo visível. */
+  --color-void: #08090b;
+  --color-base: #111216;
+  --color-panel: #191b20;
+  --color-panel-2: #22252b;
+  --color-raised: #2d3037;
+  --color-line: #4a4d56;
+  --color-line-soft: #343740;
 
-  /* ink-2/3/4 levantados junto com o fundo (2026-08-26): o fundo dos painéis
-     ficou bem mais claro, e o texto apagado (IP de servidor, legendas,
-     metadados) que antes lia razoável contra um fundo quase preto ficou
-     difícil de ler contra o fundo novo — o contraste relativo caiu. */
-  --color-ink: #ece7de;
-  --color-ink-2: #bab3a9;
-  /* A escala de tinta foi reespaçada por medida de contraste, não a olho.
-     O #6b6258 antigo dava 2,83:1 sobre o painel — muito abaixo do mínimo
-     legível de 4,5 — e era justamente a cor do SteamID, das datas e da
-     linha "por Fulano · servidor": o texto que mais parecia apagado.
-     Clarear só ele encostaria no ink-3 e achataria a hierarquia, então os
-     dois subiram juntos. Agora os quatro tons passam de 4,5:1 sobre as
-     três superfícies (base, panel, panel-2), com degraus visíveis entre
-     eles: ~13,7 / 8,1 / 7,1 / 5,0 sobre o painel. */
-  --color-ink-3: #b0a79a;
-  --color-ink-4: #938b80;
+  /* Prata — a tinta da LEGION. ink é prata clara, ink-2 prata média,
+     ink-3/4 cinzas para texto apagado. Os quatro tons passam de 4,5:1
+     sobre as superfícies escuras, hierarquia preservada. */
+  --color-ink: #e7e9ed;
+  --color-ink-2: #c4c8ce;
+  --color-ink-3: #9297a1;
+  --color-ink-4: #6e737d;
 
-  /* Brass: an oxidised cartridge, not a trophy. Duller and more olive
-     than a gold you'd find in a "premium" or "unlocked" badge. */
-  --color-brass: #c2924e;
-  --color-brass-hi: #e2bd80;
-  --color-brass-lo: #8c6a34;
-  --color-brass-dim: #3c2f18;
-  /* Ember: the one hot brass moment, reserved for the live scoreboard glow.
-     Never used as a text/border color elsewhere — spending it everywhere
-     would cheapen the one place it should read as "this matters right now". */
-  --color-brass-ember: #f0a840;
+  /* Vermelho LEGION — identidade de marca. Os nomes "brass" são
+     legado da versão anterior; o valor é vermelho sangue agora.
+     brass = principal, brass-hi = destaque intenso, brass-lo = escuro,
+     brass-dim = fundo quase imperceptível, brass-ember = o ponto mais
+     quente, reservado ao placar ao vivo e ao cartaz de premiação. */
+  --color-brass: #c91f32;
+  --color-brass-hi: #f02d42;
+  --color-brass-lo: #781622;
+  --color-brass-dim: #2a0a10;
+  --color-brass-ember: #f02d42;
 
-  /* Abyss: deeper than the page void — the recessed surface behind the
-     live-match hero, so the scoreboard reads like it's lit from a stage
-     floor instead of sitting flush with everything else. */
-  --color-abyss: #0a0907;
+  /* Abyss: ainda mais fundo que o void — superfície rebaixada atrás
+     do hero da partida ao vivo. */
+  --color-abyss: #050608;
 
-  /* CT: blued steel — the dark violet-grey sheen of a gun barrel, not
-     the saturated "info" blue every dashboard reaches for by default. */
+  /* CT: aço azulado — mantido por função (identificação de equipe). */
   --color-ct: #7996a8;
   --color-ct-hi: #aec2cf;
   --color-ct-dim: #263139;
-  /* T: dust2 sandstone gone to rust. */
-  --color-t: #ac7c49;
-  --color-t-hi: #d0a877;
+  /* T: deslocado para um tom quente mais seco, afastado do laranja/
+     bronze da paleta antiga mas ainda distinto do vermelho da marca
+     (que é frio-saturado), para não confundir "equipe T" com "ação". */
+  --color-t: #b26244;
+  --color-t-hi: #d8886a;
 
-  /* Metais do pódio (1º/2º/3º). Puxados pro lado oxidado da paleta de
-     propósito: medalha de vitrine, brilhante e saturada, destoaria do resto
-     do painel — aqui é metal velho de bancada, igual ao brass da marca. */
-  --color-medal-gold: #c2924e;
-  --color-medal-gold-hi: #f2dcae;
-  --color-medal-silver: #96a0a8;
-  --color-medal-silver-hi: #e2e8ed;
-  --color-medal-bronze: #a4663a;
-  --color-medal-bronze-hi: #d99a68;
+  /* Pódio: o campeão veste vermelho LEGION (identidade); 2º/3º seguem
+     o metal (prata/prata-escura) — sem dourado/bronze marrom antigos. */
+  --color-medal-gold: #c91f32;
+  --color-medal-gold-hi: #f02d42;
+  --color-medal-silver: #9297a1;
+  --color-medal-silver-hi: #c4c8ce;
+  --color-medal-bronze: #6e737d;
+  --color-medal-bronze-hi: #9297a1;
 
-  /* Chart series steps: snapped into the dark-mode lightness band so no
-     series outshouts another. Brand brass stays for accents and text. */
-  --color-chart-brass: #a8813f;
+  /* Chart series: cada série em uma faixa de luminância próxima para
+     não gritar uma por cima da outra. */
+  --color-chart-brass: #c91f32;
   --color-chart-ct: #7996a8;
-  --color-chart-t: #a8763f;
+  --color-chart-t: #b26244;
 
-  --color-live: #37d07a;
-  --color-danger: #d9453b;
-  --color-warn: #e8952a;
+  --color-live: #35d98a;
+  --color-danger: #f02d42;
+  --color-warn: #e89530;
   --color-info: #7996a8;
 
   --font-display: "Archivo", system-ui, sans-serif;
@@ -112,17 +105,19 @@
   --ease-in-hud: cubic-bezier(0.7, 0, 0.84, 0);
 }
 
-/* Ambience knobs for the concrete backdrop. Kept outside @theme because
-   they tune a surface, not a design token anything else consumes. */
+/* Atmosfera do fundo. Antes era luz quente de dust2 entrando pela
+   parede de concreto; agora é iluminação vermelha difusa de brasão
+   LEGION contra uma superfície metálica fria. --amb-dust vira o
+   vermelho de marca (presente em quantidade mínima, só como brasa);
+   --amb-cold permanece como contrabalanço azulado. */
 :root {
-  --amb-dust: 192 137 74;
-  --amb-cold: 78 143 216;
-  /* Empurrados pra cima de propósito — a versão anterior era tão sutil que
-     lia como "fundo escuro liso" em vez de "parede com luz entrando". O
-     ambiente precisa ser sentido de relance, não só existir no código. */
-  --amb-stain: 0.24;
-  --amb-wear: 0.12;
-  --amb-grain: 0.06;
+  --amb-dust: 201 31 50;
+  --amb-cold: 100 130 170;
+  /* Mantidos sutis — a prata e o vermelho da LEGION precisam liderar
+     a leitura, o ambiente só costura as superfícies à parede. */
+  --amb-stain: 0.18;
+  --amb-wear: 0.10;
+  --amb-grain: 0.05;
 }
 
 /* ============================================================
@@ -179,8 +174,11 @@
     background-image: url("/cs/maps/bg/dust2.avif");
     background-size: cover;
     background-position: center 38%;
-    opacity: 0.62;
-    filter: contrast(1.05) saturate(1.1);
+    /* Opacidade e dessaturação reduzidas na transição LENDAS→LEGION:
+       a foto é quente de dust2, destoa da paleta vermelho/prata. Fica
+       como atmosfera distante, não mais como protagonista. */
+    opacity: 0.22;
+    filter: contrast(1.1) saturate(0.4) brightness(0.75) hue-rotate(-10deg);
   }
 
   /* 1 — Reboco: turbulência de baixa frequência dá o malhado grande do
@@ -239,7 +237,7 @@
   }
 
   ::selection {
-    background: rgb(232 179 58 / 0.28);
+    background: rgb(240 45 66 / 0.28);
     color: var(--color-brass-hi);
   }
 
@@ -515,7 +513,7 @@
   .ranking-card-wash {
     background:
       radial-gradient(circle at 68% 42%, color-mix(in srgb, var(--medal) 20%, transparent), transparent 34%),
-      linear-gradient(180deg, rgb(9 16 21 / 0.16), rgb(9 8 7 / 0.78));
+      linear-gradient(180deg, rgb(9 16 21 / 0.16), rgb(8 9 11 / 0.78));
   }
 
   .ranking-card-halo {
@@ -660,11 +658,11 @@
     background:
       radial-gradient(
         46% 46% at 50% 50%,
-        rgb(255 196 104 / 0.92),
-        rgb(240 168 64 / 0.45) 46%,
+        rgb(240 45 66 / 0.92),
+        rgb(201 31 50 / 0.45) 46%,
         transparent 72%
       ),
-      radial-gradient(72% 72% at 50% 50%, rgb(222 116 36 / 0.5), transparent 78%);
+      radial-gradient(72% 72% at 50% 50%, rgb(120 22 34 / 0.5), transparent 78%);
     animation: brand-aura-breathe 4.2s ease-in-out infinite;
   }
 
@@ -685,18 +683,18 @@
   .brand-banner {
     border-color: color-mix(in srgb, var(--color-brass-hi) 62%, transparent);
     box-shadow:
-      0 0 0 1px rgb(240 168 64 / 0.3),
-      0 0 22px -2px rgb(240 168 64 / 0.5),
-      0 0 64px -6px rgb(222 116 36 / 0.42);
+      0 0 0 1px rgb(201 31 50 / 0.3),
+      0 0 22px -2px rgb(201 31 50 / 0.5),
+      0 0 64px -6px rgb(120 22 34 / 0.42);
     transition: border-color 420ms var(--ease-out-hud), box-shadow 420ms var(--ease-out-hud);
   }
 
   .brand-banner:hover {
-    border-color: rgb(255 214 140 / 0.9);
+    border-color: rgb(231 233 237 / 0.9);
     box-shadow:
-      0 0 0 1px rgb(255 196 104 / 0.5),
-      0 0 30px 0 rgb(240 168 64 / 0.68),
-      0 0 88px 0 rgb(222 116 36 / 0.55);
+      0 0 0 1px rgb(240 45 66 / 0.5),
+      0 0 30px 0 rgb(201 31 50 / 0.68),
+      0 0 88px 0 rgb(120 22 34 / 0.55);
   }
 
   /**
@@ -709,11 +707,11 @@
     background: conic-gradient(
       from var(--brand-angle),
       transparent 0deg 58deg,
-      rgb(240 168 64 / 0.2) 76deg,
-      rgb(255 224 168 / 0.95) 90deg,
-      rgb(240 168 64 / 0.2) 104deg,
+      rgb(201 31 50 / 0.2) 76deg,
+      rgb(231 233 237 / 0.95) 90deg,
+      rgb(201 31 50 / 0.2) 104deg,
       transparent 122deg 238deg,
-      rgb(222 116 36 / 0.55) 270deg,
+      rgb(120 22 34 / 0.55) 270deg,
       transparent 302deg 360deg
     );
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -790,7 +788,7 @@
   .side-fire-ct {
     background: radial-gradient(
       64% 86% at 0% 45%,
-      rgb(112 176 240 / 0.26),
+      rgb(100 130 170 / 0.26),
       rgb(70 130 200 / 0.12) 42%,
       transparent 72%
     );
@@ -799,8 +797,8 @@
   .side-fire-t {
     background: radial-gradient(
       64% 86% at 100% 45%,
-      rgb(244 158 66 / 0.26),
-      rgb(206 108 34 / 0.12) 42%,
+      rgb(178 98 68 / 0.26),
+      rgb(140 70 50 / 0.12) 42%,
       transparent 72%
     );
   }
@@ -815,12 +813,12 @@
   /* Brass is a metal here, not a glow: a 1px lit edge + a slow sheen. */
   .brass-edge {
     box-shadow:
-      inset 0 1px 0 rgb(255 210 119 / 0.28),
-      inset 0 0 0 1px rgb(232 179 58 / 0.16);
+      inset 0 1px 0 rgb(196 200 206 / 0.28),
+      inset 0 0 0 1px rgb(240 45 66 / 0.16);
   }
 
   .brass-text {
-    background: linear-gradient(178deg, #fff0c8 4%, var(--color-brass) 42%, #b98d23 78%);
+    background: linear-gradient(178deg, #ffd4da 4%, var(--color-brass) 42%, #781622 78%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -1025,7 +1023,7 @@
   /* ---------------------------------------------------------------- *
    * Caveira: o crânio quase não se mexe; quem vive são as brasas.
    * ---------------------------------------------------------------- */
-  .skull { color: #cbbba4; }
+  .skull { color: #c4c8ce; }
   .skull-sway {
     transform-origin: 50% 90%;
     transform-box: fill-box;
@@ -1150,8 +1148,8 @@
 @layer components {
   .mural {
     background-image:
-      radial-gradient(120% 140% at 50% 0%, rgb(58 48 38 / 0.55), transparent 62%),
-      linear-gradient(180deg, rgb(32 28 23 / 0.4), rgb(24 20 17 / 0.75));
+      radial-gradient(120% 140% at 50% 0%, rgb(25 27 32 / 0.55), transparent 62%),
+      linear-gradient(180deg, rgb(25 27 32 / 0.4), rgb(17 18 22 / 0.75));
   }
 
   /* Vinheta: escurece as bordas e joga o olho pro centro. */
@@ -1160,7 +1158,7 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: radial-gradient(85% 120% at 50% 50%, transparent 42%, rgb(14 11 9 / 0.5));
+    background: radial-gradient(85% 120% at 50% 50%, transparent 42%, rgb(8 9 11 / 0.5));
   }
 
   .mural-bar {
@@ -1168,7 +1166,7 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, transparent, rgb(74 64 51 / 0.85) 18%, rgb(74 64 51 / 0.85) 82%, transparent);
+    background: linear-gradient(90deg, transparent, rgb(52 55 64 / 0.85) 18%, rgb(52 55 64 / 0.85) 82%, transparent);
     pointer-events: none;
   }
   .mural-bar-top { top: 0; }
@@ -1181,7 +1179,7 @@
     bottom: 0;
     width: 38%;
     pointer-events: none;
-    background: linear-gradient(90deg, transparent, rgb(214 168 92 / 0.09), transparent);
+    background: linear-gradient(90deg, transparent, rgb(201 31 50 / 0.09), transparent);
     animation: mural-sweep 9s ease-in-out infinite;
   }
 
@@ -1206,12 +1204,12 @@
   .mural-frame {
     display: block;
     padding: 3px;
-    background: linear-gradient(145deg, rgb(224 176 96 / 0.75), rgb(120 96 58 / 0.4) 55%, rgb(74 64 51 / 0.2));
+    background: linear-gradient(145deg, rgb(196 200 206 / 0.75), rgb(52 55 64 / 0.4) 55%, rgb(52 55 64 / 0.2));
     border-radius: 4px;
     box-shadow:
-      0 0 0 1px rgb(224 176 96 / 0.22),
-      0 0 14px -2px rgb(224 176 96 / 0.3),
-      0 0 34px -6px rgb(224 176 96 / 0.18);
+      0 0 0 1px rgb(196 200 206 / 0.22),
+      0 0 14px -2px rgb(196 200 206 / 0.3),
+      0 0 34px -6px rgb(196 200 206 / 0.18);
     transition: background 0.35s ease, box-shadow 0.35s ease;
     /* Pulso lento e desencontrado por retrato (o atraso vem do inline
        style do componente), pra não piscarem os três em bloco. */
@@ -1221,26 +1219,26 @@
 
   .group:hover .mural-frame,
   .group:focus-visible .mural-frame {
-    background: linear-gradient(145deg, rgb(240 194 112 / 1), rgb(224 176 96 / 0.5) 60%, rgb(120 96 58 / 0.35));
+    background: linear-gradient(145deg, rgb(231 233 237 / 1), rgb(196 200 206 / 0.5) 60%, rgb(52 55 64 / 0.35));
     box-shadow:
-      0 0 0 1px rgb(240 194 112 / 0.5),
-      0 0 20px -1px rgb(240 194 112 / 0.55),
-      0 0 52px -4px rgb(240 194 112 / 0.35);
+      0 0 0 1px rgb(231 233 237 / 0.5),
+      0 0 20px -1px rgb(231 233 237 / 0.55),
+      0 0 52px -4px rgb(231 233 237 / 0.35);
     animation-play-state: paused;
   }
 
   @keyframes mural-neon {
     0%, 100% {
       box-shadow:
-        0 0 0 1px rgb(224 176 96 / 0.2),
-        0 0 12px -3px rgb(224 176 96 / 0.24),
-        0 0 30px -8px rgb(224 176 96 / 0.14);
+        0 0 0 1px rgb(196 200 206 / 0.2),
+        0 0 12px -3px rgb(196 200 206 / 0.24),
+        0 0 30px -8px rgb(196 200 206 / 0.14);
     }
     50% {
       box-shadow:
-        0 0 0 1px rgb(224 176 96 / 0.34),
-        0 0 18px -2px rgb(224 176 96 / 0.42),
-        0 0 44px -5px rgb(224 176 96 / 0.26);
+        0 0 0 1px rgb(196 200 206 / 0.34),
+        0 0 18px -2px rgb(196 200 206 / 0.42),
+        0 0 44px -5px rgb(196 200 206 / 0.26);
     }
   }
 

@@ -1,5 +1,5 @@
 /**
- * Domain model for the Lendas panel.
+ * Domain model for the LEGION panel.
  *
  * Every shape here mirrors what a CS:S server plugin (SourceMod / GameME /
  * SourceBans++) can realistically emit, so swapping the mock transport for a

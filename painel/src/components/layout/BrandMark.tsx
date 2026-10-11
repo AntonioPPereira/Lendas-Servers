@@ -1,9 +1,8 @@
 import { cn } from "@/lib/cn";
 
 /**
- * O emblema da comunidade: recorte redondo da arte "Servidor Lendas CSS",
- * a mesma usada no favicon. Ladeia o nome no cabeçalho do sidebar e do
- * painel de admin.
+ * O emblema da comunidade LEGION: brasão metálico circular, mesmo usado
+ * no favicon. Ladeia o nome no cabeçalho do sidebar e do painel de admin.
  */
 export function BrandMark({ className }: { className?: string }) {
   return (

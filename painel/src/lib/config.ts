@@ -6,8 +6,8 @@ const env = import.meta.env;
 
 export const config = {
   brand: {
-    name: "LENDAS",
-    suffix: "NETWORK",
+    name: "LEGION",
+    suffix: "COMMUNITY",
     tagline: "Counter-Strike: Source",
   },
   /** REST base for history, ranking, demos and bans. */

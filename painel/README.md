@@ -1,4 +1,4 @@
-# Lendas Network — Central do Servidor
+# LEGION Community — Central do Servidor
 
 Painel web da comunidade para uma rede de servidores de **Counter-Strike: Source**.
 Placar ao vivo, ranking, biblioteca de demos, registro público de banimentos,

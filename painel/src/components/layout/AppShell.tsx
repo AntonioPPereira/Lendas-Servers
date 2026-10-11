@@ -134,7 +134,7 @@ export function AppShell({ children }: AppShellProps) {
           <footer className="mx-auto w-full max-w-[1560px] px-3 pb-8 pt-4 sm:px-5">
             <div className="hairline mb-4" />
             <p className="t-num text-[10.5px] leading-relaxed text-ink-4">
-              Lendas Network · painel da comunidade · dados do servidor atualizados em tempo real
+              LEGION Community · painel da comunidade · dados do servidor atualizados em tempo real
             </p>
           </footer>
         </main>

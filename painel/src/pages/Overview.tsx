@@ -103,7 +103,7 @@ export default function Overview() {
           >
             <img
               src={asset("/brand/lendas-premium.png")}
-              alt="LENDASCS, Counter-Strike: Source — premiação de R$ 50,00 para quem estiver no topo do rank."
+              alt="LEGION CSS, Counter-Strike: Source — premiação de R$ 50,00 para quem estiver no topo do rank."
               draggable={false}
               className="size-full select-none object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]"
             />

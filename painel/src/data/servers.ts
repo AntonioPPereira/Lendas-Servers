@@ -15,7 +15,7 @@ function load(base: number): number[] {
 export const SERVERS: GameServer[] = [
   {
     id: "srv-01",
-    name: "LENDAS #01 — PUBLIC 24/7",
+    name: "LEGION #01 — PUBLIC 24/7",
     shortName: "PUBLIC #01",
     host: "177.54.148.20",
     port: 27015,
@@ -36,7 +36,7 @@ export const SERVERS: GameServer[] = [
   },
   {
     id: "srv-02",
-    name: "LENDAS #02 — CLASSIC MIX",
+    name: "LEGION #02 — CLASSIC MIX",
     shortName: "MIX #02",
     host: "177.54.148.20",
     port: 27016,
