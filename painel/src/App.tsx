@@ -10,7 +10,6 @@ import Overview from "@/pages/Overview";
 
 // Route-level splitting: the overview ships in the entry chunk because it is
 // the landing page; everything else loads on demand.
-const Servers = lazy(() => import("@/pages/Servers"));
 const Ranking = lazy(() => import("@/pages/Ranking"));
 const Demos = lazy(() => import("@/pages/Demos"));
 const DemoDetail = lazy(() => import("@/pages/DemoDetail"));
@@ -47,7 +46,7 @@ function PublicApp() {
           <Suspense fallback={<LoadingState label="Carregando modulo" />}>
             <Routes location={location}>
               <Route path="/" element={<Overview />} />
-              <Route path="/servidores" element={<Servers />} />
+              <Route path="/servidores" element={<Navigate to="/" replace />} />
               <Route path="/ranking" element={<Ranking />} />
               <Route path="/demos" element={<Demos />} />
               <Route path="/demos/:id" element={<DemoDetail />} />

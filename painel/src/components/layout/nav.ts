@@ -4,7 +4,6 @@ import {
   Clapperboard,
   Gavel,
   Radar,
-  Server,
   Trophy,
   Users,
   type LucideIcon,
@@ -35,7 +34,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Ao vivo",
     items: [
       { to: "/", label: "Visão geral", icon: Radar, end: true },
-      { to: "/servidores", label: "Servidores", icon: Server, live: true },
       { to: "/atividade", label: "Atividade", icon: Activity },
     ],
   },
