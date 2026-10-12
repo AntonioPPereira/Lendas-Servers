@@ -96,6 +96,28 @@ export default function Sobre() {
             </p>
           </div>
 
+          <div className="h-px bg-line-soft" />
+
+          {/* Créditos */}
+          <div className="flex flex-col items-center gap-5 text-center">
+            <img
+              src="/brand/csm-chainsaw-man.gif"
+              alt=""
+              className="h-32 rounded object-contain"
+              aria-hidden="true"
+            />
+            <div className="space-y-1">
+              <p className="text-[13px] text-ink-3">
+                Este projeto foi desenvolvido com dedicação por{" "}
+                <strong className="text-ink">Antonio Pereira</strong>, com o único objetivo de
+                servir e fortalecer a comunidade LEGION.
+              </p>
+              <p className="text-[12px] text-ink-4">
+                Feito de fã para fã. Com carinho pela comunidade. ❤️
+              </p>
+            </div>
+          </div>
+
         </div>
       </Panel>
     </div>
