@@ -104,13 +104,17 @@ export default function Sobre() {
             </p>
           </div>
 
-          {/* Banners extras */}
-          <div className="space-y-3">
+          {/* Arte parceria LENDAS x LEGION */}
+          <div
+            className="relative rounded border border-brass/30 overflow-hidden"
+            style={{ boxShadow: "0 0 24px 4px rgb(201 31 50 / 0.25), 0 0 6px 1px rgb(201 31 50 / 0.35)" }}
+          >
             <img
-              src={asset("/brand/legion-banner-roman.png")}
-              alt="LEGION Community"
-              className="w-full rounded border border-line-soft object-cover"
+              src={asset("/brand/lendas-parceria-legion.png")}
+              alt="LENDAS × LEGION"
+              className="w-full object-cover"
             />
+            <div className="pointer-events-none absolute inset-0 rounded border border-brass/20" />
           </div>
 
           <div className="h-px bg-line-soft" />
