@@ -104,6 +104,20 @@ export default function Sobre() {
             </p>
           </div>
 
+          {/* Banners extras */}
+          <div className="space-y-3">
+            <img
+              src={asset("/brand/legion-banner-roman.png")}
+              alt="LEGION Community"
+              className="w-full rounded border border-line-soft object-cover"
+            />
+            <img
+              src={asset("/brand/lendas-premium.png")}
+              alt="LEGION CSS — Premiação"
+              className="w-full rounded border border-line-soft object-cover"
+            />
+          </div>
+
           <div className="h-px bg-line-soft" />
 
           {/* Encerramento */}
