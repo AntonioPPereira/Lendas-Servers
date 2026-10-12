@@ -10,7 +10,7 @@ primary_region = 'gru'
   dockerfile = 'Dockerfile'
 
 [env]
-  CORS_ORIGIN = 'https://www.lendascss.com.br,https://lendascss.com.br,https://lendas-servers.vercel.app'
+  CORS_ORIGIN = 'https://www.lendascss.com.br,https://lendascss.com.br,https://lendas-servers.vercel.app,https://legion-server.vercel.app'
   # Host de SFTP do ClanServers (migrado). O usuário/senha vão como secrets
   # (fly secrets set SFTP_USERNAME / SFTP_PASSWORD), nunca aqui.
   SFTP_HOST = 'sftp.clanservers.com.br'
