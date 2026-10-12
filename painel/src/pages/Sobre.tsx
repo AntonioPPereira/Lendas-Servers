@@ -109,8 +109,15 @@ export default function Sobre() {
             <div className="space-y-1">
               <p className="text-[13px] text-ink-3">
                 Este projeto foi desenvolvido com dedicação por{" "}
-                <strong className="text-ink">Antonio Pereira</strong>, com o único objetivo de
-                servir e fortalecer a comunidade LEGION.
+                <a
+                  href="https://steamcommunity.com/id/Artriom/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-brass hover:text-brass-hi underline underline-offset-2 transition-colors"
+                >
+                  Kai
+                </a>
+                , com o único objetivo de servir e fortalecer a comunidade LEGION.
               </p>
               <p className="text-[12px] text-ink-4">
                 Feito de fã para fã. Com carinho pela comunidade. ❤️
