@@ -16,7 +16,6 @@ import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
 import { LiveMatch } from "@/components/match/LiveMatch";
 import { Scoreboard } from "@/components/match/Scoreboard";
 import { RoundTimeline } from "@/components/match/RoundTimeline";
-import { TeamMural } from "@/components/home/TeamMural";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import { PlayerAvatar } from "@/components/player/PlayerAvatar";
 
@@ -230,9 +229,6 @@ export default function Overview() {
         </div>
       </div>
 
-      <div data-enter>
-        <TeamMural />
-      </div>
     </div>
   );
 }
