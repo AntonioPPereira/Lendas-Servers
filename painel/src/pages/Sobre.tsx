@@ -1,5 +1,6 @@
 import { usePageEnter } from "@/hooks/useGsap";
 import { SectionTitle, Panel } from "@/components/ui/Panel";
+import { asset } from "@/lib/csAssets";
 
 export default function Sobre() {
   const scope = usePageEnter<HTMLDivElement>();
@@ -8,18 +9,24 @@ export default function Sobre() {
     <div ref={scope} className="space-y-6 p-4 md:p-6">
       <SectionTitle title="Sobre" description="Conheça a história da comunidade" />
 
+      {/* Hero banner */}
+      <div className="relative overflow-hidden rounded border border-line-soft">
+        <img
+          src={asset("/brand/legion-banner-wide.png")}
+          alt="LEGION Community"
+          className="h-52 w-full object-cover object-center md:h-72"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-base/90 via-base/30 to-transparent" />
+        <div className="absolute bottom-0 left-0 p-5 md:p-7">
+          <h1 className="t-display text-[22px] leading-tight text-ink drop-shadow md:text-[28px]">
+            Uma nova identidade.{" "}
+            <span className="text-brass">Uma história que continua.</span>
+          </h1>
+        </div>
+      </div>
+
       <Panel>
         <div className="space-y-8 p-5 md:p-7">
-
-          {/* Título principal */}
-          <div className="text-center">
-            <h1 className="t-display text-[22px] text-ink md:text-[26px]">
-              LEGION — Uma nova identidade.{" "}
-              <span className="text-brass">Uma história que continua.</span>
-            </h1>
-          </div>
-
-          <div className="h-px bg-line-soft" />
 
           {/* Bloco principal */}
           <div className="space-y-5 text-[14px] leading-relaxed text-ink-2">
@@ -55,24 +62,36 @@ export default function Sobre() {
             <p className="t-display text-[18px] text-brass-hi">Assim nasce o LEGION.</p>
           </div>
 
-          <div className="space-y-5 text-[14px] leading-relaxed text-ink-2">
-            <p>
-              Não com a intenção de apagar o passado, substituir a história original ou desmerecer
-              o trabalho de quem veio antes, mas com o propósito de dar continuidade à comunidade,
-              às amizades e ao espírito que nos manteve unidos durante tantos anos.
-            </p>
+          {/* Texto + poster lado a lado */}
+          <div className="flex flex-col gap-6 md:flex-row md:items-start">
+            <div className="flex-1 space-y-5 text-[14px] leading-relaxed text-ink-2">
+              <p>
+                Não com a intenção de apagar o passado, substituir a história original ou
+                desmerecer o trabalho de quem veio antes, mas com o propósito de dar continuidade
+                à comunidade, às amizades e ao espírito que nos manteve unidos durante tantos anos.
+              </p>
 
-            <p>
-              A mudança de nome representa também uma escolha consciente de respeito à decisão do
-              criador do LENDAS. Seguimos por um novo caminho, com nossa própria identidade,
-              reconhecendo sempre as origens e a importância de todos que fizeram parte dessa
-              história.
-            </p>
+              <p>
+                A mudança de nome representa também uma escolha consciente de respeito à decisão
+                do criador do LENDAS. Seguimos por um novo caminho, com nossa própria identidade,
+                reconhecendo sempre as origens e a importância de todos que fizeram parte dessa
+                história.
+              </p>
 
-            <p>
-              O nosso compromisso permanece: construir um ambiente divertido, justo e acolhedor,
-              onde cada jogador tenha espaço para competir, fazer amizades e criar novas memórias.
-            </p>
+              <p>
+                O nosso compromisso permanece: construir um ambiente divertido, justo e acolhedor,
+                onde cada jogador tenha espaço para competir, fazer amizades e criar novas
+                memórias.
+              </p>
+            </div>
+
+            <div className="shrink-0 md:w-44">
+              <img
+                src={asset("/brand/legion-poster.png")}
+                alt="LEGION — Since MMXXV"
+                className="w-full rounded border border-line-soft object-cover"
+              />
+            </div>
           </div>
 
           {/* Slogan principal */}
