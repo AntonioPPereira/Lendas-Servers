@@ -111,11 +111,6 @@ export default function Sobre() {
               alt="LEGION Community"
               className="w-full rounded border border-line-soft object-cover"
             />
-            <img
-              src={asset("/brand/lendas-premium.png")}
-              alt="LEGION CSS — Premiação"
-              className="w-full rounded border border-line-soft object-cover"
-            />
           </div>
 
           <div className="h-px bg-line-soft" />
