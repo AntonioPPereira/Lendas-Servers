@@ -18,6 +18,7 @@ const PlayerProfile = lazy(() => import("@/pages/PlayerProfile"));
 const Activity = lazy(() => import("@/pages/Activity"));
 const Bans = lazy(() => import("@/pages/Bans"));
 const Stats = lazy(() => import("@/pages/Stats"));
+const Sobre = lazy(() => import("@/pages/Sobre"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 /**
@@ -54,6 +55,7 @@ function PublicApp() {
               <Route path="/jogadores/:id" element={<PlayerProfile />} />
               <Route path="/atividade" element={<Activity />} />
 
+              <Route path="/sobre" element={<Sobre />} />
               <Route path="/banimentos" element={<Bans />} />
               {/* Partidas foi desfeita em 2026-09-01: o placar por partida
                   não se sustentou na prática e a fusão bagunçou a área.

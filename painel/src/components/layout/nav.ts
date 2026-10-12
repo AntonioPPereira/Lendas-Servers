@@ -3,6 +3,7 @@ import {
   ChartColumn,
   Clapperboard,
   Gavel,
+  Info,
   Radar,
   Trophy,
   Users,
@@ -42,6 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/ranking", label: "Ranking", icon: Trophy },
       { to: "/jogadores", label: "Jogadores", icon: Users },
+      { to: "/sobre", label: "Sobre", icon: Info },
     ],
   },
   {
