@@ -126,7 +126,7 @@ export default function Sobre() {
               aria-hidden="true"
             />
             <div className="space-y-1">
-              <p className="text-[13px] text-ink-3">
+              <p className="text-[16px] text-ink-3">
                 Este projeto foi desenvolvido com dedicação por{" "}
                 <a
                   href="https://steamcommunity.com/id/Artriom/"
@@ -138,7 +138,7 @@ export default function Sobre() {
                 </a>
                 , com o único objetivo de servir e fortalecer a comunidade LEGION.
               </p>
-              <p className="text-[12px] text-ink-4">
+              <p className="text-[14px] text-ink-4">
                 Feito de fã para fã. Com carinho pela comunidade. ❤️
               </p>
             </div>
