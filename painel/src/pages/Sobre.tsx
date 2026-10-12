@@ -122,7 +122,7 @@ export default function Sobre() {
             <img
               src="/brand/csm-chainsaw-man.gif"
               alt=""
-              className="h-32 rounded object-contain"
+              className="h-64 rounded object-contain md:h-80"
               aria-hidden="true"
             />
             <div className="space-y-1">
