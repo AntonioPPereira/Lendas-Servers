@@ -1,0 +1,333 @@
+@import "tailwindcss";
+
+/* ============================================================
+   LENDAS — design tokens
+   Palette derived from the subject: gunmetal, brass casings,
+   dust2 sand (T side) and steel blue (CT side). No neon.
+   ============================================================ */
+@theme {
+  --color-void: #060709;
+  --color-base: #0a0c0f;
+  --color-panel: #0f1216;
+  --color-panel-2: #14181e;
+  --color-raised: #1a1f27;
+  --color-line: #232a34;
+  --color-line-soft: #171c23;
+
+  --color-ink: #e9edf2;
+  --color-ink-2: #a4aeba;
+  --color-ink-3: #6d7883;
+  --color-ink-4: #464f59;
+
+  --color-brass: #e8b33a;
+  --color-brass-hi: #ffd277;
+  --color-brass-lo: #a87d1e;
+  --color-brass-dim: #4a3a12;
+
+  --color-ct: #4e8fd8;
+  --color-ct-hi: #8ab9ef;
+  --color-ct-dim: #1e3a5f;
+  --color-t: #c0894a;
+  --color-t-hi: #e0b077;
+
+  /* Chart series steps: snapped into the dark-mode lightness band so no
+     series outshouts another. Brand brass stays for accents and text. */
+  --color-chart-brass: #b8891c;
+  --color-chart-ct: #4e8fd8;
+  --color-chart-t: #bb7a2a;
+
+  --color-live: #37d07a;
+  --color-danger: #d9453b;
+  --color-warn: #e8952a;
+  --color-info: #6e8cff;
+
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --ease-out-hud: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-hud: cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-line-soft);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-base);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* Ambient field: a cold vignette + a faint brass warmth from the
+     top-left, so the shell never reads as flat #000. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(120ch 60ch at 12% -10%, rgb(232 179 58 / 0.045), transparent 60%),
+      radial-gradient(100ch 70ch at 100% 0%, rgb(78 143 216 / 0.035), transparent 55%);
+  }
+
+  /* Film grain — keeps large dark surfaces from banding and gives the
+     panels a machined, non-digital texture. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: -50%;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  ::selection {
+    background: rgb(232 179 58 / 0.28);
+    color: var(--color-brass-hi);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brass);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-void);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-raised);
+    border: 2px solid var(--color-void);
+    border-radius: 6px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2b323c;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ============================================================
+   TYPE ROLES
+   Display is Archivo pushed WIDE — broadcast signage, not the
+   condensed italics every esports template reaches for.
+   ============================================================ */
+@layer components {
+  .t-display {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-variation-settings: "wdth" 112;
+    letter-spacing: -0.012em;
+    text-transform: uppercase;
+    line-height: 0.95;
+  }
+
+  .t-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-variation-settings: "wdth" 108;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    line-height: 1.1;
+  }
+
+  .t-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-ink-3);
+  }
+
+  .t-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "zero" 1;
+  }
+
+  /* ---------- Surfaces ---------- */
+  .panel {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.022), transparent 120px),
+      var(--color-panel);
+    border: 1px solid var(--color-line-soft);
+    border-radius: var(--radius-md);
+    box-shadow: 0 18px 44px -28px rgb(0 0 0 / 0.95);
+  }
+
+  .panel-flush {
+    background: var(--color-panel);
+    border: 1px solid var(--color-line-soft);
+    border-radius: var(--radius-md);
+  }
+
+  /* HUD corner brackets — used only on the live match module,
+     the one place the interface claims to be a readout. */
+  .hud-frame::before,
+  .hud-frame::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+    border-color: var(--color-brass);
+    opacity: 0.55;
+  }
+  .hud-frame::before {
+    top: -1px;
+    left: -1px;
+    border-top: 1px solid;
+    border-left: 1px solid;
+  }
+  .hud-frame::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 1px solid;
+    border-right: 1px solid;
+  }
+
+  /* Brass is a metal here, not a glow: a 1px lit edge + a slow sheen. */
+  .brass-edge {
+    box-shadow:
+      inset 0 1px 0 rgb(255 210 119 / 0.28),
+      inset 0 0 0 1px rgb(232 179 58 / 0.16);
+  }
+
+  .brass-text {
+    background: linear-gradient(178deg, #fff0c8 4%, var(--color-brass) 42%, #b98d23 78%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hairline {
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      var(--color-line) 12%,
+      var(--color-line) 88%,
+      transparent
+    );
+    height: 1px;
+  }
+
+  /* Diagonal hazard hatching — bans and permanent states only. */
+  .hatch-danger {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgb(217 69 59 / 0.1) 0 6px,
+      transparent 6px 12px
+    );
+  }
+
+  .scanlines {
+    background-image: repeating-linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.022) 0 1px,
+      transparent 1px 3px
+    );
+  }
+
+  /* ---------- States ---------- */
+  .row-interactive {
+    transition:
+      background-color 0.16s var(--ease-out-hud),
+      box-shadow 0.16s var(--ease-out-hud);
+  }
+  .row-interactive:hover {
+    background-color: var(--color-panel-2);
+    box-shadow: inset 2px 0 0 0 var(--color-brass);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .mask-fade-r {
+    mask-image: linear-gradient(90deg, #000 82%, transparent);
+  }
+
+  .grid-lines {
+    background-image:
+      linear-gradient(var(--color-line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-line-soft) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+}
+
+/* Motion primitives kept in CSS so idle/ambient loops never touch the
+   main thread through JS. */
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+@keyframes ring-live {
+  0% { transform: scale(0.7); opacity: 0.65; }
+  75%, 100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(200%); }
+}
+@keyframes radar-sweep {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(300%); }
+}

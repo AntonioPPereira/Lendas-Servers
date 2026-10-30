@@ -1,0 +1,24 @@
+# Pacotes de skills de design pra Claude Code — não fazem parte do projeto LENDAS.
+taste/
+ui-skills/
+
+# Dependências e build (cada pacote já tem o seu próprio .gitignore também).
+node_modules/
+dist/
+dist-ssr/
+
+# Segredos — nunca commitados. Use painel/.env.example e server/.env.example.
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
